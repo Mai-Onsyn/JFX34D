@@ -8,15 +8,17 @@ import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
 import javafx.scene.robot.Robot
 import mai_onsyn.renderer.data.Scene3D
+import mai_onsyn.renderer.utils.FrequencyCounter
 import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
 class GL3DRegion(val scene: Scene3D) : GLCanvas(
     executor = LWJGLExecutor.LWJGL_MODULE,
-    fps = 1000.0,
+    fps = 10000.0,
     msaa = 4
 ) {
+    private val engine = GL3DEngine(scene)
     @Volatile private var moveW: Float = 0f
     @Volatile private var moveA: Float = 0f
     @Volatile private var moveS: Float = 0f
@@ -43,8 +45,10 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
 
     private val robot = Robot()
 
+    val newFPSCounter: FrequencyCounter
+        get() = engine.fpsCounter
+
     init {
-        val engine = GL3DEngine(scene)
         this.addOnInitEvent(engine::init)
         this.addOnReshapeEvent(engine::reshape)
         this.addOnRenderEvent(engine::render)
@@ -136,9 +140,9 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
     private var handlerThread: Thread? = null
     private fun launchBackHandlerThread() {
         handlerThread = Thread.ofVirtual().name("3D Region Event Handler").start {
-            val speed = 0.001f
-            val mouseKeySpeed = 1.5f
-            val mouseMoveSpeed = 1f
+            val moveSpeed = 0.004f
+            val mouseKeySpeed = 0.0015f
+            val mouseMoveSpeed = 0.001f
             val smoothTimeMs = 5f
             var lastTime = System.nanoTime()
 
@@ -148,18 +152,18 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
             var currentMouseY = 0f
 
             while (!Thread.currentThread().isInterrupted) {
-                val deltaX = speed * sprint * (moveD - moveA)
-                val deltaY = speed * sprint * (moveUp - moveDown)
-                val deltaZ = speed * sprint * (moveW - moveS)
+                val deltaX = moveSpeed * sprint * (moveD - moveA)
+                val deltaY = moveSpeed * sprint * (moveUp - moveDown)
+                val deltaZ = moveSpeed * sprint * (moveW - moveS)
                 if (deltaX != 0f) scene.getCamera().moveX(deltaX)
                 if (deltaY != 0f) scene.getCamera().moveY(deltaY)
                 if (deltaZ != 0f) scene.getCamera().moveZ(deltaZ)
 
                 // 累积鼠标旋转的目标量
-                targetMouseX += speed * ((mouseRight - mouseLeft) * mouseKeySpeed +
-                        horizontalDelta * mouseMoveSpeed)
-                targetMouseY += speed * ((mouseDown - mouseUp) * mouseKeySpeed +
-                        verticalDelta * mouseMoveSpeed)
+                targetMouseX += (mouseRight - mouseLeft) * mouseKeySpeed +
+                        horizontalDelta * mouseMoveSpeed
+                targetMouseY += (mouseDown - mouseUp) * mouseKeySpeed +
+                        verticalDelta * mouseMoveSpeed
                 horizontalDelta = 0f
                 verticalDelta = 0f
 

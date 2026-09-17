@@ -1,6 +1,9 @@
 import javafx.application.Application
+import javafx.application.Platform
 import javafx.scene.Scene
 import javafx.scene.control.Label
+import javafx.scene.paint.Color
+import javafx.scene.text.Font
 import javafx.stage.Stage
 import mai_onsyn.jfx_tools.layout.Alignment
 import mai_onsyn.jfx_tools.layout.Box
@@ -19,14 +22,33 @@ import org.joml.Vector3f
 class MainApp : Application() {
     override fun start(stage: Stage?) {
         stage!!
-        val box = Column()
-        box.modifier = modifier
-            .fillMaxSize()
+        val box = Box()
 
         val scene = SimpleScene3D()
-        scene.meshList.addAll(listOf(makeTestMesh(), OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\Sponza Palace\\scene.obj")))
-        box.add(Label("3D Space"), modifier.align(Alignment.Horizontal.CENTER))
-        box.add(GL3DRegion(scene), modifier.fillMaxWidth().weight(1.0))
+        scene.meshList.addAll(listOf(makeTestMesh(), OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj")))
+        val gL3DRegion = GL3DRegion(scene)
+        box.add(gL3DRegion, modifier.fillMaxSize())
+        val infoColumn = Column()
+        val fpsLabel = Label("FPS")
+        val low1percentLabel = Label("Low 1%")
+        infoColumn.add(fpsLabel)
+        infoColumn.add(low1percentLabel)
+
+        Thread.ofVirtual().start {
+            fpsLabel.textFill = Color.WHITE
+            low1percentLabel.textFill = Color.WHITE
+            fpsLabel.font = Font(18.0)
+            low1percentLabel.font = Font(18.0)
+            while (!Thread.currentThread().isInterrupted) {
+                Platform.runLater {
+                    fpsLabel.text = "FPS = %.2f".format(gL3DRegion.newFPSCounter.getAverageFrequency())
+                    low1percentLabel.text = "1%% Low PFS = %.2f".format(gL3DRegion.newFPSCounter.getOnePercentLowFrequency())
+                }
+                Thread.sleep(1000)
+            }
+        }
+
+        box.add(infoColumn, modifier.padding(top = 24.0, left = 24.0))
 
         stage.scene = Scene(box, 640.0, 480.0)
 

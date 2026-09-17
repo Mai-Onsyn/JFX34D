@@ -105,10 +105,10 @@ class Modifier private constructor(
     fun padding(all: Double): Modifier = padding(all, all, all, all)
 
     /** 水平 [horizontal] / 垂直 [vertical] 留白。 */
-    fun padding(horizontal: Double, vertical: Double): Modifier = padding(vertical, horizontal, vertical, horizontal)
+    fun padding(horizontal: Double = 0.0, vertical: Double = 0.0): Modifier = padding(vertical, horizontal, vertical, horizontal)
 
     /** 分别指定四边留白。 */
-    fun padding(top: Double, right: Double, bottom: Double, left: Double): Modifier =
+    fun padding(top: Double = 0.0, right: Double = 0.0, bottom: Double = 0.0, left: Double = 0.0): Modifier =
         copy(
             isPaddingSet = true,
             paddingTop = top,
