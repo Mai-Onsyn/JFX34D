@@ -1,7 +1,9 @@
+import mai_onsyn.renderer.cpu4dkt.Camera4D
 import mai_onsyn.renderer.cpu4dkt.JNIRasterizer
 import mai_onsyn.renderer.cpu4dkt.Matrix5f
 import mai_onsyn.renderer.cpu4dkt.Mesh4D
 import mai_onsyn.renderer.cpu4dkt.constructHypercube
+import org.joml.Vector4f
 import org.junit.jupiter.api.Test
 
 class HypercubeTest {
@@ -23,8 +25,9 @@ class HypercubeTest {
 
         println("\n".repeat(4))
 
+        val camera = Camera4D(pos = Vector4f(0f, 0f, 0f, -5f))
         val I = Matrix5f.IDENTITY.data
-        val outArray = JNIRasterizer.process(flattened, cube.tetrahedrons.size, I, I, I, I)
+        val outArray = JNIRasterizer.process(flattened, cube.tetrahedrons.size, I, camera.viewMatrix.data, camera.projectionMatrix().data, I)
         for (i in outArray.indices step 16) {
             println(outArray.copyOfRange(i, i + 16).joinToString { "%.2f".format(it) })
         }

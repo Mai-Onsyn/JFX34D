@@ -1,9 +1,10 @@
 module;
 export module Renderer;
 import Types;
+import Matrix;
 
 export namespace Renderer {
-    Float* process(const Float* input, const Int32 triangleCount, Int32& resultLen) {
+    Float* process(const Float* input, const Int32 triangleCount, Int32& resultLen, Matrix5x5 model, Matrix5x5 view, Matrix5x5 projection, Matrix4x4 viewPort) {
         resultLen = triangleCount * 16;
 
         Float* result = new Float[resultLen];

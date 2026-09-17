@@ -124,3 +124,47 @@ export struct Vector4D {
     [[nodiscard]] String toString() const;
     friend ostream& operator<<(ostream& lhs, const Vector4D& v);
 };
+
+export struct Vector5D {
+    Float x, y, z, w, v;
+
+    Vector5D() = default;
+    Vector5D(Float x, Float y, Float z, Float w, Float v);
+    explicit Vector5D(const Vector4D& v4, Float v = 1.0f);
+    explicit operator Vector4D() const;
+
+    Vector5D operator+(const Vector5D& other) const;
+    Vector5D operator-(const Vector5D& other) const;
+    Vector5D operator*(const Vector5D& other) const;
+    Vector5D operator*(Float scalar) const;
+    Vector5D operator/(const Vector5D& other) const;
+    Vector5D operator/(Float scalar) const;
+    Vector5D& operator+=(const Vector5D& other);
+    Vector5D& operator-=(const Vector5D& other);
+    Vector5D& operator*=(const Vector5D& other);
+    Vector5D& operator*=(Float scalar);
+    Vector5D& operator/=(const Vector5D& other);
+    Vector5D& operator/=(Float scalar);
+    Boolean operator==(const Vector5D& other) const;
+
+    [[nodiscard]] Float dot(const Vector5D& other) const;
+    [[nodiscard]] Float length() const;
+    [[nodiscard]] Vector5D normalize() const;
+
+    /** 按 0..4 取分量 (x y z w v), 给四维叉积的排列枚举用。 */
+    [[nodiscard]] Float component(Int32 index) const;
+
+    /**
+     * 四维叉积: 同时垂直于 a, b, c, d 的那个向量。
+     * 五维空间里 "垂直于 4 个向量" 只剩一个方向, 所以结果唯一 (差一个符号/长度)。
+     * 用在 4D 网格上就是: 四面体/超平面求法向量。
+     */
+    [[nodiscard]] static Vector5D cross(
+        const Vector5D& a, const Vector5D& b, const Vector5D& c, const Vector5D& d);
+
+    [[nodiscard]] String toString() const;
+    friend ostream& operator<<(ostream& lhs, const Vector5D& v);
+};
+
+/** 标量在左边的乘法: 2.0f * v */
+export Vector5D operator*(Float scalar, const Vector5D& v);

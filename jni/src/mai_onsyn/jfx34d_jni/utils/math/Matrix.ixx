@@ -102,6 +102,10 @@ public:
         memset(m, 0, sizeof(m));
     };
 
+    Matrix4x4(const Float* arr) {
+        memcpy(m, arr, sizeof(m));
+    }
+
     Matrix4x4(Matrix4x4&& other) noexcept {
         memcpy(this->m, other.m, sizeof(m));
     }
@@ -263,4 +267,118 @@ public:
         ss << m[15] << "}";
         return ss.str();
     }
+};
+
+/**
+ * 5x5 矩阵, 行主序: m[row * 5 + col]。
+ *
+ * 注意和 Matrix4x4 的区别: 那个是列主序 (跟 joml 对齐), 这个跟 Kotlin 侧的
+ * Matrix5f 一样是行主序。两者不要互相赋值。
+ *
+ * 4D 齐次变换: (x, y, z, w, 1) -> M * v, 最后一行管平移。
+ */
+export class Matrix5x5 {
+public:
+    Float m[25]{};
+
+    Matrix5x5() = default;
+
+    Matrix5x5(const Float n0, const Float n1, const Float n2, const Float n3, const Float n4,
+              const Float n5, const Float n6, const Float n7, const Float n8, const Float n9,
+              const Float n10, const Float n11, const Float n12, const Float n13, const Float n14,
+              const Float n15, const Float n16, const Float n17, const Float n18, const Float n19,
+              const Float n20, const Float n21, const Float n22, const Float n23, const Float n24) {
+        const Float values[25] = {
+            n0, n1, n2, n3, n4,
+            n5, n6, n7, n8, n9,
+            n10, n11, n12, n13, n14,
+            n15, n16, n17, n18, n19,
+            n20, n21, n22, n23, n24
+        };
+        memcpy(m, values, sizeof(m));
+    }
+
+    Matrix5x5(const Float* arr) {
+        memcpy(m, arr, sizeof(m));
+    }
+
+    static Matrix5x5 I() {
+        Matrix5x5 matrix;
+        for (Int32 i = 0; i < 5; i++) matrix.m[i * 5 + i] = 1;
+        return matrix;
+    }
+
+    static Matrix5x5 scale(const Vector4D& s) {
+        Matrix5x5 matrix = I();
+        matrix.m[0] = s.x;
+        matrix.m[6] = s.y;
+        matrix.m[12] = s.z;
+        matrix.m[18] = s.w;
+        return matrix;
+    }
+
+    /** 4D 平移: 最后一行 (第 4 行) 的 0..3 列 */
+    static Matrix5x5 translate(const Vector4D& t) {
+        Matrix5x5 matrix = I();
+        matrix.m[20] = t.x;
+        matrix.m[21] = t.y;
+        matrix.m[22] = t.z;
+        matrix.m[23] = t.w;
+        return matrix;
+    }
+
+    /**
+     * 在 a, b 两张坐标轴张成的平面内旋转 angle。
+     * a, b ∈ [0, 4] 依次是 x, y, z, w, v。
+     *
+     * 4D 里 "绕 w 旋转" 就是 rotate(angle, 0, 3) 这种平面旋转 ——
+     * 4D 没有绕一根轴的旋转 (那需要两根轴), 只有绕平面的旋转。
+     */
+    static Matrix5x5 rotate(Float angle, Int32 a, Int32 b);
+
+    Float& operator[](const Int32 idx) { return m[idx]; }
+    const Float& operator[](const Int32 idx) const { return m[idx]; }
+
+    Float& at(const Int32 row, const Int32 col) { return m[row * 5 + col]; }
+    [[nodiscard]] const Float& at(const Int32 row, const Int32 col) const { return m[row * 5 + col]; }
+
+    Matrix5x5 operator*(const Matrix5x5& other) const {
+        Matrix5x5 result;
+        for (Int32 r = 0; r < 5; r++) {
+            for (Int32 c = 0; c < 5; c++) {
+                Float sum = 0;
+                for (Int32 k = 0; k < 5; k++) sum += m[r * 5 + k] * other.m[k * 5 + c];
+                result.m[r * 5 + c] = sum;
+            }
+        }
+        return result;
+    }
+
+    /** 齐次变换: 结果是 5D 量, 最后一个分量通常还是 1 (仿射), 否则要除以它。 */
+    Vector5D operator*(const Vector5D& other) const {
+        return {
+            m[0] * other.x + m[1] * other.y + m[2] * other.z + m[3] * other.w + m[4] * other.v,
+            m[5] * other.x + m[6] * other.y + m[7] * other.z + m[8] * other.w + m[9] * other.v,
+            m[10] * other.x + m[11] * other.y + m[12] * other.z + m[13] * other.w + m[14] * other.v,
+            m[15] * other.x + m[16] * other.y + m[17] * other.z + m[18] * other.w + m[19] * other.v,
+            m[20] * other.x + m[21] * other.y + m[22] * other.z + m[23] * other.w + m[24] * other.v
+        };
+    }
+
+    /** 把 (x, y, z, w) 当仿射点变换 (v = 1), 返回前四个分量。 */
+    [[nodiscard]] Vector4D transform(const Vector4D& p) const;
+
+    [[nodiscard]] Matrix5x5 transpose() const {
+        Matrix5x5 result;
+        for (Int32 r = 0; r < 5; r++) {
+            for (Int32 c = 0; c < 5; c++) result.m[r * 5 + c] = m[c * 5 + r];
+        }
+        return result;
+    }
+
+    [[nodiscard]] Float calcDet() const;
+
+    [[nodiscard]] Matrix5x5 inverse() const;
+
+    [[nodiscard]] String toString() const;
 };

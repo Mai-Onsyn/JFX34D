@@ -58,8 +58,7 @@ fun constructHypercube(
         val r = (p.x + 1f) / 2f
         val g = (p.y + 1f) / 2f
         val b = (p.z + 1f) / 2f
-        val a = (p.w + 1f) / 2f
-        ColorARGB(a, r, g, b)
+        ColorARGB(r, g, b)
     }
 ): MutableList<Tetrahedron> {
     val half = edgeLength / 2f

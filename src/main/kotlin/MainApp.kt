@@ -8,6 +8,11 @@ import javafx.stage.Stage
 import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
+import mai_onsyn.renderer.cpu4dkt.Camera4D
+import mai_onsyn.renderer.cpu4dkt.JNIRasterizer
+import mai_onsyn.renderer.cpu4dkt.Matrix5f
+import mai_onsyn.renderer.cpu4dkt.Mesh4D
+import mai_onsyn.renderer.cpu4dkt.constructHypercube
 import mai_onsyn.renderer.ogl3d.data.ColorARGB
 import mai_onsyn.renderer.ogl3d.data.Mesh
 import mai_onsyn.renderer.data.OBJLoader
@@ -15,8 +20,12 @@ import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.ogl3d.data.Triangle
 import mai_onsyn.renderer.ogl3d.data.Vertex
 import mai_onsyn.renderer.ogl3d.GL3DRegion
+import mai_onsyn.renderer.ogl3d.data.Tetrahedron3D
 import org.joml.Vector2f
 import org.joml.Vector3f
+import org.joml.Vector4f
+import org.joml.minus
+import org.joml.times
 
 class MainApp : Application() {
     override fun start(stage: Stage?) {
@@ -24,7 +33,8 @@ class MainApp : Application() {
         val box = Box()
 
         val scene = SimpleScene3D()
-        scene.meshList.addAll(listOf(makeTestMesh(), OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj")))
+        scene.meshList.addAll(listOf(makeTestMesh(), makeTest4DMesh()))
+//        scene.meshList.add(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj"))
 
         val gL3DRegion = GL3DRegion(scene)
         box.add(gL3DRegion, modifier.fillMaxSize())
@@ -64,5 +74,26 @@ fun makeTestMesh(): Mesh {
         Vertex(Vector3f(0f, 0.5f, 4f), ColorARGB(b = 1f), Vector3f(-1f, 0f, 0f), Vector2f(0f, 0f))
     )
     mesh.triangles.add(triangle)
+    return mesh
+}
+
+fun makeTest4DMesh(): Mesh {
+    val cube = Mesh4D(constructHypercube(edgeLength = 10f))
+    val flattened = JNIRasterizer.packMesh4D(cube)
+    val camera = Camera4D(pos = Vector4f(0f, 0f, 0f, -5f))
+    val I = Matrix5f.IDENTITY.data
+    val outArray = JNIRasterizer.process(flattened, cube.tetrahedrons.size, I, camera.viewMatrix.data, camera.projectionMatrix().data, I)
+    val tetrahedrons = JNIRasterizer.extractTetrahedrons(outArray)
+    return tetrahedrons.toMesh()
+}
+
+fun List<Tetrahedron3D>.toMesh(): Mesh {
+    val mesh = Mesh()
+    this.forEach {
+        mesh.triangles.add(Triangle(it.v0, it.v1, it.v2))
+        mesh.triangles.add(Triangle(it.v0, it.v1, it.v3))
+        mesh.triangles.add(Triangle(it.v0, it.v2, it.v3))
+        mesh.triangles.add(Triangle(it.v1, it.v2, it.v3))
+    }
     return mesh
 }

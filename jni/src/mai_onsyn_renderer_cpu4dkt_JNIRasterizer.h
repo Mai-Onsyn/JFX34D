@@ -13,7 +13,7 @@ extern "C" {
  * Signature: ([FI)[F
  */
 JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_process
-  (JNIEnv *, jclass, jfloatArray, jint);
+  (JNIEnv *, jclass, jfloatArray, jint, jfloatArray, jfloatArray, jfloatArray, jfloatArray);
 
 #ifdef __cplusplus
 }
