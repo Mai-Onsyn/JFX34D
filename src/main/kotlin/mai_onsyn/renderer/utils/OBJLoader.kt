@@ -19,9 +19,9 @@ import kotlin.random.Random
 
 data class MtlObject(
     var name: String = "",
-    var ka: ColorARGB = ColorARGB(0xFF404040u),   // 环境光 (默认 64,64,64)
-    var kd: ColorARGB = ColorARGB(0xFFC8C8C8u),   // 漫反射 (默认 200,200,200)
-    var ks: ColorARGB = ColorARGB(0xFF000000u),   // 镜面反射 (默认 0,0,0)
+    var ka: ColorARGB = ColorARGB(1f, 0.25f, 0.25f, 0.25f),   // 环境光 (默认 64,64,64)
+    var kd: ColorARGB = ColorARGB(1f, 0.75f, 0.75f, 0.75f),   // 漫反射 (默认 200,200,200)
+    var ks: ColorARGB = ColorARGB(),   // 镜面反射 (默认 0,0,0)
     var ns: Float = 1f,
     var d: Float = 1f,
     var mapKd: String = "",
@@ -58,7 +58,7 @@ private data class IndexTuple(val v: Int, val uv: Int, val n: Int)
 
 object OBJLoader {
 
-    private val WHITE = ColorARGB(0xFFFFFFFFu)
+    private val WHITE = ColorARGB(1f, 1f, 1f, 1f)
     private val DEFAULT_NORMAL = Vector3f(0f, 1f, 0f)
     private val ZERO_UV = Vector2f(0f, 0f)
     private val WS = Regex("\\s+")
@@ -262,7 +262,7 @@ object OBJLoader {
                     val v = vertexCache.getOrPut(key) {
                         Vertex(
                             pos = obj.vertices[vi],
-                            color = ColorARGB(Random.nextInt().toUInt() and 0x00FFFFFFu + 0xFF000000u),//WHITE,
+                            color = WHITE,//WHITE,
                             normal = if (hasN && ni in obj.normals.indices) obj.normals[ni]
                             else DEFAULT_NORMAL,
                             uv = if (hasUV && uvi in obj.uvs.indices) obj.uvs[uvi]
@@ -307,5 +307,5 @@ object OBJLoader {
     private fun stocp(s: String): Int = (s.toFloat() * 255f).toInt().coerceIn(0, 255)
 
     private fun rgb(r: Int, g: Int, b: Int, a: Int = 255): ColorARGB =
-        ColorARGB(((a shl 24) or (r shl 16) or (g shl 8) or b).toUInt())
+        ColorARGB(r / 255f, g / 255f, b / 255f, a / 255f)
 }

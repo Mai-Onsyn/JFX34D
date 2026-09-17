@@ -39,7 +39,7 @@ class Camera(
         vz = vz.rotate(angle, up)
     }
 
-    val viewProjection: Matrix4f
+    val viewMatrix: Matrix4f
         get() = Matrix4f(
             vx.x, vy.x, vz.x, 0f,                              // col0
             vx.y, vy.y, vz.y, 0f,                              // col1
@@ -59,8 +59,8 @@ class Camera(
         return Matrix4f(
             f / aspect, 0f, 0f, 0f,   // col0
             0f, f, 0f, 0f,            // col1
-            0f, 0f, a, 1f,            // col2  ← 原来是 "a, b"
-            0f, 0f, b, 0f             // col3  ← 原来是 "1, 0"
+            0f, 0f, a, 1f,            // col2
+            0f, 0f, b, 0f             // col3
         )
     }
 }

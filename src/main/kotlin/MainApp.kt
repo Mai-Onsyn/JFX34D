@@ -59,9 +59,9 @@ class MainApp : Application() {
 fun makeTestMesh(): Mesh {
     val mesh = Mesh()
     val triangle = Triangle(
-        Vertex(Vector3f(0.6f, -0.5f, 4f), ColorARGB(0x8FF0000u), Vector3f(-1f, 0f, 0f), Vector2f(0f, 0f)),
-        Vertex(Vector3f(-0.6f, -0.5f, 4f), ColorARGB(0xFF00FF00u), Vector3f(-1f, 0f, 0f), Vector2f(0f, 0f)),
-        Vertex(Vector3f(0f, 0.5f, 4f), ColorARGB(0xFF0000FFu), Vector3f(-1f, 0f, 0f), Vector2f(0f, 0f))
+        Vertex(Vector3f(0.6f, -0.5f, 4f), ColorARGB(r = 1f), Vector3f(-1f, 0f, 0f), Vector2f(0f, 0f)),
+        Vertex(Vector3f(-0.6f, -0.5f, 4f), ColorARGB(g = 1f), Vector3f(-1f, 0f, 0f), Vector2f(0f, 0f)),
+        Vertex(Vector3f(0f, 0.5f, 4f), ColorARGB(b = 1f), Vector3f(-1f, 0f, 0f), Vector2f(0f, 0f))
     )
     mesh.triangles.add(triangle)
     return mesh

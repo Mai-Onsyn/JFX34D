@@ -7,9 +7,9 @@ import org.lwjgl.opengl.GL30.*
 import java.awt.image.BufferedImage
 
 data class Texture(
-    val ka: ColorARGB = ColorARGB(0xFFFFFFFFu),     // 环境光颜色
-    val kd: ColorARGB = ColorARGB(0xFF808080u),     // 漫反射颜色
-    val ks: ColorARGB = ColorARGB(0xFFFFFFFFu),     // 镜面反射颜色
+    val ka: ColorARGB = ColorARGB(1f, 1f, 1f, 1f),     // 环境光颜色
+    val kd: ColorARGB = ColorARGB(1f, 0.5f, 0.5f, 0.5f),     // 漫反射颜色
+    val ks: ColorARGB = ColorARGB(1f, 1f, 1f, 1f),     // 镜面反射颜色
     val ns: Float = 1f,                 // 镜面反射指数
     val d: Float = 0f,                  // 透明度
     val mapKd: BufferedImage? = null,   // 漫反射纹理/主材质

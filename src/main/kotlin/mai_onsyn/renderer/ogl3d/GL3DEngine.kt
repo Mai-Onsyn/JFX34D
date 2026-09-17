@@ -100,7 +100,7 @@ class GL3DEngine(
         }
         glUseProgram(program)
 
-        val view = scene.getCamera().viewProjection
+        val view = scene.getCamera().viewMatrix
         view.get(viewMatrixBuffer)
         scene.getCamera().projectionMatrix(aspect).get(projectionMatrixBuffer)
         glUniformMatrix4fv(viewPtr, false, viewMatrixBuffer)

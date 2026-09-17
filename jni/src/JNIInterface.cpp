@@ -5,7 +5,7 @@ import Renderer;
 import Types;
 
 JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_process
-  (JNIEnv* env, jclass, jfloatArray inputArray, jint triangleCount) {
+  (JNIEnv* env, jclass, jfloatArray inputArray, const jint count) {
 
     auto* data = static_cast<jfloat*>(env->GetPrimitiveArrayCritical(inputArray, nullptr));
 
@@ -13,8 +13,10 @@ JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_pro
         return jfloatArray();
     }
 
+    std::cout << env->GetArrayLength(inputArray) << std::endl;
+
     Int32 resultLen;
-    Float* resultBuffer = Renderer::process(data, triangleCount, resultLen);
+    Float* resultBuffer = Renderer::process(data, count, resultLen);
 
     env->ReleasePrimitiveArrayCritical(inputArray, data, JNI_ABORT);
 
@@ -22,5 +24,6 @@ JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_pro
     if (result == nullptr) return jfloatArray();
     env->SetFloatArrayRegion(result, 0, resultLen, resultBuffer);
     delete[] resultBuffer;
+    std::cout << resultLen << std::endl;
     return result;
 }
