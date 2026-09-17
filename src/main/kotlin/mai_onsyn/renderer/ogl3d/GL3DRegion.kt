@@ -7,7 +7,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
 import javafx.scene.robot.Robot
-import mai_onsyn.renderer.data.Scene3D
+import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.utils.FrequencyCounter
 import kotlin.concurrent.Volatile
 import kotlin.math.abs

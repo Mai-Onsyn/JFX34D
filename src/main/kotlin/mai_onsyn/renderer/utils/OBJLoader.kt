@@ -1,5 +1,10 @@
 package mai_onsyn.renderer.data
 
+import mai_onsyn.renderer.ogl3d.data.ColorARGB
+import mai_onsyn.renderer.ogl3d.data.Mesh
+import mai_onsyn.renderer.ogl3d.data.Texture
+import mai_onsyn.renderer.ogl3d.data.Triangle
+import mai_onsyn.renderer.ogl3d.data.Vertex
 import org.joml.Vector2f
 import org.joml.Vector3f
 import java.awt.image.BufferedImage

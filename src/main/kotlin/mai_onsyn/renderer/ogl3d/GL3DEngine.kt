@@ -3,9 +3,9 @@ package mai_onsyn.renderer.ogl3d
 import com.huskerdev.openglfx.canvas.events.GLInitializeEvent
 import com.huskerdev.openglfx.canvas.events.GLRenderEvent
 import com.huskerdev.openglfx.canvas.events.GLReshapeEvent
-import mai_onsyn.renderer.data.GLMaterial
-import mai_onsyn.renderer.data.Scene3D
-import mai_onsyn.renderer.data.Shader
+import mai_onsyn.renderer.ogl3d.data.GLMaterial
+import mai_onsyn.renderer.ogl3d.data.Scene3D
+import mai_onsyn.renderer.ogl3d.data.Shader
 import mai_onsyn.renderer.utils.FrequencyCounter
 import org.joml.Vector3f
 import org.lwjgl.BufferUtils

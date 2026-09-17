@@ -1,4 +1,4 @@
-package mai_onsyn.renderer.data
+package mai_onsyn.renderer.ogl3d.data
 
 import mai_onsyn.renderer.utils.rotate
 import org.joml.Matrix4f

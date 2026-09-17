@@ -5,16 +5,15 @@ import javafx.scene.control.Label
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.stage.Stage
-import mai_onsyn.jfx_tools.layout.Alignment
 import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
-import mai_onsyn.renderer.data.ColorARGB
-import mai_onsyn.renderer.data.Mesh
+import mai_onsyn.renderer.ogl3d.data.ColorARGB
+import mai_onsyn.renderer.ogl3d.data.Mesh
 import mai_onsyn.renderer.data.OBJLoader
-import mai_onsyn.renderer.data.SimpleScene3D
-import mai_onsyn.renderer.data.Triangle
-import mai_onsyn.renderer.data.Vertex
+import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
+import mai_onsyn.renderer.ogl3d.data.Triangle
+import mai_onsyn.renderer.ogl3d.data.Vertex
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import org.joml.Vector2f
 import org.joml.Vector3f
@@ -26,8 +25,10 @@ class MainApp : Application() {
 
         val scene = SimpleScene3D()
         scene.meshList.addAll(listOf(makeTestMesh(), OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj")))
+
         val gL3DRegion = GL3DRegion(scene)
         box.add(gL3DRegion, modifier.fillMaxSize())
+
         val infoColumn = Column()
         val fpsLabel = Label("FPS")
         val low1percentLabel = Label("Low 1%")
@@ -51,7 +52,6 @@ class MainApp : Application() {
         box.add(infoColumn, modifier.padding(top = 24.0, left = 24.0))
 
         stage.scene = Scene(box, 640.0, 480.0)
-
         stage.show()
     }
 }

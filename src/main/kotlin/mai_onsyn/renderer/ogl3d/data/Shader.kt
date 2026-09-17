@@ -1,4 +1,4 @@
-package mai_onsyn.renderer.data
+package mai_onsyn.renderer.ogl3d.data
 
 import org.lwjgl.opengl.GL30
 import java.io.IOException

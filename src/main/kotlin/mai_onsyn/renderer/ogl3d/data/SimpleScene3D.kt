@@ -1,4 +1,4 @@
-package mai_onsyn.renderer.data
+package mai_onsyn.renderer.ogl3d.data
 
 class SimpleScene3D(
     val meshList: MutableList<Mesh> = mutableListOf<Mesh>(),
