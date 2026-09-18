@@ -8,24 +8,12 @@ import javafx.stage.Stage
 import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
-import mai_onsyn.renderer.cpu4dkt.Camera4D
-import mai_onsyn.renderer.cpu4dkt.JNIRasterizer
-import mai_onsyn.renderer.cpu4dkt.Matrix5f
-import mai_onsyn.renderer.cpu4dkt.Mesh4D
-import mai_onsyn.renderer.cpu4dkt.constructHypercube
-import mai_onsyn.renderer.ogl3d.data.ColorARGB
-import mai_onsyn.renderer.ogl3d.data.Mesh
-import mai_onsyn.renderer.data.OBJLoader
-import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
-import mai_onsyn.renderer.ogl3d.data.Triangle
-import mai_onsyn.renderer.ogl3d.data.Vertex
+import mai_onsyn.renderer.cpu4dkt.*
 import mai_onsyn.renderer.ogl3d.GL3DRegion
-import mai_onsyn.renderer.ogl3d.data.Tetrahedron3D
+import mai_onsyn.renderer.ogl3d.data.*
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
-import org.joml.minus
-import org.joml.times
 
 class MainApp : Application() {
     override fun start(stage: Stage?) {
@@ -94,6 +82,9 @@ fun List<Tetrahedron3D>.toMesh(): Mesh {
         mesh.triangles.add(Triangle(it.v0, it.v1, it.v3))
         mesh.triangles.add(Triangle(it.v0, it.v2, it.v3))
         mesh.triangles.add(Triangle(it.v1, it.v2, it.v3))
+    }
+    mesh.triangles.forEach {
+        println(it)
     }
     return mesh
 }

@@ -28,7 +28,11 @@ data class Tetrahedron3D(
                     arr[offset++],
                     arr[offset++]
                 ), ColorARGB(arr[offset++].toRawBits()),
-                Vector3f(1f, 0f, 0f), Vector2f()
+                Vector3f(
+                    arr[offset++],
+                    arr[offset++],
+                    arr[offset++]
+                ), Vector2f()
             )
             return Tetrahedron3D(
                 extractVertex(),

@@ -18,6 +18,9 @@ export struct Color {
     constexpr Color(const UInt8 r, const UInt8 g, const UInt8 b, const UInt8 a = 255) noexcept
         : r(r), g(g), b(b), a(a) {}
 
+    Color(const UInt32 argb)
+        : r(argb >> 16 & 0xFF), g(argb >> 8 & 0xFF), b(argb & 0xFF), a(argb >> 24 & 0xFF) {}
+
     constexpr Color() = default;
 
     Color operator*(const Color& other) const noexcept {

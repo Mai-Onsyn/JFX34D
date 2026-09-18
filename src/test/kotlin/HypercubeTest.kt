@@ -12,8 +12,8 @@ class HypercubeTest {
         val cube = Mesh4D(constructHypercube())
         println(cube.tetrahedrons.size)
         val flattened = JNIRasterizer.packMesh4D(cube)
-        for (i in flattened.indices step 20) {
-            println(flattened.copyOfRange(i, i + 20).joinToString { "%.2f".format(it) })
+        for (i in flattened.indices step 36) {
+            println(flattened.copyOfRange(i, i + 36).joinToString { "%.2f".format(it) })
         }
 
         println("\n".repeat(4))
@@ -28,8 +28,8 @@ class HypercubeTest {
         val camera = Camera4D(pos = Vector4f(0f, 0f, 0f, -5f))
         val I = Matrix5f.IDENTITY.data
         val outArray = JNIRasterizer.process(flattened, cube.tetrahedrons.size, I, camera.viewMatrix.data, camera.projectionMatrix().data, I)
-        for (i in outArray.indices step 16) {
-            println(outArray.copyOfRange(i, i + 16).joinToString { "%.2f".format(it) })
+        for (i in outArray.indices step 28) {
+            println(outArray.copyOfRange(i, i + 28).joinToString { "%.2f".format(it) })
         }
     }
 }

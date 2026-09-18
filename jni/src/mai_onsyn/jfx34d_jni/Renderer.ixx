@@ -1,36 +1,64 @@
 module;
+#include <memory>
 export module Renderer;
 import Types;
 import Matrix;
+import VertexProcessor4D;
+import Data4D;
+import Vectors;
+
+inline Float intToFloat(const UInt32 i) {
+    Float f;
+    memcpy(&f, &i, sizeof(Float));
+    return f;
+}
+
+inline UInt32 floatToInt(const Float f) {
+    UInt32 i;
+    memcpy(&i, &f, sizeof(UInt32));
+    return i;
+}
 
 export namespace Renderer {
-    Float* process(const Float* input, const Int32 triangleCount, Int32& resultLen, Matrix5x5 model, Matrix5x5 view, Matrix5x5 projection, Matrix4x4 viewPort) {
-        resultLen = triangleCount * 16;
+    Float* process(const Float* input, const Int32 count, Int32& resultLen, const Matrix5x5& model, const Matrix5x5& view, const Matrix5x5& projection, const Matrix4x4& viewPort) {
 
-        Float* result = new Float[resultLen];
-        for (Int32 i = 0; i < triangleCount; i++) {
-            Int32 iPtr = i * 20;
-            Int32 oPtr = i * 16;
-            result[oPtr] = input[iPtr];
-            result[oPtr + 1] = input[iPtr + 1];
-            result[oPtr + 2] = input[iPtr + 2];
-            result[oPtr + 3] = input[iPtr + 4];   // color
+        const Matrix5x5 mvp = projection * view * model;
 
-            result[oPtr + 4] = input[iPtr + 5];
-            result[oPtr + 5] = input[iPtr + 6];
-            result[oPtr + 6] = input[iPtr + 7];
-            result[oPtr + 7] = input[iPtr + 9];   // color
+        List<List<Tetrahedron3D>> transformed{};
+        Int32 resultCount = 0;
 
-            result[oPtr + 8] = input[iPtr + 10];
-            result[oPtr + 9] = input[iPtr + 11];
-            result[oPtr + 10] = input[iPtr + 12];
-            result[oPtr + 11] = input[iPtr + 14];   // color
-
-            result[oPtr + 12] = input[iPtr + 15];
-            result[oPtr + 13] = input[iPtr + 16];
-            result[oPtr + 14] = input[iPtr + 17];
-            result[oPtr + 15] = input[iPtr + 19];   // color
+        Tetrahedron4D* src = new Tetrahedron4D[count];
+        memcpy(src, input, sizeof(Tetrahedron4D) * count);
+        for (Int32 i = 0; i < count; i++) {
+            List<Tetrahedron3D> tet3Ds = VertexProcessor4D::process(src[i], mvp, viewPort);
+            resultCount += tet3Ds.size();
         }
+        delete[] src;
+        // for (int i = 0; i < count; i++) {
+        //     Int32 offset = i * 36;
+        //     Tetrahedron4D tet{{
+        //             extractVertex(offset, input),
+        //             extractVertex(offset, input),
+        //             extractVertex(offset, input),
+        //             extractVertex(offset, input)
+        //         }};
+        //     List<Tetrahedron3D> tet3D = VertexProcessor4D::process(tet, mvp, viewPort);
+        //     transformed.push_back(move(tet3D));
+        // }
+
+        resultLen = resultCount * 28;
+        auto* result = new Float[resultLen];
+        Int32 writeOffset = 0;
+        for (const auto& tet3DGroup : transformed) {
+            for (const auto& j : tet3DGroup) {
+                memcpy(result + writeOffset, &j, sizeof(Tetrahedron3D));
+                writeOffset += 28;
+            }
+        }
+
+        // for (int i = 0; i < resultCount * 4; ++i)
+        //     memcpy(result + i * 7, input + i * 9, 3 * sizeof(Float)), std::memcpy(result + i * 7 + 3, input + i * 9 + 4, 4 * sizeof(Float));
+
         return result;
     }
 }
