@@ -1,4 +1,5 @@
 module;
+#include <iostream>
 #include <memory>
 export module Renderer;
 import Types;
@@ -30,21 +31,11 @@ export namespace Renderer {
         Tetrahedron4D* src = new Tetrahedron4D[count];
         memcpy(src, input, sizeof(Tetrahedron4D) * count);
         for (Int32 i = 0; i < count; i++) {
-            List<Tetrahedron3D> tet3Ds = VertexProcessor4D::process(src[i], mvp, viewPort);
+            List<Tetrahedron3D> tet3Ds = VertexProcessor4D_::process(src[i], model, view, projection, viewPort);
             resultCount += tet3Ds.size();
+            transformed.push_back(move(tet3Ds));
         }
         delete[] src;
-        // for (int i = 0; i < count; i++) {
-        //     Int32 offset = i * 36;
-        //     Tetrahedron4D tet{{
-        //             extractVertex(offset, input),
-        //             extractVertex(offset, input),
-        //             extractVertex(offset, input),
-        //             extractVertex(offset, input)
-        //         }};
-        //     List<Tetrahedron3D> tet3D = VertexProcessor4D::process(tet, mvp, viewPort);
-        //     transformed.push_back(move(tet3D));
-        // }
 
         resultLen = resultCount * 28;
         auto* result = new Float[resultLen];
@@ -56,9 +47,8 @@ export namespace Renderer {
             }
         }
 
-        // for (int i = 0; i < resultCount * 4; ++i)
-        //     memcpy(result + i * 7, input + i * 9, 3 * sizeof(Float)), std::memcpy(result + i * 7 + 3, input + i * 9 + 4, 4 * sizeof(Float));
-
         return result;
     }
 }
+        // for (int i = 0; i < resultCount * 4; ++i)
+        //     memcpy(result + i * 7, input + i * 9, 3 * sizeof(Float)), std::memcpy(result + i * 7 + 3, input + i * 9 + 4, 4 * sizeof(Float));

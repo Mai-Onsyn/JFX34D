@@ -113,6 +113,7 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
                 }
 
                 KeyCode.CONTROL -> sprint = 4f
+                KeyCode.TAB -> sprint = 0.2f
                 else -> {}
             }
         }
@@ -130,6 +131,7 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
                 KeyCode.RIGHT -> mouseRight = 0f
 
                 KeyCode.CONTROL -> sprint = 1f
+                KeyCode.TAB -> sprint = 1f
                 else -> {}
             }
         }

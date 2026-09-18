@@ -100,7 +100,17 @@ export class alignas(32) Matrix4x4 {
 public:
     Matrix4x4() {
         memset(m, 0, sizeof(m));
-    };
+    }
+
+    Matrix4x4(Float m00, Float m01, Float m02, Float m03,
+              Float m10, Float m11, Float m12, Float m13,
+              Float m20, Float m21, Float m22, Float m23,
+              Float m30, Float m31, Float m32, Float m33) {
+        m[0] = m00; m[1] = m01; m[2] = m02; m[3] = m03;
+        m[4] = m10; m[5] = m11; m[6] = m12; m[7] = m13;
+        m[8] = m20; m[9] = m21; m[10] = m22; m[11] = m23;
+        m[12] = m30; m[13] = m31; m[14] = m32; m[15] = m33;
+    }
 
     Matrix4x4(const Float* arr) {
         memcpy(m, arr, sizeof(m));
@@ -258,6 +268,84 @@ public:
         };
     }
 
+    Matrix4x4 transpose() const {
+        return {
+            m[0], m[4], m[8], m[12],
+            m[1], m[5], m[9], m[13],
+            m[2], m[6], m[10], m[14],
+            m[3], m[7], m[11], m[15]
+        };
+    }
+
+    Matrix4x4 inverse() const {
+        Float a[4][8];
+        Matrix4x4 inv{};
+
+        // 构造增广矩阵 [m | I]
+        for (Int32 r = 0; r < 4; ++r) {
+            for (Int32 c = 0; c < 4; ++c) {
+                a[r][c] = static_cast<Float>(m[r * 4 + c]);
+            }
+            for (Int32 c = 0; c < 4; ++c) {
+                a[r][4 + c] = (r == c) ? 1.0 : 0.0;
+            }
+        }
+
+        // 高斯-约当消元
+        for (Int32 col = 0; col < 4; ++col) {
+            // 选主元，避免除 0，并提高数值稳定性
+            Int32 pivot = col;
+            Float maxAbs = std::fabs(a[col][col]);
+
+            for (Int32 r = col + 1; r < 4; ++r) {
+                Float v = std::fabs(a[r][col]);
+                if (v > maxAbs) {
+                    maxAbs = v;
+                    pivot = r;
+                }
+            }
+
+            // 可根据实际数据尺度调整这个阈值
+            if (maxAbs < 1e-12) {
+                return inv; // 奇异矩阵或接近奇异
+            }
+
+            // 交换主元行
+            if (pivot != col) {
+                for (Int32 c = 0; c < 8; ++c) {
+                    std::swap(a[pivot][c], a[col][c]);
+                }
+            }
+
+            // 归一化主元行
+            Float div = a[col][col];
+            for (Int32 c = 0; c < 8; ++c) {
+                a[col][c] /= div;
+            }
+
+            // 消去其他行的当前列
+            for (Int32 r = 0; r < 4; ++r) {
+                if (r == col) continue;
+
+                Float factor = a[r][col];
+                if (factor == 0.0) continue;
+
+                for (Int32 c = 0; c < 8; ++c) {
+                    a[r][c] -= factor * a[col][c];
+                }
+            }
+        }
+
+        // 取出右半部分，即逆矩阵
+        for (Int32 r = 0; r < 4; ++r) {
+            for (Int32 c = 0; c < 4; ++c) {
+                inv[r * 4 + c] = static_cast<float>(a[r][4 + c]);
+            }
+        }
+
+        return inv;
+    }
+
     [[nodiscard]] String toString() const {
         std::stringstream ss;
         ss << "Matrix{";
@@ -300,6 +388,15 @@ public:
 
     Matrix5x5(const Float* arr) {
         memcpy(m, arr, sizeof(m));
+    }
+
+    explicit operator Matrix4x4() const {
+        return Matrix4x4{
+            m[0], m[1], m[2], m[3],
+            m[5], m[6], m[7], m[8],
+            m[10], m[11], m[12], m[13],
+            m[15], m[16], m[17], m[18]
+        };
     }
 
     static Matrix5x5 I() {

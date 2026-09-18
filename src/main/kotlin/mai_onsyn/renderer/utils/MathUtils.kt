@@ -1,5 +1,6 @@
 package mai_onsyn.renderer.utils
 
+import org.joml.Matrix4f
 import org.joml.Vector3f
 import kotlin.math.cos
 import kotlin.math.sin
@@ -20,4 +21,10 @@ fun Vector3f.rotate(angle: Float, axis: Vector3f): Vector3f {
     val vzT = z * cosTheta + (1 - cosTheta) * dp * kr.z + sinTheta * cp.z
 
     return Vector3f(vxT, vyT, vzT)
+}
+
+fun Matrix4f.toRowMajorFloatArray(): FloatArray {
+    val arr = FloatArray(16)
+    this.transpose().get(arr)
+    return arr
 }

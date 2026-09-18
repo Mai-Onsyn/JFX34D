@@ -129,6 +129,7 @@ class GL3DEngine(
         glUniform1f(attnAPtr, attnA)
         glUniform1f(attnBPtr, attnB)
 
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         // 不透明的一遍: 正常写深度, 不用混合
         glDepthMask(true)
         glDisable(GL_BLEND)

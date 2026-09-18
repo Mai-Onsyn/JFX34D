@@ -5,13 +5,13 @@ import Color;
 
 #pragma pack(push, 1)
 export struct Vertex3D {
-    Vector3D vector;
+    Vector3D pos;
     Color color;
     Vector3D normal;
 };
 
 export struct Vertex4D {
-    Vector4D vector;
+    Vector4D pos;
     Color color;
     Vector4D normal;
 };
