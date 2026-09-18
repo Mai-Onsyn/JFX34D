@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JNIRasterizer {
-    public static native float[] process(
+    public static native float[] project(
         float[] tetrahedrons,
         int count,                  // tetrahedron count
         float[] modelMatrix,        // 5*5

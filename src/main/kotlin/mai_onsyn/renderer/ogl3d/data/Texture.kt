@@ -5,6 +5,8 @@ import org.lwjgl.opengl.GL13.GL_TEXTURE0
 import org.lwjgl.opengl.GL13.glActiveTexture
 import org.lwjgl.opengl.GL30.*
 import java.awt.image.BufferedImage
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 data class Texture(
     val ka: ColorARGB = ColorARGB(1f, 1f, 1f, 1f),     // 环境光颜色
@@ -17,8 +19,18 @@ data class Texture(
     val mapD: BufferedImage? = null,    // 透明度纹理
     val mapBump: BufferedImage?,        // 法线纹理
 ) {
-    /** 贴图/材质在 GPU 上的那份资源, 同一个 Texture 只传一次 */
-    val gl: GLMaterial by lazy { GLMaterial(this) }
+    /**
+     * 贴图/材质在 GPU 上的那份资源, 同一个 Texture 只传一次。
+     * 用 AtomicReference 而不是 lazy: lazy 的默认模式会加锁,
+     * 而且 LATENT 模式被多线程同时命中时可能建出两份。
+     */
+    private val glRef = AtomicReference<GLMaterial?>(null)
+    val gl: GLMaterial
+        get() {
+            glRef.get()?.let { return it }
+            val created = GLMaterial(this)
+            return if (glRef.compareAndSet(null, created)) created else glRef.get()!!
+        }
 
     companion object {
         /** 没有材质的三角形 (比如测试三角形) 共用的兜底材质 */
@@ -30,46 +42,67 @@ data class Texture(
 class GLMaterial(
     val texture: Texture
 ) {
+    // 这几个都是渲染线程写、可能被生成线程读 (checkTransparent), 所以 volatile
+    @Volatile
     var mapKdId: Int = 0
         private set
+
+    @Volatile
     var mapKsId: Int = 0
         private set
+
+    @Volatile
     var mapDId: Int = 0
         private set
+
+    @Volatile
     var mapBumpId: Int = 0
         private set
 
+    @Volatile
     var uploaded: Boolean = false
         private set
+
+    /** 保证贴图只传一次 (多个 mesh 共享同一个材质时会一起进来) */
+    private val uploadLock = Any()
 
     /**
      * 材质带镂空/半透明 (贴图里有 alpha < 255 的像素)。
      * 这种组要放到透明那一遍里画: 关深度写入 + 开混合, 并且放弃 0.5 那种硬边裁剪,
      * 让边缘像素按自己的 alpha 和后面的像素混合。
+     *
+     * 渲染线程写、生成线程读 (建组时要问), 所以 volatile。
      */
+    @Volatile
     var transparent: Boolean = false
         private set
 
-    private var alphaChecked = false
+    private val alphaChecked = AtomicBoolean(false)
 
     /** 不碰 GL, 只扫贴图的 alpha 通道; 分组时要用 (这时还没上传) */
     fun checkTransparent(): Boolean {
-        if (!alphaChecked) {
+        if (alphaChecked.compareAndSet(false, true)) {
             val img = texture.mapKd
             transparent = img != null && hasAlpha(img)
-            alphaChecked = true
         }
         return transparent
     }
 
+    /**
+     * 把贴图传到 GPU。只能在渲染线程 (有 GL 上下文) 调。
+     * 同一个材质被多个 mesh 共享时也只会传一次。
+     */
     fun upload() {
         if (uploaded) return
-        checkTransparent()
-        texture.mapKd?.let { mapKdId = uploadImage(it) }
-        texture.mapKs?.let { mapKsId = uploadImage(it) }
-        texture.mapD?.let { mapDId = uploadImage(it) }
-        texture.mapBump?.let { mapBumpId = uploadImage(it) }
-        uploaded = true
+        synchronized(uploadLock) {
+            if (uploaded) return
+            checkTransparent()
+            texture.mapKd?.let { mapKdId = uploadImage(it) }
+            texture.mapKs?.let { mapKsId = uploadImage(it) }
+            texture.mapD?.let { mapDId = uploadImage(it) }
+            texture.mapBump?.let { mapBumpId = uploadImage(it) }
+            uploaded = true
+        }
     }
 
     /** 只查 alpha 通道, 有一像素不是 255 就算这个材质是透明的 */

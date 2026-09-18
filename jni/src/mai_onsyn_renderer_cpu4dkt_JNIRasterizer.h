@@ -9,10 +9,10 @@ extern "C" {
 #endif
 /*
  * Class:     mai_onsyn_renderer_cpu4dkt_JNIRasterizer
- * Method:    process
+ * Method:    project
  * Signature: ([FI)[F
  */
-JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_process
+JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_project
   (JNIEnv *, jclass, jfloatArray, jint, jfloatArray, jfloatArray, jfloatArray, jfloatArray);
 
 #ifdef __cplusplus

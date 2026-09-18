@@ -6,6 +6,7 @@ import com.huskerdev.openglfx.canvas.events.GLReshapeEvent
 import mai_onsyn.renderer.ogl3d.data.GLMaterial
 import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.ogl3d.data.Shader
+import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.utils.FrequencyCounter
 import org.joml.Vector3f
 import org.lwjgl.BufferUtils
@@ -36,9 +37,9 @@ class GL3DEngine(
     /** 全局环境光 */
     private val ambient = Vector3f(0.3f, 0.3f, 0.3f)
     /** 灯光先写死 (世界空间), 之后要做多光源/可调时改这里 */
-    private val lightPos = Vector3f(3.31365f, 47.65044f, -19.08688f)
+    private val lightPos = Vector3f(-5f, 15f, 0f)
     private val lightColor = Vector3f(1.0f, 1.0f, 1.0f)
-    private var lightIntensity = 0.6f
+    private var lightIntensity = 1.4f
     private var lightRange = 600.0f
     private var attnA = 0.00007f
     private var attnB = 0.00003f
@@ -78,9 +79,11 @@ class GL3DEngine(
         GLMaterial.uMapBump = glGetUniformLocation(program, "material.mapBump")
 
         glEnable(GL_DEPTH_TEST)
-        glEnable(GL_BLEND)
         // 当前像素按自己的 alpha 覆盖, 剩下的显示后面的像素: rgb = src*a + dst*(1-a)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        // 混合只在有透明材质时由 Mesh.draw 临时打开; 这里定好默认状态
+        glDepthMask(true)
+        glDisable(GL_BLEND)
     }
 
     fun reshape(event: GLReshapeEvent) {
@@ -94,6 +97,10 @@ class GL3DEngine(
         val program = Shader.basic.program
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
+        // 外部线程删掉的 mesh, 到这里才真正 glDelete (GL 只能在渲染线程调)
+        (scene as? SimpleScene3D)?.drainPendingDispose()
+
+        // getMeshes() 拿到的是当前快照, 别的线程同时增删也不影响这次遍历
         val meshes = scene.getMeshes()
         for (m in meshes) {
             m.upload()
@@ -129,22 +136,11 @@ class GL3DEngine(
         glUniform1f(attnAPtr, attnA)
         glUniform1f(attnBPtr, attnB)
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        // 不透明的一遍: 正常写深度, 不用混合
-        glDepthMask(true)
-        glDisable(GL_BLEND)
+//        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        // Mesh.draw 自己处理深度写入/混合 (透明材质分两趟), 外面只管调
         for (m in meshes) {
-            m.drawOpaque(modelPtr)
+            m.draw(modelPtr, viewPos)
         }
-
-        // 透明的一遍: 从远到近画, 只读深度不写深度, 才能看到后面的像素
-        glDepthMask(false)
-        glEnable(GL_BLEND)
-        for (m in meshes) {
-            m.drawTransparent(modelPtr, viewPos)
-        }
-        glDepthMask(true)
-        glDisable(GL_BLEND)
 
         fpsCounter.tick()
     }

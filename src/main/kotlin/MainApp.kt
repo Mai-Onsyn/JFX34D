@@ -2,6 +2,7 @@ import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Scene
 import javafx.scene.control.Label
+import javafx.scene.input.KeyEvent
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.stage.Stage
@@ -9,6 +10,7 @@ import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
 import mai_onsyn.renderer.cpu4dkt.*
+import mai_onsyn.renderer.data.OBJLoader
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.*
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
@@ -16,57 +18,85 @@ import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
+import java.util.concurrent.locks.LockSupport
+import kotlin.math.cos
+import kotlin.math.sin
 
 class MainApp : Application() {
     override fun start(stage: Stage?) {
         stage!!
-        val box = Box()
-
-        val scene = SimpleScene3D()
-        scene.meshList.addAll(listOf(makeTestMesh(), makeTest4DMesh()))
-//        scene.meshList.add(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj"))
-
-        val gL3DRegion = GL3DRegion(scene)
-        box.add(gL3DRegion, modifier.fillMaxSize())
-
-        val infoColumn = Column()
-        val fpsLabel = Label("FPS")
-        val low1percentLabel = Label("Low 1%")
-        val posLabel = Label("Pos")
-        infoColumn.add(fpsLabel)
-        infoColumn.add(low1percentLabel)
-        infoColumn.add(posLabel)
-
-        Thread.ofVirtual().start {
-            fpsLabel.textFill = Color.WHITE
-            low1percentLabel.textFill = Color.WHITE
-            posLabel.textFill = Color.WHITE
-            fpsLabel.font = Font(18.0)
-            low1percentLabel.font = Font(18.0)
-            posLabel.font = Font(18.0)
-            while (!Thread.currentThread().isInterrupted) {
-                Platform.runLater {
-                    fpsLabel.text = "FPS = %.2f".format(gL3DRegion.newFPSCounter.getAverageFrequency())
-                    low1percentLabel.text = "1%% Low PFS = %.2f".format(gL3DRegion.newFPSCounter.getOnePercentLowFrequency())
-                }
-                Thread.sleep(1000)
-            }
-        }
-        Thread.ofVirtual().start {
-            while (!Thread.currentThread().isInterrupted) {
-                Platform.runLater {
-                    val pos = gL3DRegion.scene.getCamera().pos
-                    posLabel.text = "Pos = (%.2f, %.2f, %.2f)".format(pos.x, pos.y, pos.z)
-                }
-                Thread.sleep(50)
-            }
-        }
-
-        box.add(infoColumn, modifier.padding(top = 24.0, left = 24.0))
-
-        stage.scene = Scene(box, 640.0, 480.0)
-        stage.show()
+        start4DTest(stage)
     }
+}
+
+fun start4DTest(stage: Stage) {
+    val box = Box()
+
+    val scene3d = SimpleScene3D()
+    val scene4d = SimpleScene4D()
+    scene3d.addMesh(makeTestMesh())
+    scene4d.meshList.add(Mesh4D(constructHypercube(edgeLength = 1f)))
+
+    val gl3dRegion = GL3DRegion(scene3d)
+    box.add(gl3dRegion, modifier.fillMaxSize())
+
+    val renderer4D = Renderer4D(scene4d, scene3d)
+    renderer4D.scene.getCamera().startTestTrajectory()
+
+    stage.scene = Scene(box, 800.0, 600.0)
+    stage.show()
+}
+
+fun start3DTest(stage: Stage) {
+    val box = Box()
+
+    val scene = SimpleScene3D()
+    scene.addMesh(makeTestMesh())
+    scene.addMesh(makeTest4DMesh())
+//        scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj"))
+//        scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\Sponza Palace\\scene.obj"))
+
+    val gL3DRegion = GL3DRegion(scene)
+    box.add(gL3DRegion, modifier.fillMaxSize())
+
+    val infoColumn = Column()
+    val fpsLabel = Label("FPS")
+    val low1percentLabel = Label("Low 1%")
+    val posLabel = Label("Pos")
+    infoColumn.add(fpsLabel)
+    infoColumn.add(low1percentLabel)
+    infoColumn.add(posLabel)
+
+    Thread.ofVirtual().start {
+        fpsLabel.textFill = Color.WHITE
+        low1percentLabel.textFill = Color.WHITE
+        posLabel.textFill = Color.WHITE
+        fpsLabel.font = Font(18.0)
+        low1percentLabel.font = Font(18.0)
+        posLabel.font = Font(18.0)
+        while (!Thread.currentThread().isInterrupted) {
+            Platform.runLater {
+                fpsLabel.text = "FPS = %.2f".format(gL3DRegion.newFPSCounter.getAverageFrequency())
+                low1percentLabel.text =
+                    "1%% Low PFS = %.2f".format(gL3DRegion.newFPSCounter.getOnePercentLowFrequency())
+            }
+            Thread.sleep(1000)
+        }
+    }
+    Thread.ofVirtual().start {
+        while (!Thread.currentThread().isInterrupted) {
+            Platform.runLater {
+                val pos = gL3DRegion.scene.getCamera().pos
+                posLabel.text = "Pos = (%.2f, %.2f, %.2f)".format(pos.x, pos.y, pos.z)
+            }
+            Thread.sleep(50)
+        }
+    }
+
+    box.add(infoColumn, modifier.padding(top = 24.0, left = 24.0))
+
+    stage.scene = Scene(box, 640.0, 480.0)
+    stage.show()
 }
 
 fun makeTestMesh(): Mesh {
@@ -85,19 +115,53 @@ fun makeTest4DMesh(): Mesh {
     val flattened = JNIRasterizer.packMesh4D(cube)
     val camera = Camera4D(pos = Vector4f(8f, 0f, 0f, -15f))
     val I = Matrix5f.IDENTITY.data
-    val outArray = JNIRasterizer.process(flattened, cube.tetrahedrons.size, I, camera.viewMatrix.data, camera.projectionMatrix().data,
+    val outArray = JNIRasterizer.project(flattened, cube.tetrahedrons.size, I, camera.viewMatrix.data, camera.projectionMatrix().data,
         Matrix4f().scale(5f).toRowMajorFloatArray())
     val tetrahedrons = JNIRasterizer.extractTetrahedrons(outArray)
     return tetrahedrons.toMesh()
 }
 
-fun List<Tetrahedron3D>.toMesh(): Mesh {
-    val mesh = Mesh()
-    this.forEach {
-        mesh.triangles.add(Triangle(it.v0, it.v1, it.v2))
-        mesh.triangles.add(Triangle(it.v0, it.v1, it.v3))
-        mesh.triangles.add(Triangle(it.v0, it.v2, it.v3))
-        mesh.triangles.add(Triangle(it.v1, it.v2, it.v3))
+fun Camera4D.startTestTrajectory(
+    speed: Float = 1f,             // 速度倍率，1f = 12 秒一圈
+    radius: Float = 8f,            // 相机到原点的距离（超立方体半边长 ≤2.5，8 足够远）
+    secondsPerLoop: Float = 12f,   // speed=1 时一圈的秒数
+): Thread = Thread.ofVirtual().name("camera4d-test").start {
+    val twoPi  = (2.0 * Math.PI).toFloat()
+    val dtMs   = 4L
+    val dt     = dtMs / 1000f
+    val omega  = twoPi / secondsPerLoop
+    val tickNs = dtMs * 1_000_000L
+
+    var u    = 0f
+    var next = System.nanoTime() + tickNs
+
+    while (!Thread.currentThread().isInterrupted) {
+
+        // 1) 从单位阵重建 —— 不做任何"累加"，无漂移
+        vx.set(1f, 0f, 0f, 0f)
+        vy.set(0f, 1f, 0f, 0f)
+        vz.set(0f, 0f, 1f, 0f)
+        vw.set(0f, 0f, 0f, 1f)
+
+        // 2) 六个平面各转一点，绝对角度，sin 波形保证 2π 严格闭合
+        rotateXY(0.20f * sin(u))
+        rotateXZ(0.50f * sin(u + 1.5f))
+        rotateXW(0.40f * sin(u + 3.0f))
+        rotateYZ(0.45f * sin(u + 2.3f))
+        rotateYW(0.35f * sin(u + 4.1f))
+        rotateZW(0.30f * sin(u + 5.6f))
+
+        // 3) 定位 —— 相机永远在 -vw 方向 radius 处
+        //    pos = -radius * vw  ⇒  从 pos 指向原点的方向 = vw
+        //    而 vw 是相机看向方向 ⇒ 视线永远穿过 (0,0,0,0)
+        pos.set(-vw.x * radius, -vw.y * radius, -vw.z * radius, -vw.w * radius)
+
+        u += speed * omega * dt
+        if (u >= twoPi) u -= twoPi
+
+        next += tickNs
+        val wait = next - System.nanoTime()
+        if (wait > 0) LockSupport.parkNanos(wait)
+        else next = System.nanoTime() + tickNs
     }
-    return mesh
 }

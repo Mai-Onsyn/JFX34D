@@ -44,6 +44,17 @@ data class Tetrahedron3D(
     }
 }
 
+fun List<Tetrahedron3D>.toMesh(): Mesh {
+    val mesh = Mesh()
+    this.forEach {
+        mesh.triangles.add(Triangle(it.v0, it.v1, it.v2))
+        mesh.triangles.add(Triangle(it.v0, it.v1, it.v3))
+        mesh.triangles.add(Triangle(it.v0, it.v2, it.v3))
+        mesh.triangles.add(Triangle(it.v1, it.v2, it.v3))
+    }
+    return mesh
+}
+
 data class Vertex(
     val pos: Vector3f,
     val color: ColorARGB,

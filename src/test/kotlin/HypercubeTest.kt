@@ -27,7 +27,7 @@ class HypercubeTest {
 
         val camera = Camera4D(pos = Vector4f(0f, 0f, 0f, -5f))
         val I = Matrix5f.IDENTITY.data
-        val outArray = JNIRasterizer.process(flattened, cube.tetrahedrons.size, I, camera.viewMatrix.data, camera.projectionMatrix().data, I)
+        val outArray = JNIRasterizer.project(flattened, cube.tetrahedrons.size, I, camera.viewMatrix.data, camera.projectionMatrix().data, I)
         for (i in outArray.indices step 28) {
             println(outArray.copyOfRange(i, i + 28).joinToString { "%.2f".format(it) })
         }

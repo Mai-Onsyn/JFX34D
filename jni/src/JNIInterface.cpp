@@ -5,7 +5,7 @@ import Renderer;
 import Types;
 import Matrix;
 
-JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_process
+JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_project
   (JNIEnv* env, jclass, jfloatArray inputArray, const jint count, jfloatArray model, jfloatArray view, jfloatArray projection, jfloatArray viewPort) {
 
     auto* data = static_cast<jfloat*>(env->GetPrimitiveArrayCritical(inputArray, nullptr));
