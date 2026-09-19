@@ -14,7 +14,11 @@ export namespace VertexProcessor4D {
         const Matrix5x5& projection,
         const Matrix4x4& viewPort
     ) {
-        // 示例构造
+        const Matrix5x5 mvp = model * view * projection;
+        List<Tetrahedron3D> results;
+
+        List<ClipVertex4D> clipVertices;
+
         Tetrahedron3D res{{
             Vertex3D{
                 static_cast<Vector3D>(tetrahedron.vertices[0].pos),
