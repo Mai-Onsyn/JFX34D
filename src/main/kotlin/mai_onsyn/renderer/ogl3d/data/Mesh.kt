@@ -281,9 +281,9 @@ class Mesh(
                 current?.let { groups.add(it.build(b.eboIdx)) }
                 current = GroupBuilder(b.eboIdx, material)
             }
-            current!!.expand(t.v0)
-            current!!.expand(t.v1)
-            current!!.expand(t.v2)
+            current.expand(t.v0)
+            current.expand(t.v1)
+            current.expand(t.v2)
             b.add(t.v0)
             b.add(t.v1)
             b.add(t.v2)
@@ -294,7 +294,7 @@ class Mesh(
         val vbo = if (b.vboFloatIdx == b.vbo.size) b.vbo else b.vbo.copyOf(b.vboFloatIdx)
         val ebo = if (b.eboIdx == b.ebo.size) b.ebo else b.ebo.copyOf(b.eboIdx)
         return GLMeshData(vbo, ebo, groups).also {
-            println("Build GL Data, groups = ${groups.size}, transparent = ${groups.count { g -> g.transparent }}")
+//            println("Build GL Data, groups = ${groups.size}, transparent = ${groups.count { g -> g.transparent }}")
         }
     }
 

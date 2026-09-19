@@ -18,7 +18,7 @@ class Renderer4D(
         Thread.ofVirtual().start {
             while (!Thread.interrupted()) {
                 render(true)
-                Thread.sleep(50)
+                Thread.sleep(10)
             }
         }
     }
@@ -40,7 +40,6 @@ class Renderer4D(
 
     fun render(force: Boolean = false) {
         synchronized(lock) {
-            // 1) 移除：缓存里有、但 scene 里已不存在的（与是否强制无关）
             val alive = IdentityHashMap<Mesh4D, Boolean>()
             for (m4 in scene.getMeshes()) alive[m4] = true
 
@@ -48,12 +47,11 @@ class Renderer4D(
             while (it.hasNext()) {
                 val (m4, m3) = it.next()
                 if (!alive.containsKey(m4)) {
-                    bindingSpace.meshList.remove(m3)   // 只删自己加进去的
+                    bindingSpace.meshList.remove(m3)
                     it.remove()
                 }
             }
 
-            // 2) 新增 / 更新：逐个处理，原地替换保持位置
             for (m4 in scene.getMeshes()) {
                 val cached = projected[m4]
                 when {
@@ -80,9 +78,6 @@ class Renderer4D(
                     }
                 }
             }
-
-            // 3) 强制模式下，把所有未标记 dirty 的 Mesh4D 也顺手标一遍？
-            //    不需要：force 只作用于当帧，dirty 语义保持不变。
         }
     }
 }

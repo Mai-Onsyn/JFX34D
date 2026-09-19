@@ -2,6 +2,7 @@ import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Scene
 import javafx.scene.control.Label
+import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
@@ -10,6 +11,8 @@ import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
 import mai_onsyn.renderer.cpu4dkt.*
+import mai_onsyn.renderer.cpu4dkt.generator.constructHypercube
+import mai_onsyn.renderer.cpu4dkt.generator.constructHypercubeWithCellColors
 import mai_onsyn.renderer.data.OBJLoader
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.*
@@ -35,10 +38,17 @@ fun start4DTest(stage: Stage) {
     val scene3d = SimpleScene3D()
     val scene4d = SimpleScene4D()
     scene3d.addMesh(makeTestMesh())
-    scene4d.meshList.add(Mesh4D(constructHypercube(edgeLength = 1f)))
+    scene4d.meshList.add(Mesh4D(constructHypercubeWithCellColors(edgeLength = 1f)))
 
     val gl3dRegion = GL3DRegion(scene3d)
     box.add(gl3dRegion, modifier.fillMaxSize())
+
+    gl3dRegion.addEventFilter(KeyEvent.KEY_PRESSED) {
+        when (it.code) {
+            KeyCode.I -> gl3dRegion.enableInput = !gl3dRegion.enableInput
+            else -> {}
+        }
+    }
 
     val renderer4D = Renderer4D(scene4d, scene3d)
     renderer4D.scene.getCamera().startTestTrajectory()

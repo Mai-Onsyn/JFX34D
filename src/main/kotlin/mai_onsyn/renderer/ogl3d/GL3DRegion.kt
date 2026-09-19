@@ -18,6 +18,8 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
     fps = 10000.0,
     msaa = 4
 ) {
+    var enableInput: Boolean = true
+
     private val engine = GL3DEngine(scene)
     @Volatile private var moveW: Float = 0f
     @Volatile private var moveA: Float = 0f
@@ -55,6 +57,8 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
 
         this.addEventHandler(MouseEvent.MOUSE_CLICKED) {
             this.requestFocus()
+            if (!enableInput) return@addEventHandler
+
             mouseCatched = true
             lastX = it.x
             lastY = it.y
@@ -64,7 +68,10 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
         }
 
         this.addEventHandler(MouseEvent.MOUSE_MOVED) {
-            if (!this.isFocused || !mouseCatched) return@addEventHandler
+            if (!this.isFocused || !mouseCatched || !enableInput) {
+                if (this.cursor == Cursor.NONE) this.cursor = Cursor.DEFAULT
+                return@addEventHandler
+            }
 
             if (robotJustMoved &&
                 abs(it.x - centerX) < 5.0 &&
@@ -95,6 +102,7 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
         }
 
         this.addEventHandler(KeyEvent.KEY_PRESSED) {
+            if (!enableInput) return@addEventHandler
             when (it.code) {
                 KeyCode.W -> moveW = 1f
                 KeyCode.A -> moveA = 1f
@@ -118,6 +126,7 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
             }
         }
         this.addEventHandler(KeyEvent.KEY_RELEASED) {
+            if (!enableInput) return@addEventHandler
             when (it.code) {
                 KeyCode.W -> moveW = 0f
                 KeyCode.A -> moveA = 0f
@@ -154,6 +163,10 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
             var currentMouseY = 0f
 
             while (!Thread.currentThread().isInterrupted) {
+                if (!enableInput) {
+                    Thread.sleep(100)
+                    continue
+                }
                 val deltaX = moveSpeed * sprint * (moveD - moveA)
                 val deltaY = moveSpeed * sprint * (moveUp - moveDown)
                 val deltaZ = moveSpeed * sprint * (moveW - moveS)

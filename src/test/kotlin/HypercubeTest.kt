@@ -2,7 +2,7 @@ import mai_onsyn.renderer.cpu4dkt.Camera4D
 import mai_onsyn.renderer.cpu4dkt.JNIRasterizer
 import mai_onsyn.renderer.cpu4dkt.Matrix5f
 import mai_onsyn.renderer.cpu4dkt.Mesh4D
-import mai_onsyn.renderer.cpu4dkt.constructHypercube
+import mai_onsyn.renderer.cpu4dkt.generator.constructHypercube
 import org.joml.Vector4f
 import org.junit.jupiter.api.Test
 

@@ -16,7 +16,20 @@ public class JNIRasterizer {
     );
 
     static {
-        System.loadLibrary("./jni/jfx34d_jni");
+        List<String> paths = List.of(
+                "./jni/jfx34d_jni",
+                "./jfx34d_jni"
+        );
+        boolean loaded = false;
+        for (String p : paths) {
+            try {
+                System.loadLibrary(p);
+                loaded = true;
+            } catch (UnsatisfiedLinkError ignored) {}
+        }
+        if (!loaded) {
+            throw new ExceptionInInitializerError("Cannot find native library: jfx34d_jni");
+        }
     }
 
     public static float[] packMesh4D(Mesh4D mesh) {
