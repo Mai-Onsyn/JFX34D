@@ -17,6 +17,17 @@
 
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
+
+        <!-- 打包入口类：Main.kt 里的顶层 main() 编译成 MainKt。
+             这里必须写 MainKt，不能写继承 javafx.application.Application 的 MainApp：
+             fat jar 里 JavaFX 在 classpath 上（不在 module path），直接启动 Application 子类会被
+             sun.launcher 拦下来报 "JavaFX runtime components are missing"。 -->
+        <jfx34d.main.class>MainKt</jfx34d.main.class>
+
+        <!-- JNI 原生库名（= jni/CMakeLists.txt 里的 project(jfx34d_jni)）。
+             Java 侧固定写死 System.loadLibrary("./jni/jfx34d_jni")，
+             所以打包产物里必须原样带上 jni/jfx34d_jni.dll，改这个名字要两边一起改。 -->
+        <jfx34d.jni.name>jfx34d_jni</jfx34d.jni.name>
     </properties>
 
     <repositories>
@@ -27,46 +38,182 @@
     </repositories>
 
     <build>
-        <sourceDirectory>src/main/kotlin</sourceDirectory>
+        <!-- 源码目录：Java 用 Maven 默认的 src/main/java（由 maven-compiler-plugin 编译），
+             Kotlin 的 src/main/kotlin、src/test/kotlin 交给 kotlin-maven-plugin 的 extensions 自动注册。
+             注意：不要把 sourceDirectory 改回 src/main/kotlin，否则 maven-compiler-plugin 看不到
+             src/main/java 里的 JNIRasterizer / SimpleTriangleApp，它们不会被编进 target/classes，
+             打出来的 jar 运行时会 NoClassDefFoundError。 -->
+        <sourceDirectory>src/main/java</sourceDirectory>
         <testSourceDirectory>src/test/kotlin</testSourceDirectory>
+
         <plugins>
+            <!-- Kotlin 编译（自动配置模式）。
+                 extensions=true 时 kotlin-maven-plugin 会：
+                   1. 把已存在的 src/main/kotlin、src/test/kotlin 注册成源码根，并让 kotlinc 同时看到 src/main/java（双向引用）；
+                   2. 自己绑定 compile / test-compile 执行，保证「先 Kotlin 后 Java」的顺序；
+                   3. 自动对齐 JVM target（kotlin.compiler.jvmTarget=21 优先，其次 maven.compiler.target=21）。
+                 官方文档明确说明 extensions 会「替换整个 <executions> 配置」，
+                 所以这里不要再手写 <executions>，否则会覆盖掉扩展的生命周期绑定。 -->
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <version>${kotlin.version}</version>
                 <extensions>true</extensions>
-                <executions>
-                    <execution>
-                        <id>compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>test-compile</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>test-compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
+
+            <!-- Java 编译：生命周期绑定由 Kotlin 扩展提供，这里只把编译器插件版本固定到较新的版本
+                 （扩展默认用的是 3.10.1；3.13.0 在 JDK 21 上很稳，想跟官方文档保持一致也可以改 3.15.0）。 -->
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <!-- 单测：JDK 21 + JUnit 5.10 请用 3.x 的 surefire，
+                 旧的 2.22.2 里的 JUnit Platform provider 版本太老，很容易出现「测试根本没跑」或
+                 NoSuchMethodError，进而让 mvn package 直接失败。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>3.2.5</version>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>2.22.2</version>
+                <version>3.2.5</version>
             </plugin>
+
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
                 <configuration>
-                    <mainClass>MainKt</mainClass>
+                    <mainClass>${jfx34d.main.class}</mainClass>
                 </configuration>
+            </plugin>
+
+            <!-- 打包前置检查：jni/jfx34d_jni.dll 由 CLion 构建产生（.gitignore 里被忽略，不在版本库里）。
+                 缺了它就直接在 validate 阶段报错，避免打出一个「没有原生库、一跑就 UnsatisfiedLinkError」的包。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.3</version>
+                <executions>
+                    <execution>
+                        <id>require-jni-library</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireFilesExist>
+                                    <message>jni/jfx34d_jni.dll not found: build the "jfx34d_jni" target in CLion first (jni/CMakeLists.txt deploys the dll to &lt;repo&gt;/jni/), then package again.</message>
+                                    <files>
+                                        <file>${project.basedir}/jni/${jfx34d.jni.name}.dll</file>
+                                    </files>
+                                </requireFilesExist>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- 把 CLion 产出的原生库装进打包产物（prepare-package 在 package 之前，所以两种拷贝都会被后续步骤用到）：
+                   1) target/classes/jni/jfx34d_jni.dll  -> 被 maven-jar-plugin / shade 打进 jar 内部，路径就是 jni/jfx34d_jni.dll；
+                   2) target/jni/jfx34d_jni.dll          -> 放在 jar 旁边的运行目录里。
+                 Java 端是相对「启动目录」找库的（System.loadLibrary("./jni/jfx34d_jni")），
+                 所以把 target/ 当成运行目录时：cd target && java -jar JFX34D-1.0-SNAPSHOT.jar 即可加载到原生库；
+                 在仓库根目录下 java -jar target/JFX34D-1.0-SNAPSHOT.jar 也一样能用（根目录下的 jni/ 就是 CLion 的输出位置）。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>jni-dll-into-jar</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/classes/jni</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/jni</directory>
+                                    <filtering>false</filtering>
+                                    <includes>
+                                        <include>${jfx34d.jni.name}.dll</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>jni-dll-next-to-jar</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/jni</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/jni</directory>
+                                    <filtering>false</filtering>
+                                    <includes>
+                                        <include>${jfx34d.jni.name}.dll</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- 打成自带全部依赖的可执行 fat jar：target/JFX34D-1.0-SNAPSHOT.jar
+                 （JavaFX 的 -win 原生库、LWJGL 的 natives-windows、jni/jfx34d_jni.dll 都在里面）。
+                 原始的瘦 jar 会保留成 target/original-JFX34D-1.0-SNAPSHOT.jar。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.2</version>
+                <executions>
+                    <execution>
+                        <id>make-fat-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <!-- 不生成 dependency-reduced-pom.xml，避免多出一个项目文件 -->
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>${jfx34d.main.class}</mainClass>
+                                </transformer>
+                                <!-- 合并 META-INF/services（JavaFX / LWJGL 依赖它做服务发现） -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <!-- 模块描述符不能混进 fat jar（这里走 classpath，不跑 module path） -->
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/versions/**/module-info.class</exclude>
+                                        <!-- 依赖 jar 的签名文件会让 fat jar 报 Invalid signature file digest -->
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

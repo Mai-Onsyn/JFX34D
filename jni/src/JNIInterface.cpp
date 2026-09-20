@@ -31,6 +31,6 @@ JNIEXPORT jfloatArray JNICALL Java_mai_1onsyn_renderer_cpu4dkt_JNIRasterizer_pro
     if (result == nullptr) return jfloatArray();
     env->SetFloatArrayRegion(result, 0, resultLen, resultBuffer);
     delete[] resultBuffer;
-    std::cout << "Result Array length: " << resultLen << std::endl;
+//    std::cout << "Result Array length: " << resultLen << std::endl;
     return result;
 }

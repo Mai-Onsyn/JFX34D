@@ -39,34 +39,35 @@ void main() {
     float alpha = base.a * material.d;
 
     // 完全透明的像素丢掉, 不然它会写深度挡住后面的东西
-    if (uUseTexture && alpha <= 0.0) discard;
-
-    // ---- phone 光照 ----
-    vec3 N = normalize(vWorldNormal);
-    vec3 V = normalize(viewPos - vWorldPos);
-
-    // 环境光 = ambient * Ka * 贴图色
-    vec3 sum = ambient * material.ka * albedo;
-
-    vec3 LDir = lightPos - vWorldPos;
-    float d_i = length(LDir);
-    if (d_i <= lightRange) {
-        vec3 L = LDir / d_i;
-
-        // 距离衰减 + 光强
-        float attnDist = 1.0 / (1.0 + attnA * d_i + attnB * d_i * d_i);
-        vec3 I_light = lightColor * (lightIntensity * attnDist);
-
-        // 半兰伯特漫反射: (N.L * 0.5 + 0.5)^2
-        float halfLambert = dot(N, L) * 0.5 + 0.5;
-        vec3 diffuse = I_light * halfLambert * halfLambert;
-
-        // 镜面反射: Blinn-Phone 半程向量
-        vec3 H = normalize(V + L);
-        vec3 specular = I_light * pow(max(0.0, dot(N, H)), max(material.ns, 1.0));
-
-        sum += albedo * diffuse + material.ks * specular;
-    }
-
-    FragColor = vec4(sum, alpha);
+//    if (uUseTexture && alpha <= 0.0) discard;
+//
+//    // ---- phone 光照 ----
+//    vec3 N = normalize(vWorldNormal);
+//    vec3 V = normalize(viewPos - vWorldPos);
+//
+//    // 环境光 = ambient * Ka * 贴图色
+//    vec3 sum = ambient * material.ka * albedo;
+//
+//    vec3 LDir = lightPos - vWorldPos;
+//    float d_i = length(LDir);
+//    if (d_i <= lightRange) {
+//        vec3 L = LDir / d_i;
+//
+//        // 距离衰减 + 光强
+//        float attnDist = 1.0 / (1.0 + attnA * d_i + attnB * d_i * d_i);
+//        vec3 I_light = lightColor * (lightIntensity * attnDist);
+//
+//        // 半兰伯特漫反射: (N.L * 0.5 + 0.5)^2
+//        float halfLambert = dot(N, L) * 0.5 + 0.5;
+//        vec3 diffuse = I_light * halfLambert * halfLambert;
+//
+//        // 镜面反射: Blinn-Phone 半程向量
+//        vec3 H = normalize(V + L);
+//        vec3 specular = I_light * pow(max(0.0, dot(N, H)), max(material.ns, 1.0));
+//
+//        sum += albedo * diffuse + material.ks * specular;
+//    }
+//
+//    FragColor = vec4(sum, alpha);
+    FragColor = base;
 }

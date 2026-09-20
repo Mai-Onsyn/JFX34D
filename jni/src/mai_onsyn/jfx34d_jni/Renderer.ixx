@@ -23,7 +23,7 @@ inline UInt32 floatToInt(const Float f) {
 export namespace Renderer {
     Float* process(const Float* input, const Int32 count, Int32& resultLen, const Matrix5x5& model, const Matrix5x5& view, const Matrix5x5& projection, const Matrix4x4& viewPort) {
 
-        const Matrix5x5 mvp = projection * view * model;
+        // const Matrix5x5 mvp = projection * view * model;
 
         List<List<Tetrahedron3D>> transformed{};
         Int32 resultCount = 0;
