@@ -136,7 +136,7 @@ class GL3DEngine(
         glUniform1f(attnAPtr, attnA)
         glUniform1f(attnBPtr, attnB)
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+//        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         // Mesh.draw 自己处理深度写入/混合 (透明材质分两趟), 外面只管调
         for (m in meshes) {
             m.draw(modelPtr, viewPos)
