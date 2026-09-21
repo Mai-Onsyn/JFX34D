@@ -1,5 +1,7 @@
 package mai_onsyn.renderer.interfaces
 
+import mai_onsyn.renderer.interfaces.impl.RendererInterfaceImpl
+
 interface RendererInterface {
 
     companion object {

@@ -1,5 +1,6 @@
-package mai_onsyn.renderer.interfaces
+package mai_onsyn.renderer.interfaces.impl
 
+import mai_onsyn.renderer.interfaces.CameraInterface
 import mai_onsyn.renderer.utils.Coordinate4D
 import org.joml.Vector4f
 

@@ -1,4 +1,6 @@
-package mai_onsyn.renderer.interfaces
+package mai_onsyn.renderer.interfaces.impl
+
+import mai_onsyn.renderer.interfaces.RendererInterface
 
 class RendererInterfaceImpl: RendererInterface {
     override val camera = CameraInterfaceImpl()
