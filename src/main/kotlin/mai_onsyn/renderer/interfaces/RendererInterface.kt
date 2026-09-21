@@ -34,11 +34,6 @@ interface RendererInterface {
     val shape: ShapeInterface
 
     /**
-     * 管理模型的合并与拆分
-     */
-    val composition: CompositionInterface
-
-    /**
      * 操作模型与文件的交互
      */
     val io: IOInterface
