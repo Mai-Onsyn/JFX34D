@@ -24,5 +24,5 @@ interface ShapeInterface {
     fun createCone4(base: Mesh, apex: Vector4f)
 
     /** 创建超球 */
-    fun createBall4(center: Vector4f, radius: Float)
+    fun createBall4(center: Vector4f, radius: Float, density: Float)
 }
