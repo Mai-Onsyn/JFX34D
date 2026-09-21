@@ -8,6 +8,5 @@ class RendererInterfaceImpl: RendererInterface {
     override val transform = TransformInterfaceImpl()
     override val geometry = GeometryInterfaceImpl()
     override val shape = ShapeInterfaceImpl()
-    override val composition = CompositionInterfaceImpl()
     override val io = IOInterfaceImpl()
 }
