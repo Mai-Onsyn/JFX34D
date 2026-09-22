@@ -5,6 +5,7 @@ import mai_onsyn.renderer.cpu4dkt.Vertex4D
 import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
+import org.joml.minus
 
 data class Triangle(
     val v0: Vertex,
@@ -46,11 +47,22 @@ data class Tetrahedron3D(
 
 fun List<Tetrahedron3D>.toMesh(): Mesh {
     val mesh = Mesh()
+
+    fun calcNormal(a: Vector3f, b: Vector3f, c: Vector3f, d: Vector3f): Vector3f {
+        val n = (b - a).cross(c - a)
+        val s = n.dot(d - a)
+        return if (s > 0) n / (-n.length())
+        else n.normalize()
+    }
     this.forEach {
-        mesh.triangles.add(Triangle(it.v0, it.v1, it.v2))
-        mesh.triangles.add(Triangle(it.v0, it.v1, it.v3))
-        mesh.triangles.add(Triangle(it.v0, it.v2, it.v3))
-        mesh.triangles.add(Triangle(it.v1, it.v2, it.v3))
+        val n0 = calcNormal(it.v1.pos, it.v2.pos, it.v3.pos, it.v0.pos)
+        val n1 = calcNormal(it.v2.pos, it.v3.pos, it.v0.pos, it.v1.pos)
+        val n2 = calcNormal(it.v3.pos, it.v0.pos, it.v1.pos, it.v2.pos)
+        val n3 = calcNormal(it.v0.pos, it.v1.pos, it.v2.pos, it.v3.pos)
+        mesh.triangles.add(Triangle(it.v0.copy(normal = n3), it.v1.copy(normal = n3), it.v2.copy(normal = n3)))
+        mesh.triangles.add(Triangle(it.v0.copy(normal = n2), it.v1.copy(normal = n2), it.v3.copy(normal = n2)))
+        mesh.triangles.add(Triangle(it.v0.copy(normal = n1), it.v2.copy(normal = n1), it.v3.copy(normal = n1)))
+        mesh.triangles.add(Triangle(it.v1.copy(normal = n0), it.v2.copy(normal = n0), it.v3.copy(normal = n0)))
     }
     return mesh
 }

@@ -1,6 +1,5 @@
 package mai_onsyn.renderer.core
 
-import javafx.scene.control.Label
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import mai_onsyn.renderer.cpu4dkt.Renderer4D
@@ -8,14 +7,13 @@ import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.utils.fixedFrame
-import kotlin.math.roundToLong
 
 class GL4DRegion(
-    val scene3d: SimpleScene3D = SimpleScene3D(),
+    val scene3D: SimpleScene3D = SimpleScene3D(),
     val scene4D: SimpleScene4D = SimpleScene4D()
-) : GL3DRegion(scene3d) {
+) : GL3DRegion(scene3D) {
 
-    private val renderer = Renderer4D(scene4D, scene3d)
+    private val renderer = Renderer4D(scene4D, scene3D)
 
     private var enable4DInput = false
     private val movement = MovementState()

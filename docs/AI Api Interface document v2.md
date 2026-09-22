@@ -1,16 +1,8 @@
 # JFX34D AI API 接口文档（完善版 v2）
 
-> 本文档是 `docs/AI Api Interface document.md` 的**完善版**，依据
-> `src/main/kotlin/mai_onsyn/renderer/interfaces/` 下的接口补齐了全部操作定义。
->
 > 涉及的接口文件：
 > `RendererInterface`、`CameraInterface`、`ModelInterface`、`TransformInterface`、
 > `GeometryInterface`、`ShapeInterface`、`IOInterface`。
->
-> **原文档未被修改**。相对原文档的补充内容：
-> 模型管理补全（复制 / 合并 / 应用变换到顶点）、**基础形状（第五章）**、
-> **模型几何编辑（第六章）**、**文件读写 IO（第七章）**、
-> 以及 **3D 基本几何体 Mesh 的 JSON 定义（§5.2）**。
 >
 > 约定：与 AI 交互的数据（发给 AI 的 markdown、AI 返回的 json）**一律使用英文**，
 > 中文只出现在本文档的说明文字中。

@@ -37,9 +37,9 @@ class GL3DEngine(
     /** 全局环境光 */
     private val ambient = Vector3f(0.3f, 0.3f, 0.3f)
     /** 灯光先写死 (世界空间), 之后要做多光源/可调时改这里 */
-    private val lightPos = Vector3f(-5f, 15f, 0f)
+    private val lightPos = Vector3f(-5f, 35f, 0f)
     private val lightColor = Vector3f(1.0f, 1.0f, 1.0f)
-    private var lightIntensity = 1.4f
+    private var lightIntensity = 0.6f
     private var lightRange = 600.0f
     private var attnA = 0.00007f
     private var attnB = 0.00003f

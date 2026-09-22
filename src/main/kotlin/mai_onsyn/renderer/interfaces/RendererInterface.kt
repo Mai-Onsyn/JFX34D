@@ -1,11 +1,28 @@
 package mai_onsyn.renderer.interfaces
 
+import mai_onsyn.renderer.cpu4dkt.Camera4D
 import mai_onsyn.renderer.interfaces.impl.RendererInterfaceImpl
 
 interface RendererInterface {
 
     companion object {
-        val INSTANCE = RendererInterfaceImpl()
+        @Volatile
+        private var _instance: RendererInterface? = null
+
+        val INSTANCE: RendererInterface
+            get() = _instance ?: error("RendererInterface is NOT initialized yet, please invoke init() first")
+
+        fun init(
+            camera: Camera4D
+        ) {
+            if (_instance == null) {
+                synchronized(this) {
+                    if (_instance == null) {
+                        _instance = RendererInterfaceImpl(camera)
+                    }
+                }
+            }
+        }
     }
 
     /**
