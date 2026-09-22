@@ -3,6 +3,7 @@ package mai_onsyn.renderer.interfaces.impl
 import mai_onsyn.renderer.cpu4dkt.Camera4D
 import mai_onsyn.renderer.interfaces.CameraInterface
 import mai_onsyn.renderer.utils.Coordinate4D
+import org.joml.Math.toRadians
 import org.joml.Vector4f
 
 class CameraInterfaceImpl(val camera: Camera4D): CameraInterface {
@@ -20,7 +21,10 @@ class CameraInterfaceImpl(val camera: Camera4D): CameraInterface {
     }
 
     override fun setView(v: Coordinate4D) {
-        TODO("Not yet implemented")
+        camera.vx = v.vx
+        camera.vy = v.vy
+        camera.vz = v.vz
+        camera.vw = v.vw
     }
 
     override fun moveRight(distance: Float) = camera.moveRight(distance)
@@ -31,27 +35,15 @@ class CameraInterfaceImpl(val camera: Camera4D): CameraInterface {
 
     override fun moveForward(distance: Float) = camera.moveForward(distance)
 
-    override fun rotateXY(angle: Float) {
-        TODO("Not yet implemented")
-    }
+    override fun rotateXY(angle: Float) = camera.rotateXY(toRadians(angle))
 
-    override fun rotateXZ(angle: Float) {
-        TODO("Not yet implemented")
-    }
+    override fun rotateXZ(angle: Float) = camera.rotateXZ(toRadians(angle))
 
-    override fun rotateXW(angle: Float) {
-        TODO("Not yet implemented")
-    }
+    override fun rotateXW(angle: Float) = camera.rotateXW(toRadians(angle))
 
-    override fun rotateYZ(angle: Float) {
-        TODO("Not yet implemented")
-    }
+    override fun rotateYZ(angle: Float) = camera.rotateYZ(toRadians(angle))
 
-    override fun rotateYW(angle: Float) {
-        TODO("Not yet implemented")
-    }
+    override fun rotateYW(angle: Float) = camera.rotateYW(toRadians(angle))
 
-    override fun rotateZW(angle: Float) {
-        TODO("Not yet implemented")
-    }
+    override fun rotateZW(angle: Float) = camera.rotateZW(toRadians(angle))
 }

@@ -7,7 +7,8 @@ data class Tetrahedron(
     val v0: Vertex4D,
     val v1: Vertex4D,
     val v2: Vertex4D,
-    val v3: Vertex4D
+    val v3: Vertex4D,
+    val id: Int = -1
 ) {
     fun pack(dest: FloatArray, offset: Int) {
         var offset = offset
