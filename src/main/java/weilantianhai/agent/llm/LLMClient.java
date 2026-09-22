@@ -38,6 +38,10 @@ public class LLMClient {
                 "content",userInput
         ));
         root.put("messages",messages);
+        //关闭思考
+        JSONObject templateKwargs = new JSONObject();
+        templateKwargs.put("enable_thinking", false);
+        root.put("chat_template_kwargs", templateKwargs);
 
         String body = root.toJSONString();
 

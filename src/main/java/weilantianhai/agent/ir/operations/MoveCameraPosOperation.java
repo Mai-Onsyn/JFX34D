@@ -3,6 +3,7 @@ package weilantianhai.agent.ir.operations;
 import com.alibaba.fastjson2.JSONObject;
 import mai_onsyn.renderer.interfaces.CameraInterface;
 import mai_onsyn.renderer.interfaces.RendererInterface;
+import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 import weilantianhai.agent.util.JsonParamUtil;
 
@@ -28,7 +29,7 @@ public class MoveCameraPosOperation implements IOperation {
     }
 
     @Override
-    public void execute(RendererInterface renderer) throws IRException{
+    public String execute(RendererInterface renderer) throws IRException{
         CameraInterface camera = renderer.getCamera();
         switch (axis){
             case "x" -> camera.moveRight(distance);
@@ -37,6 +38,7 @@ public class MoveCameraPosOperation implements IOperation {
             case "w" -> camera.moveForward(distance);
             default -> throw new IRException("INVALID_AXIS","非法轴：" + axis);
         }
+        Vector4f pos = camera.getPosition();
+        return "Success\nNow Pos=("+pos.x+","+pos.y+","+pos.z+","+pos.w+")";
     }
-
 }

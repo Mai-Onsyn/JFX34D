@@ -39,8 +39,22 @@ public class IRParser {
             throw new IRException("UNSUPPORTED_VERSION","不支持的 version："+ version);
         }
 
+        boolean done = root.getBooleanValue("done",false);
         JSONArray opsJson = root.getJSONArray("operations");
-        if(opsJson == null || opsJson.isEmpty()){
+        boolean hasOps =opsJson != null && !opsJson.isEmpty();
+
+        if(done){
+            if(hasOps){
+                throw new IRException("DONE_WITH_OPERATIONS","done=true 时 operations 必须为空");
+            }
+            IRBundle bundle = new IRBundle();
+            bundle.setVersion(version);
+            bundle.setDone(true);
+            bundle.setOperations(new ArrayList<>());
+            return bundle;
+        }
+
+        if(!hasOps){
             throw new IRException("EMPTY_OPERATIONS","operations 不能为空");
         }
         if(opsJson.size() > AppConfig.MAX_OPERATIONS){

@@ -4,6 +4,7 @@ import java.util.List;
 
 public class IRBundle {
     private int version;
+    private boolean done;
     private List<IRCommand> operations;
 
     public int getVersion() {
@@ -16,6 +17,14 @@ public class IRBundle {
 
     public List<IRCommand> getOperations() {
         return operations;
+    }
+
+    public boolean isDone() {
+        return done;
+    }
+
+    public void setDone(boolean done) {
+        this.done = done;
     }
 
     public void setOperations(List<IRCommand> operations) {
