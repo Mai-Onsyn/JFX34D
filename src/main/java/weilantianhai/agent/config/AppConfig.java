@@ -8,7 +8,7 @@ public class AppConfig {
 
     //生成参数
     public static final double TEMPERATURE = 0.1;
-    public static final int MAX_TOKENS = 1024;
+    public static final int MAX_TOKENS = 2048;
 
     //http
     public static final int SERVER_PORT = 8080;

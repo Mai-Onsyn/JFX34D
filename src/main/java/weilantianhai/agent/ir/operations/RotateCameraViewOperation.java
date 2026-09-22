@@ -3,6 +3,7 @@ package weilantianhai.agent.ir.operations;
 import com.alibaba.fastjson2.JSONObject;
 import mai_onsyn.renderer.interfaces.CameraInterface;
 import mai_onsyn.renderer.interfaces.RendererInterface;
+import mai_onsyn.renderer.utils.Coordinate4D;
 import weilantianhai.agent.ir.IRException;
 import weilantianhai.agent.util.JsonParamUtil;
 
@@ -27,7 +28,7 @@ public class RotateCameraViewOperation implements IOperation {
     }
 
     @Override
-    public void execute(RendererInterface renderer) throws IRException {
+    public String execute(RendererInterface renderer) throws IRException {
         CameraInterface camera = renderer.getCamera();
         switch (axis){
             case "xy"-> camera.rotateXY(angleRad);
@@ -38,5 +39,11 @@ public class RotateCameraViewOperation implements IOperation {
             case "zw"-> camera.rotateZW(angleRad);
             default -> throw new IRException("INVALID_PLANE","非法旋转面：" + axis);
         }
+        Coordinate4D view = camera.getView();
+        return "Success\nCurrent is:\n"
+                +"vx=" +view.getVx()+"\n"
+                +"vy=" +view.getVy()+"\n"
+                +"vz=" +view.getVz()+"\n"
+                +"vw=" +view.getVw();
     }
 }
