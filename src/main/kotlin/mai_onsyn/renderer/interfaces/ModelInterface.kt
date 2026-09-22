@@ -2,7 +2,7 @@ package mai_onsyn.renderer.interfaces
 
 interface ModelInterface {
 
-    /** 列出模型，返 */
+    /** 列出模型，返回所有模型名称的列表 */
     fun listModel(): List<String>
 
     /** 创建模型，需要校验名称是否合法 */
