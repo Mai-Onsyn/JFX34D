@@ -16,6 +16,9 @@ public interface IOperation {
     /** 接受 JSON 参数并绑定到当前操作对象 */
     void load(JSONObject args) throws IRException;
 
-    /** 统一执行入口，由具体操作实现自己的逻辑 */
-    void execute(RendererInterface renderer) throws IRException;
+    /**
+     * 执行操作，返回结果主体（不含 # TYPE(id=X) 头）。
+     * 例如 "Success\nNow Pos=(-5, 0, 0, 0)"。
+     */
+    String execute(RendererInterface renderer) throws IRException;
 }

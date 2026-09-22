@@ -121,6 +121,7 @@ fun constructHypercube(
     return result
 }
 
+@JvmOverloads
 fun constructHypercubeWithCellColors(
     center: Vector4f = Vector4f(0f, 0f, 0f, 0f),
     edgeLength: Float = 2f,
