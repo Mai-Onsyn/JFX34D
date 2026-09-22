@@ -9,6 +9,7 @@ import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
 import mai_onsyn.renderer.core.GL4DRegion
+import mai_onsyn.renderer.core.RendererInterfaceInitializer
 import mai_onsyn.renderer.cpu4dkt.*
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercube
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercubeWithCellColors
@@ -35,7 +36,7 @@ fun start4DTest2(stage: Stage) {
 
     val region = GL4DRegion()
     region.scene4D.meshList.add(Mesh4D(constructHypercubeWithCellColors(edgeLength = 1f)))
-    region.setOutlineRendering(false)
+    region.setOutlineRendering(true)
 
     val pos3Label = Label("pos")
     val pos4Label = Label("pos")
@@ -61,7 +62,7 @@ fun start4DTest2(stage: Stage) {
     column.add(pos4Label)
     box.add(column, modifier.padding(top = 16.0, left = 16.0))
 
-    RendererInterface.init(region.scene4D.getCamera())
+    RendererInterfaceInitializer.initialize(region)
 
     RendererInterface.INSTANCE.camera.moveRight(-1f)
     RendererInterface.INSTANCE.camera.moveForward(-5f)
