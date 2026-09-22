@@ -18,4 +18,12 @@ class ModelInterfaceImpl: ModelInterface {
     override fun copyModel(srcName: String, dstName: String) {
         TODO("Not yet implemented")
     }
+
+    override fun mergeModel(src1Name: String, src2Name: String, dstName: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun applyTransformToVertex(srcName: String, dstName: String) {
+        TODO("Not yet implemented")
+    }
 }

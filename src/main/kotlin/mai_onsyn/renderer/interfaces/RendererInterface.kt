@@ -1,11 +1,28 @@
 package mai_onsyn.renderer.interfaces
 
+import mai_onsyn.renderer.cpu4dkt.Camera4D
 import mai_onsyn.renderer.interfaces.impl.RendererInterfaceImpl
 
 interface RendererInterface {
 
     companion object {
-        val INSTANCE = RendererInterfaceImpl()
+        @Volatile
+        private var _instance: RendererInterface? = null
+
+        val INSTANCE: RendererInterface
+            get() = _instance ?: error("RendererInterface is NOT initialized yet, please invoke init() first")
+
+        fun init(
+            camera: Camera4D
+        ) {
+            if (_instance == null) {
+                synchronized(this) {
+                    if (_instance == null) {
+                        _instance = RendererInterfaceImpl(camera)
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -32,11 +49,6 @@ interface RendererInterface {
      * 快速添加形状
      */
     val shape: ShapeInterface
-
-    /**
-     * 管理模型的合并与拆分
-     */
-    val composition: CompositionInterface
 
     /**
      * 操作模型与文件的交互

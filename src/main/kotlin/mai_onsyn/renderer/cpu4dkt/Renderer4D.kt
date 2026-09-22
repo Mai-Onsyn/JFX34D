@@ -6,6 +6,7 @@ import mai_onsyn.renderer.ogl3d.data.toMesh
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
 import org.joml.Matrix4f
 import java.util.*
+import kotlin.concurrent.thread
 
 class Renderer4D(
     val scene: SimpleScene4D,
@@ -14,13 +15,28 @@ class Renderer4D(
     private val lock = Any()
     private val projected = IdentityHashMap<Mesh4D, Mesh>()
 
-    init {
-        Thread.ofVirtual().start {
-            while (!Thread.interrupted()) {
+//    init {
+//        Thread.ofVirtual().start {
+//            while (!Thread.interrupted()) {
+//                render(true)
+//                Thread.sleep(10)
+//            }
+//        }
+//    }
+
+    private var thread: Thread? = null
+
+    fun start() {
+        thread = thread(isDaemon = true) {
+            while (!Thread.currentThread().isInterrupted) {
                 render(true)
                 Thread.sleep(10)
             }
         }
+    }
+
+    fun stop() {
+        thread?.interrupt()
     }
 
     private fun projectMesh(mesh: Mesh4D): Mesh {

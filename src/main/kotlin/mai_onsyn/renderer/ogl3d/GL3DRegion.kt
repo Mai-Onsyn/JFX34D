@@ -13,12 +13,19 @@ import kotlin.concurrent.Volatile
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
-class GL3DRegion(val scene: Scene3D) : GLCanvas(
+open class GL3DRegion(val scene: Scene3D) : GLCanvas(
     executor = LWJGLExecutor.LWJGL_MODULE,
     fps = 10000.0,
     msaa = 4
 ) {
-    var enableInput: Boolean = true
+    var _enableInput: Boolean = true
+    var enableInput: Boolean
+        get() = _enableInput
+        set(value) {
+            _enableInput = value
+            if (!value) this.cursor = Cursor.DEFAULT
+            mouseCatched = false
+        }
 
     private val engine = GL3DEngine(scene)
     @Volatile private var moveW: Float = 0f
@@ -50,6 +57,8 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
     val newFPSCounter: FrequencyCounter
         get() = engine.fpsCounter
 
+    fun setOutlineRendering(b: Boolean) { engine.useOutlineRendering = b }
+
     init {
         this.addOnInitEvent(engine::init)
         this.addOnReshapeEvent(engine::reshape)
@@ -69,7 +78,6 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
 
         this.addEventHandler(MouseEvent.MOUSE_MOVED) {
             if (!this.isFocused || !mouseCatched || !enableInput) {
-                if (this.cursor == Cursor.NONE) this.cursor = Cursor.DEFAULT
                 return@addEventHandler
             }
 
@@ -150,7 +158,7 @@ class GL3DRegion(val scene: Scene3D) : GLCanvas(
 
     private var handlerThread: Thread? = null
     private fun launchBackHandlerThread() {
-        handlerThread = Thread.ofVirtual().name("3D Region Event Handler").start {
+        handlerThread = Thread.ofVirtual().name("3D Region Key Event Handler").start {
             val moveSpeed = 0.004f
             val mouseKeySpeed = 0.0015f
             val mouseMoveSpeed = 0.001f

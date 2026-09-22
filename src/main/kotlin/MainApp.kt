@@ -2,18 +2,17 @@ import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Scene
 import javafx.scene.control.Label
-import javafx.scene.input.KeyCode
-import javafx.scene.input.KeyEvent
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.stage.Stage
 import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
+import mai_onsyn.renderer.core.GL4DRegion
 import mai_onsyn.renderer.cpu4dkt.*
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercube
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercubeWithCellColors
-import mai_onsyn.renderer.data.OBJLoader
+import mai_onsyn.renderer.interfaces.RendererInterface
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.*
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
@@ -22,14 +21,53 @@ import org.joml.Vector2f
 import org.joml.Vector3f
 import org.joml.Vector4f
 import java.util.concurrent.locks.LockSupport
-import kotlin.math.cos
 import kotlin.math.sin
 
 class MainApp : Application() {
     override fun start(stage: Stage?) {
         stage!!
-        start4DTest(stage)
+        start4DTest2(stage)
     }
+}
+
+fun start4DTest2(stage: Stage) {
+    val box = Box()
+
+    val region = GL4DRegion()
+    region.scene4D.meshList.add(Mesh4D(constructHypercubeWithCellColors(edgeLength = 1f)))
+    region.setOutlineRendering(false)
+
+    val pos3Label = Label("pos")
+    val pos4Label = Label("pos")
+    pos3Label.font = Font(18.0)
+    pos4Label.font = Font(18.0)
+    pos3Label.textFill = Color.WHITE
+    pos4Label.textFill = Color.WHITE
+    Thread.ofVirtual().start {
+        while (!Thread.currentThread().isInterrupted) {
+            Platform.runLater {
+                val pos3 = region.scene3D.getCamera().pos
+                val pos4 = region.scene4D.getCamera().pos
+                pos3Label.text = "3D Pos = (%.2f, %.2f, %.2f)".format(pos3.x, pos3.y, pos3.z)
+                pos4Label.text = "4D Pos = (%.2f, %.2f, %.2f, %.2f)".format(pos4.x, pos4.y, pos4.z, pos4.w)
+            }
+            Thread.sleep(100)
+        }
+    }
+
+    box.add(region, modifier.fillMaxSize())
+    val column = Column()
+    column.add(pos3Label)
+    column.add(pos4Label)
+    box.add(column, modifier.padding(top = 16.0, left = 16.0))
+
+    RendererInterface.init(region.scene4D.getCamera())
+
+    RendererInterface.INSTANCE.camera.moveRight(-1f)
+    RendererInterface.INSTANCE.camera.moveForward(-5f)
+
+    stage.scene = Scene(box, 800.0, 600.0)
+    stage.show()
 }
 
 fun start4DTest(stage: Stage) {
@@ -40,18 +78,21 @@ fun start4DTest(stage: Stage) {
     scene3d.addMesh(makeTestMesh())
     scene4d.meshList.add(Mesh4D(constructHypercubeWithCellColors(edgeLength = 1f)))
 
-    val gl3dRegion = GL3DRegion(scene3d)
-    box.add(gl3dRegion, modifier.fillMaxSize())
+    val gl4dRegion = GL4DRegion(scene3d, scene4d)
+    box.add(gl4dRegion, modifier.fillMaxSize())
 
-    gl3dRegion.addEventFilter(KeyEvent.KEY_PRESSED) {
-        when (it.code) {
-            KeyCode.I -> gl3dRegion.enableInput = !gl3dRegion.enableInput
-            else -> {}
-        }
-    }
+    gl4dRegion.setOutlineRendering(true)
 
-    val renderer4D = Renderer4D(scene4d, scene3d)
-    renderer4D.scene.getCamera().startTestTrajectory()
+//    gl3dRegion.addEventFilter(KeyEvent.KEY_PRESSED) {
+//        when (it.code) {
+//            KeyCode.I -> gl3dRegion.enableInput = !gl3dRegion.enableInput
+//            else -> {}
+//        }
+//    }
+
+//    val renderer4D = Renderer4D(scene4d, scene3D)
+//    renderer4D.start()
+    gl4dRegion.scene4D.getCamera().startTestTrajectory()
 
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()

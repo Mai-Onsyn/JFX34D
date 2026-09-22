@@ -37,9 +37,9 @@ class GL3DEngine(
     /** 全局环境光 */
     private val ambient = Vector3f(0.3f, 0.3f, 0.3f)
     /** 灯光先写死 (世界空间), 之后要做多光源/可调时改这里 */
-    private val lightPos = Vector3f(-5f, 15f, 0f)
+    private val lightPos = Vector3f(-5f, 35f, 0f)
     private val lightColor = Vector3f(1.0f, 1.0f, 1.0f)
-    private var lightIntensity = 1.4f
+    private var lightIntensity = 0.6f
     private var lightRange = 600.0f
     private var attnA = 0.00007f
     private var attnB = 0.00003f
@@ -47,6 +47,7 @@ class GL3DEngine(
     private val viewPos = Vector3f()
 
     private var aspect = 1.0f
+    var useOutlineRendering: Boolean = false
 
     fun init(event: GLInitializeEvent) {
         val program = Shader.basic.program
@@ -136,7 +137,7 @@ class GL3DEngine(
         glUniform1f(attnAPtr, attnA)
         glUniform1f(attnBPtr, attnB)
 
-//        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        if (useOutlineRendering) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         // Mesh.draw 自己处理深度写入/混合 (透明材质分两趟), 外面只管调
         for (m in meshes) {
             m.draw(modelPtr, viewPos)

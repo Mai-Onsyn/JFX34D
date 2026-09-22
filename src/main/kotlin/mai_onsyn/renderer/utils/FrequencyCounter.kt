@@ -107,3 +107,26 @@ class FrequencyCounter(private val capacity: Int = 1024) {
 }
 
 private fun microTime(): Long = System.nanoTime() / 1_000L
+
+fun fixedFrame(fps: Int, condition: () -> Boolean, body: () -> Unit) {
+    val NS_PER_FRAME = 1_000_000_000L / fps
+
+    var nextTime = System.nanoTime() + NS_PER_FRAME
+
+    while (condition()) {
+        body()
+
+        val waitingTimeNs = nextTime - System.nanoTime()
+        if (waitingTimeNs > 0) {
+            val millis = waitingTimeNs / 1_000_000L
+            val nanos = (waitingTimeNs % 1_000_000L).toInt()
+            try {
+                Thread.sleep(millis, nanos)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                break
+            }
+        }
+        nextTime += NS_PER_FRAME
+    }
+}
