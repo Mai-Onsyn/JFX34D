@@ -29,7 +29,7 @@ class ShapeInterfaceImpl: ShapeInterface {
         TODO("Not yet implemented")
     }
 
-    override fun createBall4(center: Vector4f, radius: Float) {
+    override fun createBall4(center: Vector4f, radius: Float, density: Float) {
         TODO("Not yet implemented")
     }
 }
