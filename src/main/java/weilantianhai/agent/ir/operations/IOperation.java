@@ -1,6 +1,8 @@
-package weilantianhai.agent.ir;
+package weilantianhai.agent.ir.operations;
 
 import com.alibaba.fastjson2.JSONObject;
+import mai_onsyn.renderer.interfaces.RendererInterface;
+import weilantianhai.agent.ir.IRException;
 
 /**
  * 所有 IR 操作的统一接口。
@@ -15,5 +17,5 @@ public interface IOperation {
     void load(JSONObject args) throws IRException;
 
     /** 统一执行入口，由具体操作实现自己的逻辑 */
-    void execute(Object obj);
+    void execute(RendererInterface renderer) throws IRException;
 }

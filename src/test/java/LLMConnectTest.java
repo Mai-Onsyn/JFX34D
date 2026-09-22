@@ -1,4 +1,6 @@
 import org.junit.jupiter.api.Test;
+import weilantianhai.agent.ir.IRBundle;
+import weilantianhai.agent.ir.resolver.IRParser;
 import weilantianhai.agent.llm.LLMClient;
 
 public class LLMConnectTest {
@@ -25,8 +27,9 @@ public class LLMConnectTest {
 
         System.out.println("=== 发送请求 ===");
         String result = client.chat(systemPrompt, userInput);
-        System.out.println("=== LLM 返回 ===");
-        System.out.println(result);
+        IRParser parser = new IRParser();
+        IRBundle bundle = parser.parseAsBundle(result);
+
     }
 }
 

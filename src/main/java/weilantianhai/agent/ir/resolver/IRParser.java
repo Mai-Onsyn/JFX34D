@@ -4,7 +4,8 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import weilantianhai.agent.config.AppConfig;
-import weilantianhai.agent.ir.IOperation;
+import weilantianhai.agent.ir.operations.IOperation;
+import weilantianhai.agent.ir.IRBundle;
 import weilantianhai.agent.ir.IRCommand;
 import weilantianhai.agent.ir.IRException;
 
@@ -14,7 +15,15 @@ import java.util.List;
 public class IRParser {
     private final OperationRegistry registry = new OperationRegistry();
 
-    public IRBundle pares(String jsonText) throws IRException {
+
+    /**
+     * 将 JSON 文本解析为 IRBundle对象。
+     *
+     * @param jsonText JSON 文本
+     * @return 解析后的 IRBundle
+     * @throws IRException JSON 非法、version 不支持或 operations 为空/超限时抛出
+     */
+    public IRBundle parseAsBundle(String jsonText) throws IRException {
         JSONObject root;
         try {
             root = JSON.parseObject(jsonText);

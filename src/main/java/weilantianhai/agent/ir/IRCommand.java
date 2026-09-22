@@ -1,5 +1,7 @@
 package weilantianhai.agent.ir;
 
+import weilantianhai.agent.ir.operations.IOperation;
+
 public class IRCommand {
     private String type;//操作类型
     private int id;//操作id

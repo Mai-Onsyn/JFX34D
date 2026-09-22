@@ -1,6 +1,4 @@
-package weilantianhai.agent.ir.resolver;
-
-import weilantianhai.agent.ir.IRCommand;
+package weilantianhai.agent.ir;
 
 import java.util.List;
 
