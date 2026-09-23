@@ -18,7 +18,7 @@ class Renderer4D(
     private val lock = Any()
     private val projected = IdentityHashMap<Mesh4D, Mesh>()
 
-    var maxFPS: Int = 1000
+    var maxFPS: Int = 100
 
     val fpsCounter: FrequencyCounter = FrequencyCounter()
 
@@ -40,6 +40,7 @@ class Renderer4D(
                 condition = { !Thread.currentThread().isInterrupted }
             ) {
                 render(true)
+                fpsCounter.tick()
             }
         }
     }
@@ -65,42 +66,47 @@ class Renderer4D(
 
     fun render(force: Boolean = false) {
         synchronized(lock) {
-            val alive = IdentityHashMap<Mesh4D, Boolean>()
-            for (m4 in scene.getMeshes()) alive[m4] = true
+            val currentMeshes = scene.getMeshes()
+            val alive = IdentityHashMap<Mesh4D, Boolean>(currentMeshes.size)
+            for (m4 in currentMeshes) alive[m4] = true
 
+            // 1. 先处理当前场景内的所有 Mesh4D（更新或新增）
+            for (m4 in currentMeshes) {
+                val cachedM3 = projected[m4]
+
+                if (cachedM3 == null) {
+                    // 【新增模型】：投影并追加到末尾
+                    val newM3 = projectMesh(m4)
+                    projected[m4] = newM3
+                    m4.dirty = false
+                    bindingSpace.meshList.add(newM3)
+                } else if (m4.dirty || force) {
+                    // 【需更新模型】：重新投影，并在 meshList 中直接原位替换（不经过 remove，无闪烁中间态）
+                    val newM3 = projectMesh(m4)
+                    projected[m4] = newM3
+                    m4.dirty = false
+
+                    val idx = bindingSpace.meshList.indexOf(cachedM3)
+                    if (idx >= 0) {
+                        bindingSpace.meshList[idx] = newM3 // 👈 原位原子替换：渲染线程读到的要么是旧 m3，要么是新 m3，绝不会是 null 或缺失
+                    } else {
+                        bindingSpace.meshList.add(newM3)   // 防御性补回
+                    }
+                } else {
+                    // 【无变化模型】：若因异常不在列表中，则补回
+                    if (!bindingSpace.meshList.contains(cachedM3)) {
+                        bindingSpace.meshList.add(cachedM3)
+                    }
+                }
+            }
+
+            // 2. 清理已被销毁/移除的 Mesh4D（只有真正死亡的模型才删）
             val it = projected.entries.iterator()
             while (it.hasNext()) {
                 val (m4, m3) = it.next()
                 if (!alive.containsKey(m4)) {
-                    bindingSpace.meshList.remove(m3)
+                    bindingSpace.meshList.remove(m3) // 仅当模型从 Scene 中销毁时剔除
                     it.remove()
-                }
-            }
-
-            for (m4 in scene.getMeshes()) {
-                val cached = projected[m4]
-                when {
-                    cached == null -> {
-                        val m3 = projectMesh(m4)
-                        projected[m4] = m3
-                        bindingSpace.meshList.add(m3)          // 新增追加到末尾
-                        m4.dirty = false
-                    }
-                    m4.dirty || force -> {                     // ← 强制时走这里
-                        val m3 = projectMesh(m4)
-                        val idx = bindingSpace.meshList.indexOf(cached)
-                        if (idx >= 0) {
-                            bindingSpace.meshList[idx] = m3    // 原地替换，位置不变
-                        } else {
-                            bindingSpace.meshList.add(m3)      // 被外部误删了，补回来
-                        }
-                        projected[m4] = m3
-                        m4.dirty = false
-                    }
-                    else -> {
-                        if (!bindingSpace.meshList.contains(cached))
-                            bindingSpace.meshList.add(cached)
-                    }
                 }
             }
         }

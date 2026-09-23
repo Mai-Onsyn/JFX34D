@@ -111,14 +111,16 @@ private fun microTime(): Long = System.nanoTime() / 1_000L
 fun fixedFrame(fps: Int, condition: () -> Boolean, body: () -> Unit) = dynamicFrame({ fps }, condition, body)
 
 fun dynamicFrame(fps: () -> Int, condition: () -> Boolean, body: () -> Unit) {
-    val NS_PER_FRAME = 1_000_000_000L / fps()
-
-    var nextTime = System.nanoTime() + NS_PER_FRAME
-
     while (condition()) {
+        val currentFps = fps().coerceAtLeast(1)
+        val nsPerFrame = 1_000_000_000L / currentFps
+        val startTime = System.nanoTime()
+
         body()
 
-        val waitingTimeNs = nextTime - System.nanoTime()
+        val elapsedTime = System.nanoTime() - startTime
+        val waitingTimeNs = nsPerFrame - elapsedTime
+
         if (waitingTimeNs > 0) {
             val millis = waitingTimeNs / 1_000_000L
             val nanos = (waitingTimeNs % 1_000_000L).toInt()
@@ -129,6 +131,6 @@ fun dynamicFrame(fps: () -> Int, condition: () -> Boolean, body: () -> Unit) {
                 break
             }
         }
-        nextTime += NS_PER_FRAME
+        // 若 elapsedTime > nsPerFrame（渲染超时），直接进入下一帧，不进行累加补偿
     }
 }

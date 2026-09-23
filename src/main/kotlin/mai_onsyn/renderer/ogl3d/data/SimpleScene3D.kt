@@ -24,10 +24,4 @@ class SimpleScene3D(
     fun addMesh(mesh: Mesh) {
         meshList.add(mesh)
     }
-
-    fun removeMesh(mesh: Mesh): Boolean = meshList.remove(mesh)
-
-    fun clearMeshes() {
-        meshList.clear()
-    }
 }

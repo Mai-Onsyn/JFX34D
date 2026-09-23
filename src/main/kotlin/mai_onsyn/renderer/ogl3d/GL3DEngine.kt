@@ -5,6 +5,7 @@ import com.huskerdev.openglfx.canvas.events.GLRenderEvent
 import com.huskerdev.openglfx.canvas.events.GLReshapeEvent
 import javafx.scene.paint.Color
 import mai_onsyn.renderer.ogl3d.data.GLMaterial
+import mai_onsyn.renderer.ogl3d.data.Mesh
 import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.ogl3d.data.Shader
 import mai_onsyn.renderer.utils.FrequencyCounter
@@ -96,6 +97,8 @@ class GL3DEngine(
 
     private val viewMatrixBuffer = BufferUtils.createFloatBuffer(16)
     private val projectionMatrixBuffer = BufferUtils.createFloatBuffer(16)
+
+    private val uploadedMeshes = mutableListOf<Mesh>()
     fun render(event: GLRenderEvent) {
         val program = Shader.basic.program
         glClearColor(bgColor.red.toFloat(), bgColor.green.toFloat(), bgColor.blue.toFloat(), bgColor.opacity.toFloat())
@@ -105,6 +108,7 @@ class GL3DEngine(
         val meshes = scene.getMeshes()
         for (m in meshes) {
             m.upload()
+            uploadedMeshes.add(m)
         }
         glUseProgram(program)
 
@@ -141,6 +145,13 @@ class GL3DEngine(
         // Mesh.draw 自己处理深度写入/混合 (透明材质分两趟), 外面只管调
         for (m in meshes) {
             m.draw(modelPtr, viewPos)
+        }
+
+        val uploadedButRemoved = uploadedMeshes.filter { !scene.getMeshes().contains(it) }
+        val addedButNotUploaded = scene.getMeshes().filter { !uploadedMeshes.contains(it) }
+        uploadedButRemoved.forEach {
+            it.dispose()
+            uploadedMeshes.remove(it)
         }
 
         fpsCounter.tick()
