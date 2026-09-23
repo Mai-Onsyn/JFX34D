@@ -3,6 +3,7 @@ package mai_onsyn.renderer.ogl3d
 import com.huskerdev.openglfx.canvas.events.GLInitializeEvent
 import com.huskerdev.openglfx.canvas.events.GLRenderEvent
 import com.huskerdev.openglfx.canvas.events.GLReshapeEvent
+import javafx.scene.paint.Color
 import mai_onsyn.renderer.ogl3d.data.GLMaterial
 import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.ogl3d.data.Shader
@@ -48,12 +49,13 @@ class GL3DEngine(
 
     private var aspect = 1.0f
     var useOutlineRendering: Boolean = false
+    var bgColor: Color = Color(0.5294, 0.8078, 0.9216, 1.0)
 
     fun init(event: GLInitializeEvent) {
         val program = Shader.basic.program
         glUseProgram(program)
 //        glClearColor(0.5294f, 0.8078f, 0.9216f, 1.0f)
-        glClearColor(0.1215686f, 0.12549019f, 0.13333333f, 1.0f)
+//        glClearColor(0.1215686f, 0.12549019f, 0.13333333f, 1.0f)
 
         modelPtr = glGetUniformLocation(program, "model")
         viewPtr = glGetUniformLocation(program, "view")
@@ -97,6 +99,7 @@ class GL3DEngine(
     private val projectionMatrixBuffer = BufferUtils.createFloatBuffer(16)
     fun render(event: GLRenderEvent) {
         val program = Shader.basic.program
+        glClearColor(bgColor.red.toFloat(), bgColor.green.toFloat(), bgColor.blue.toFloat(), bgColor.opacity.toFloat())
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
         // 外部线程删掉的 mesh, 到这里才真正 glDelete (GL 只能在渲染线程调)

@@ -29,6 +29,16 @@ data class Tetrahedron(
         packVertex(v3)
     }
 
+    fun transform(matrix5f: Matrix5f): Tetrahedron {
+        return Tetrahedron(
+            this.v0.copy(pos = (matrix5f * Vector5f(this.v0.pos)).toVector4f()),
+            this.v1.copy(pos = (matrix5f * Vector5f(this.v1.pos)).toVector4f()),
+            this.v2.copy(pos = (matrix5f * Vector5f(this.v2.pos)).toVector4f()),
+            this.v3.copy(pos = (matrix5f * Vector5f(this.v3.pos)).toVector4f()),
+            this.id
+        )
+    }
+
     companion object {
         fun extract(arr: FloatArray, offset: Int): Tetrahedron {
             var offset = offset

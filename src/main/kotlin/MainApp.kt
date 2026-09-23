@@ -64,7 +64,6 @@ fun start4DTest2(stage: Stage) {
 
     RendererInterfaceInitializer.initialize(region)
 
-    RendererInterface.INSTANCE.camera.moveRight(-1f)
     RendererInterface.INSTANCE.camera.moveForward(-5f)
     RendererInterface.INSTANCE.camera.rotateXY(45f)
 

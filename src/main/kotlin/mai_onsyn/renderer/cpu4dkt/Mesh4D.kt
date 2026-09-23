@@ -15,4 +15,13 @@ class Mesh4D @JvmOverloads constructor (
             }
         }
     }
+
+    fun applyTransform(): Mesh4D {
+        return Mesh4D(name = "$name-applied").also { mesh4D ->
+            this.tetrahedrons.forEach { tetrahedron ->
+                mesh4D.tetrahedrons.add(tetrahedron.transform(transform.matrix))
+            }
+            this.transform.matrix = Matrix5f.IDENTITY
+        }
+    }
 }

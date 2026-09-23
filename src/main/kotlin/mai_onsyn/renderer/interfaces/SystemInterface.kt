@@ -1,5 +1,7 @@
 package mai_onsyn.renderer.interfaces
 
+import javafx.scene.paint.Color
+
 interface SystemInterface {
     /** 调整3D渲染器最大FPS */
     fun set3DMaxFPS(fps: Float)
@@ -16,8 +18,14 @@ interface SystemInterface {
     /** 获取4D渲染器FPS */
     fun get4DFPS(): Float
 
+    /** 获取4D渲染器1% Low帧 */
+    fun get4D1PercentLowFPS(): Float
+
     /** 开启仅线框渲染 */
     fun enableTriangleLineRendering(enable: Boolean)
+
+    /** 调整渲染窗口的背景色 */
+    fun setBackgroundColor(color: Color)
 
     /** 开启光照渲染 */
     fun enableLightRendering(enable: Boolean)

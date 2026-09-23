@@ -24,7 +24,7 @@ class TransformInterfaceImpl(
     }
 
     override fun move(name: String, v: Vector4f) {
-        TODO("Not yet implemented")
+        scene.requireContains(name).transform.move(v)
     }
 
     override fun scale(name: String, x: Float, y: Float, z: Float, w: Float) {

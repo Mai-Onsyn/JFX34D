@@ -9,7 +9,7 @@ import mai_onsyn.renderer.interfaces.requireNotContains
 class ModelInterfaceImpl(
     private val scene: SimpleScene4D,
 ): ModelInterface {
-    override fun listModel(): List<String> = scene.getMeshes().map { it.name.trim() }
+    override fun listModel(): List<String> = scene.getMeshes().map { it.name }
 
     override fun addModel(name: String) {
         scene.requireNotContains(name)
@@ -18,7 +18,7 @@ class ModelInterfaceImpl(
 
     override fun removeModel(name: String) {
         scene.requireContains(name)
-        scene.meshList.removeIf { it.name.trim() == name.trim() }
+        scene.meshList.removeIf { it.name == name }
     }
 
     override fun copyModel(srcName: String, dstName: String) {
@@ -27,10 +27,22 @@ class ModelInterfaceImpl(
     }
 
     override fun mergeModel(src1Name: String, src2Name: String, dstName: String) {
-        TODO("Not yet implemented")
+        val originMesh1 = scene.requireContains(src1Name)
+        val originMesh2 = scene.requireContains(src2Name)
+        scene.requireNotContains(dstName)
+
+        scene.meshList.add(Mesh4D(name = dstName).apply {
+            val m1 = originMesh1.applyTransform()
+            val m2 = originMesh2.applyTransform()
+            this.tetrahedrons.addAll(m1.tetrahedrons)
+            this.tetrahedrons.addAll(m2.tetrahedrons)
+        })
     }
 
     override fun applyTransformToVertex(srcName: String, dstName: String) {
-        TODO("Not yet implemented")
+        scene.requireNotContains(dstName)
+        val applied = scene.requireContains(srcName).applyTransform()
+        applied.name = dstName
+        scene.meshList.add(applied)
     }
 }

@@ -18,6 +18,16 @@ class GL4DRegion(
     private var enable4DInput = false
     private val movement = MovementState()
 
+    var maxFPS: Int
+        get() = renderer.maxFPS
+        set(value) {
+            renderer.maxFPS = value
+        }
+
+    fun get4DFPS(): Float = renderer.fpsCounter.getAverageFrequency()
+
+    fun get4D1PercentLowFPS(): Float = renderer.fpsCounter.getOnePercentLowFrequency()
+
     init {
         renderer.start()
 

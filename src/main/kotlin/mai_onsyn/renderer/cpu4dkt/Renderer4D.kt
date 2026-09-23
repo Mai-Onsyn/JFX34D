@@ -3,6 +3,9 @@ package mai_onsyn.renderer.cpu4dkt
 import mai_onsyn.renderer.ogl3d.data.Mesh
 import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.ogl3d.data.toMesh
+import mai_onsyn.renderer.utils.FrequencyCounter
+import mai_onsyn.renderer.utils.dynamicFrame
+import mai_onsyn.renderer.utils.fixedFrame
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
 import org.joml.Matrix4f
 import java.util.*
@@ -14,6 +17,10 @@ class Renderer4D(
 ) {
     private val lock = Any()
     private val projected = IdentityHashMap<Mesh4D, Mesh>()
+
+    var maxFPS: Int = 1000
+
+    val fpsCounter: FrequencyCounter = FrequencyCounter()
 
 //    init {
 //        Thread.ofVirtual().start {
@@ -28,9 +35,11 @@ class Renderer4D(
 
     fun start() {
         thread = thread(isDaemon = true) {
-            while (!Thread.currentThread().isInterrupted) {
+            dynamicFrame(
+                fps = { maxFPS },
+                condition = { !Thread.currentThread().isInterrupted }
+            ) {
                 render(true)
-                Thread.sleep(10)
             }
         }
     }

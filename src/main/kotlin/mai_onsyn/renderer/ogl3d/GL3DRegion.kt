@@ -6,6 +6,7 @@ import javafx.scene.Cursor
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
+import javafx.scene.paint.Color
 import javafx.scene.robot.Robot
 import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.utils.FrequencyCounter
@@ -58,6 +59,10 @@ open class GL3DRegion(val scene: Scene3D) : GLCanvas(
         get() = engine.fpsCounter
 
     fun setOutlineRendering(b: Boolean) { engine.useOutlineRendering = b }
+
+    fun setBackgroundColor(color: Color) {
+        engine.bgColor = color
+    }
 
     init {
         this.addOnInitEvent(engine::init)

@@ -3,7 +3,7 @@ package mai_onsyn.renderer.cpu4dkt
 class Matrix5f(
     val data: FloatArray = FloatArray(25)
 ) {
-    operator fun times(m: Matrix5f) {
+    operator fun times(m: Matrix5f): Matrix5f {
         val buffer = FloatArray(25)
         for (i in 0 until 5) {
             val ri = i * 5
@@ -16,7 +16,23 @@ class Matrix5f(
                 }
             }
         }
-        System.arraycopy(buffer, 0, data, 0, buffer.size)
+//        System.arraycopy(buffer, 0, data, 0, buffer.size)
+        return Matrix5f(buffer)
+    }
+
+//    operator fun timesAssign(m: Matrix5f) {
+//        val f = this.times(m)
+//        System.arraycopy(f.data, 0, data, 0, f.data.size)
+//    }
+
+    operator fun times(v: Vector5f): Vector5f {
+        val res = Vector5f()
+        for (i in 0 until 5) {
+            for (j in 0 until 5) {
+                res[i] += data[i * 5 + j] * v[j]
+            }
+        }
+        return res
     }
 
     operator fun get(i: Int): Float {
