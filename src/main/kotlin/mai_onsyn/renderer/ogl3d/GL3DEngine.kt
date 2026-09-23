@@ -7,7 +7,6 @@ import javafx.scene.paint.Color
 import mai_onsyn.renderer.ogl3d.data.GLMaterial
 import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.ogl3d.data.Shader
-import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.utils.FrequencyCounter
 import org.joml.Vector3f
 import org.lwjgl.BufferUtils
@@ -102,10 +101,7 @@ class GL3DEngine(
         glClearColor(bgColor.red.toFloat(), bgColor.green.toFloat(), bgColor.blue.toFloat(), bgColor.opacity.toFloat())
         glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT)
 
-        // 外部线程删掉的 mesh, 到这里才真正 glDelete (GL 只能在渲染线程调)
-        (scene as? SimpleScene3D)?.drainPendingDispose()
-
-        // getMeshes() 拿到的是当前快照, 别的线程同时增删也不影响这次遍历
+        // getMeshes() 是并发安全列表, 别的线程同时增删也不影响这次遍历
         val meshes = scene.getMeshes()
         for (m in meshes) {
             m.upload()
