@@ -3,6 +3,26 @@ package mai_onsyn.renderer.cpu4dkt
 class Matrix5f(
     val data: FloatArray = FloatArray(25)
 ) {
+    operator fun times(m: Matrix5f) {
+        val buffer = FloatArray(25)
+        for (i in 0 until 5) {
+            val ri = i * 5
+            for (k in 0 until 5) {
+                val aik = data[ri + k]
+                if (aik == 0f) continue
+                val rk = k * 5
+                for (j in 0 until 5) {
+                    buffer[ri + j] += aik * m[rk + j]
+                }
+            }
+        }
+        System.arraycopy(buffer, 0, data, 0, buffer.size)
+    }
+
+    operator fun get(i: Int): Float {
+        return data[i]
+    }
+
     /**
      * 行主序，与joml(列主序)不同
      */

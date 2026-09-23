@@ -4,6 +4,7 @@ import mai_onsyn.renderer.cpu4dkt.Matrix5f
 import mai_onsyn.renderer.cpu4dkt.Scene4D
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
 import mai_onsyn.renderer.interfaces.TransformInterface
+import mai_onsyn.renderer.interfaces.requireContains
 import mai_onsyn.renderer.utils.Coordinate4D
 import mai_onsyn.renderer.utils.Direction
 import org.joml.Vector4f
@@ -11,12 +12,15 @@ import org.joml.Vector4f
 class TransformInterfaceImpl(
     val scene: SimpleScene4D
 ): TransformInterface {
-    override fun getModelMatrix(name: String) {
+    override fun getModelMatrix(name: String): Matrix5f =
+        scene.requireContains(name).transform.matrix
 
+    override fun setModelMatrix(name: String, matrix: Matrix5f) {
+        scene.requireContains(name).transform.matrix = matrix
     }
 
     override fun transform(name: String, m: Matrix5f) {
-        TODO("Not yet implemented")
+        scene.requireContains(name).transform.matrix * m
     }
 
     override fun move(name: String, v: Vector4f) {

@@ -36,7 +36,7 @@ fun start4DTest2(stage: Stage) {
 
     val region = GL4DRegion()
     region.scene4D.meshList.add(Mesh4D(constructHypercubeWithCellColors(edgeLength = 1f)))
-    region.setOutlineRendering(true)
+    region.setOutlineRendering(false)
 
     val pos3Label = Label("pos")
     val pos4Label = Label("pos")
@@ -66,6 +66,7 @@ fun start4DTest2(stage: Stage) {
 
     RendererInterface.INSTANCE.camera.moveRight(-1f)
     RendererInterface.INSTANCE.camera.moveForward(-5f)
+    RendererInterface.INSTANCE.camera.rotateXY(45f)
 
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()

@@ -8,7 +8,10 @@ import org.joml.Vector4f
 interface TransformInterface {
 
     /** 获取模型变化矩阵 */
-    fun getModelMatrix(name: String)
+    fun getModelMatrix(name: String): Matrix5f
+
+    /** 设置模型变换矩阵 */
+    fun setModelMatrix(name: String, matrix: Matrix5f)
 
     /** 矩阵变换 */
     fun transform(name: String, m: Matrix5f)

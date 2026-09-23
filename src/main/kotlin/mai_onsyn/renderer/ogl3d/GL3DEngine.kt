@@ -52,7 +52,8 @@ class GL3DEngine(
     fun init(event: GLInitializeEvent) {
         val program = Shader.basic.program
         glUseProgram(program)
-        glClearColor(0.5294f, 0.8078f, 0.9216f, 1.0f)
+//        glClearColor(0.5294f, 0.8078f, 0.9216f, 1.0f)
+        glClearColor(0.1215686f, 0.12549019f, 0.13333333f, 1.0f)
 
         modelPtr = glGetUniformLocation(program, "model")
         viewPtr = glGetUniformLocation(program, "view")
