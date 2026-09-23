@@ -1,8 +1,9 @@
 package mai_onsyn.renderer.cpu4dkt
 
-class Mesh4D(
+class Mesh4D @JvmOverloads constructor (
     val tetrahedrons: MutableList<Tetrahedron> = mutableListOf(),
-    var name: String = "New Mesh"
+    var name: String = "New Mesh",
+    val transform: Transform4D = Transform4D()
 ) {
     var dirty: Boolean = true
 

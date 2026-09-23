@@ -56,7 +56,7 @@ public class MainApp extends Application {
         // 超立方体演示模型（8 胞调色板与 Hypercube.kt 默认一致，48 个四面体）
         region.getScene4D().getMeshList().add(new Mesh4D(buildHypercubeTets()));
         region.setOutlineRendering(true);
-        RendererInterface.Companion.init(region.getScene4D().getCamera());
+        RendererInterface.Companion.init(region);
         renderer = RendererInterface.Companion.getINSTANCE();
 
         StackPane rootStack = new StackPane();
