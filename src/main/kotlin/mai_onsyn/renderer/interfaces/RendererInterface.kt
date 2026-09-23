@@ -1,5 +1,6 @@
 package mai_onsyn.renderer.interfaces
 
+import mai_onsyn.renderer.core.GL4DRegion
 import mai_onsyn.renderer.cpu4dkt.Camera4D
 import mai_onsyn.renderer.interfaces.impl.RendererInterfaceImpl
 
@@ -13,17 +14,22 @@ interface RendererInterface {
             get() = _instance ?: error("RendererInterface is NOT initialized yet, please invoke init() first")
 
         fun init(
-            camera: Camera4D
+            region: GL4DRegion,
         ) {
             if (_instance == null) {
                 synchronized(this) {
                     if (_instance == null) {
-                        _instance = RendererInterfaceImpl(camera)
+                        _instance = RendererInterfaceImpl(region)
                     }
                 }
             }
         }
     }
+
+    /**
+     * 渲染器系统相关操作，比如fps这些
+     */
+    val system: SystemInterface
 
     /**
      * 摄像机相关的操作

@@ -6,6 +6,6 @@ object RendererInterfaceInitializer {
     fun initialize(
         region: GL4DRegion
     ) {
-        RendererInterface.init(region.scene4D.getCamera())
+        RendererInterface.init(region)
     }
 }

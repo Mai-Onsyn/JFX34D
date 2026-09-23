@@ -1,7 +1,7 @@
 # JFX34D AI API 接口文档（完善版 v2）
 
 > 涉及的接口文件：
-> `RendererInterface`、`CameraInterface`、`ModelInterface`、`TransformInterface`、
+> `RendererInterface`、`SystemInterface`、`CameraInterface`、`ModelInterface`、`TransformInterface`、
 > `GeometryInterface`、`ShapeInterface`、`IOInterface`。
 >
 > 约定：与 AI 交互的数据（发给 AI 的 markdown、AI 返回的 json）**一律使用英文**，
@@ -19,8 +19,9 @@
 - [五、基础形状](#五基础形状)
 - [六、模型几何编辑](#六模型几何编辑)
 - [七、文件与模型 IO](#七文件与模型-io)
-- [八、完整交互示例](#八完整交互示例)
-- [九、附录](#九附录)
+- [八、系统与渲染设置](#八系统与渲染设置)
+- [九、完整交互示例](#九完整交互示例)
+- [十、附录](#十附录)
 
 ---
 
@@ -28,7 +29,7 @@
 
 ### 0.1 接口 → 操作名映射
 
-`RendererInterface` 是对外唯一门面，六个子接口对应六个操作类别。
+`RendererInterface` 是对外唯一门面，七个子接口对应七个操作类别。
 AI 侧看到的不是方法名，而是 JSON 中的 `type`（操作名），映射关系如下。
 
 | 子接口 | 接口方法 | 操作名（JSON `type`） | 章节 |
@@ -47,13 +48,13 @@ AI 侧看到的不是方法名，而是 JSON 中的 `type`（操作名），映�
 | | `applyTransformToVertex(src, dst)` | `APPLY_TRANSFORM_TO_VERTEX` | §4.1.6 |
 | `TransformInterface` | `getModelMatrix(name)` | `GET_MODEL_MATRIX` | §4.3 |
 | | `transform/move/scale/rotate/clip/setCoordinate` | `TRANSFORM_MODEL`（6 种 method） | §4.2 |
-| `ShapeInterface` | `createTetrahedron(center, radius)` | `CREATE_TETRAHEDRON` | §5.1.1 |
-| | `create5Cell(center, size)` | `CREATE_5CELL` | §5.1.2 |
-| | `create16Cell(center, radius)` | `CREATE_16CELL` | §5.1.3 |
-| | `createTesseract(center, edgeLength)` | `CREATE_TESSERACT` | §5.1.4 |
-| | `createPrism4(base: Mesh, ws, we)` | `CREATE_PRISM4` | §5.1.5 |
-| | `createCone4(base: Mesh, apex)` | `CREATE_CONE4` | §5.1.6 |
-| | `createBall4(center, radius)` | `CREATE_BALL4` | §5.1.7 |
+| `ShapeInterface` | `createTetrahedron(target, center, radius)` | `CREATE_TETRAHEDRON` | §5.1.1 |
+| | `create5Cell(target, center, size)` | `CREATE_5CELL` | §5.1.2 |
+| | `create16Cell(target, center, radius)` | `CREATE_16CELL` | §5.1.3 |
+| | `createTesseract(target, center, edgeLength)` | `CREATE_TESSERACT` | §5.1.4 |
+| | `createPrism4(target, base: Mesh, ws, we)` | `CREATE_PRISM4` | §5.1.5 |
+| | `createCone4(target, base: Mesh, apex)` | `CREATE_CONE4` | §5.1.6 |
+| | `createBall4(target, center, radius, density)` | `CREATE_BALL4` | §5.1.7 |
 | `GeometryInterface` | `getModelInfos(name)` | `GET_MODEL_INFO` | §6.1 |
 | | `getTetrahedronInfos(name, tetId)` | `GET_TETRAHEDRON` | §6.2 |
 | | `setVertex(name, tetId, n, v)` | `SET_TETRAHEDRON_VERTEX` | §6.3 |
@@ -63,6 +64,16 @@ AI 侧看到的不是方法名，而是 JSON 中的 `type`（操作名），映�
 | | `sliceModel(name, plane, a, b)` | `SLICE_MODEL` | §6.7 |
 | `IOInterface` | `saveModel(name, fileName)` | `SAVE_MODEL` | §7.1 |
 | | `loadModel(name, file)` | `LOAD_MODEL` | §7.2 |
+| `SystemInterface` | `set3DMaxFPS(fps)` | `SET_3D_MAX_FPS` | §8.1 |
+| | `get3DFPS()` | `GET_3D_FPS` | §8.2 |
+| | `get3D1PercentLowFPS()` | `GET_3D_1PERCENT_LOW_FPS` | §8.3 |
+| | `set4DMaxFPS(fps)` | `SET_4D_MAX_FPS` | §8.4 |
+| | `get4DFPS()` | `GET_4D_FPS` | §8.5 |
+| | `enableTriangleLineRendering(b)` | `SET_TRIANGLE_LINE_RENDERING` | §8.6 |
+| | `enableLightRendering(b)` | `SET_LIGHT_RENDERING` | §8.7 |
+
+> `ShapeInterface` 方法的第一个参数叫 `target`（目标模型），**JSON 里统一写作 `name`**，
+> 与模型 / 几何编辑章节保持一致；见 §5.1 与附录 C。
 
 ### 0.2 全局约定
 
@@ -72,7 +83,7 @@ AI 侧看到的不是方法名，而是 JSON 中的 `type`（操作名），映�
 | 四维坐标 | `(x, y, z, w)`，四个轴名分别为 `x` `y` `z` `w` |
 | 轴枚举 | 小写字符串：`"x"` `"y"` `"z"` `"w"`（大小写不敏感，建议统一小写） |
 | 平面枚举 | 小写字符串：`"xy"` `"xz"` `"xw"` `"yz"` `"yw"` `"zw"` |
-| 角度 | JSON 中**一律使用角度制（degree）**；代码内部为弧度，由解析器换算 |
+| 角度 | JSON 与接口参数**都是角度制（degree）**；`CameraInterfaceImpl` 内部用 `toRadians` 转换（`Camera4D`、`Matrix5f` 用的是弧度） |
 | 颜色 | 十六进制 ARGB 字符串 `"#AARRGGBB"`，或整数 `0xAARRGGBB` |
 | 向量写法 | 数组 `[1, 2, 3, 4]` 或字符串 `"(1 2 3 4)"`，两种都接受 |
 | 模型矩阵 | 5×5 **行主序**，行向量写作 `[a, b, c, d, e]` 或 `"(a b c d e)"` |
@@ -80,7 +91,8 @@ AI 侧看到的不是方法名，而是 JSON 中的 `type`（操作名），映�
 | 变换叠加 | `transforms` 数组按顺序依次**左乘**到模型矩阵：`M ← T_i · M` |
 | 旋转正方向 | 平面 `(a, b)` 上，**a 轴转向 b 轴为正**：`a' = a·cos θ − b·sin θ`，`b' = a·sin θ + b·cos θ`（模型 / Mesh / 几何；摄像机视角见 §3.2.2，符号相反） |
 | 长度单位 | 无单位（世界单位），由使用者自行约定比例 |
-| 名称 | 模型名区分大小写，长度 1–64，建议使用英文与数字 |
+| 名称 | 模型名区分大小写，长度 1–64，建议使用英文与数字；前后空白会被忽略 |
+| 目标模型 | 场景里的模型由 `RendererInterface.init(region)` 注入的 `GL4DRegion` 提供；**每次操作都要显式给 `name`**，不存在"当前模型"这种隐式状态 |
 
 ---
 
@@ -105,13 +117,17 @@ AI 侧看到的不是方法名，而是 JSON 中的 `type`（操作名），映�
 
 ### 1.2 代码数据格式
 
-采用 **Mesh4D** 类描述 4D 模型（与代码保持一致，模型名由场景层维护，`Mesh4D` 自身不带名称）：
+采用 **Mesh4D** 类描述 4D 模型：
 
 ```kotlin
 class Mesh4D(
-    val tetrahedrons: List<Tetrahedron> = mutableListOf()
+    val tetrahedrons: MutableList<Tetrahedron> = mutableListOf(),
+    var name: String = "New Mesh"
 ) {
     var dirty: Boolean = true
+
+    /** 复制出一个新名字的模型；Tetrahedron 独立，顶点实例复用 */
+    fun copy(newName: String): Mesh4D
 }
 ```
 
@@ -245,10 +261,16 @@ Reason:
 ````
 
 **单条操作执行失败**（格式正确，但参数非法或对象不存在）：只影响该条操作，其余操作继续执行。
+错误文本直接采用实现抛出的消息（模型相关操作来自 `ModelInterfaceImpl` / `ShapeInterfaceImpl`）。
 
 ```markdown
 # CREATE_MODEL(id=5)
-Error: model "Cube A" already exists
+Error: Model "Cube A" already exists
+```
+
+```markdown
+# CREATE_TESSERACT(id=6)
+Error: Model "Cube A" does not exist
 ```
 
 ### 2.4 通用参数校验规则
@@ -452,6 +474,7 @@ vw=(-0.5, 0, 0, 0.8660254)
 - vw(Vector4f)
 
 每个向量需要校验是否是单位向量，是否两两互相垂直（四个向量四四正交）。
+校验在解析器层做：`CameraInterfaceImpl.setView` 目前是直接赋值，不做检查。
 
 ```json
 {
@@ -501,7 +524,7 @@ vw=(0, 0, 0, 1)
 3. "Dio"
 ```
 
-索引即模型的添加顺序，后续请求里的 `name` 用名称而不是索引。
+索引即模型的添加顺序，后续请求里的 `name` 用名称而不是索引（实现返回的名称已去掉首尾空白）。
 
 #### 4.1.2 创建模型
 
@@ -511,7 +534,7 @@ vw=(0, 0, 0, 1)
 
 - name(String)：模型名称
 
-需要校验模型名称是否已被占用
+需要校验模型名称是否已被占用（实现抛 `Model "xxx" already exists`）
 
 ```json
 {
@@ -538,7 +561,7 @@ Now models: 2
 
 - name(String)：模型名称
 
-需要校验模型名称是否存在
+需要校验模型名称是否存在（实现抛 `Model "xxx" does not exist`）
 
 ```markdown
 # DELETE_MODEL(id=8)
@@ -548,12 +571,15 @@ Now models: 1
 
 #### 4.1.4 复制模型
 
-**COPY_MODEL**：复制一个已有模型（**包含其模型矩阵**）
+**COPY_MODEL**：复制一个已有模型
 
 必须包含的参数：
 
 - src(String)：源模型名称，必须存在
 - dst(String)：新模型名称，必须不存在
+
+实现上是 `Mesh4D.copy(newName)`：四面体逐个复制（顶点实例复用），
+源模型不变，新模型追加到模型列表末尾。
 
 ```json
 {
@@ -633,6 +659,11 @@ Tetrahedrons: 48
 
 - name(String)：要操作的模型名称
 - transforms(JSONArray)：对模型的变换操作
+
+> 实现备注：`TransformInterface` 的 `getModelMatrix(name)` 带 `name`，但
+> `transform/move/scale/rotate/clip/setCoordinate` 目前都没有目标参数，
+> 模型矩阵也还没有存储位置。这里的 `name` 是本文档为 AI 交互保留的字段，
+> 实现时需要把它接到目标模型上（见附录 C / 附录 E）。
 
 可选择包含的参数：
 
@@ -869,9 +900,11 @@ row4=(0, 0, 0, 0, 1)
 对应 `ShapeInterface`。基础形状直接把四面体写进模型，无需 AI 自己拼顶点。
 
 > **实现备注（重要）**
-> `ShapeInterface` 的方法签名**不带模型名**，但 JSON 里 **`name` 是必填字段**：
-> 解析器负责取出 `name`、校验模型存在，再把形状写进该模型。
-> 因此**不存在**"当前模型 / 目标模型"这类隐式状态。
+> `ShapeInterface` 的每个方法**第一个参数就是目标模型**（接口里叫 `target`，
+> 例如 `createTesseract(target, center, edgeLength)`）。
+> JSON 里这个参数统一写作 **`name`**（与第四、六章一致），必填：
+> 解析器取出 `name` 传给 `target`，模型不存在时实现会抛
+> `Model "xxx" does not exist`，该条操作报错。
 
 ### 5.1、四维形状
 
@@ -879,8 +912,12 @@ row4=(0, 0, 0, 0, 1)
 
 | 字段 | 类型 | 必填 | 默认 | 说明 |
 | --- | --- | --- | --- | --- |
-| `name` | String | **是** | — | 写入哪个模型，必须已存在 |
-| `color` | Color | 否 | `#FFB0B0B0` | 统一顶点颜色 |
+| `name` | String | **是** | — | 目标模型（接口的 `target`），必须已存在 |
+
+> 形状操作**没有颜色参数**（接口里没有），颜色由实现决定：
+> 超立方体按 8 个胞使用默认调色板（`constructHypercubeWithCellColors`，见
+> `cpu4dkt/generator/Hypercube.kt`），其余形状用实现的默认色。
+> 要指定顶点颜色请用 §6.3 `SET_TETRAHEDRON_VERTEX` 或 §6.5 `ADD_TETRAHEDRON`。
 
 四面体数量参考（实现生成的数量应与此一致）：
 
@@ -902,7 +939,7 @@ row4=(0, 0, 0, 0, 1)
 
 必须包含的参数：
 
-- name(String)：写入哪个模型，必须已存在
+- name(String)：目标模型（接口的 `target`），必须已存在
 - center(Vector4f)：中心
 - radius(Float)：顶点到中心的距离，`> 0`
 
@@ -920,8 +957,7 @@ row4=(0, 0, 0, 0, 1)
     "data": {
         "name": "Shape 1",
         "center": [0, 0, 0, 0],
-        "radius": 1.0,
-        "color": "#FFFF5050"
+        "radius": 1.0
     }
 }
 ```
@@ -939,7 +975,7 @@ Tetrahedrons added: 1, now 1
 
 必须包含的参数：
 
-- name(String)：写入哪个模型，必须已存在
+- name(String)：目标模型（接口的 `target`），必须已存在
 - center(Vector4f)：中心
 - size(Float)：棱长，`> 0`
 
@@ -969,7 +1005,7 @@ Tetrahedrons added: 5, now 6
 
 必须包含的参数：
 
-- name(String)：写入哪个模型，必须已存在
+- name(String)：目标模型（接口的 `target`），必须已存在
 - center(Vector4f)：中心
 - radius(Float)：顶点到中心的距离，`> 0`
 
@@ -988,7 +1024,7 @@ Tetrahedrons added: 16, now 22
 
 必须包含的参数：
 
-- name(String)：写入哪个模型，必须已存在
+- name(String)：目标模型（接口的 `target`），必须已存在
 - center(Vector4f)：中心
 - edgeLength(Float)：棱长，`> 0`
 
@@ -1012,13 +1048,16 @@ Center=(0, 0, 0, 0), edgeLength=2.0
 Tetrahedrons added: 48, now 48
 ```
 
+> 该形状已实现（`ShapeInterfaceImpl.createTesseract`）：按 `constructHypercubeWithCellColors`
+> 生成 8 个胞、每胞 6 个四面体，共 48 个，使用默认胞调色板（`+X -X +Y -Y +Z -Z +W -W`）。
+
 #### 5.1.5 超棱柱
 
 **CREATE_PRISM4**：以 3D 网格为底面，沿 w 轴拉伸成四维超棱柱（`base × [ws, we]`）
 
 必须包含的参数：
 
-- name(String)：写入哪个模型，必须已存在
+- name(String)：目标模型（接口的 `target`），必须已存在
 - base(Mesh)：3D 底面网格，见 **§5.2**
 - ws(Float)：起始 w 坐标
 - we(Float)：结束 w 坐标
@@ -1069,7 +1108,7 @@ Tetrahedrons added: 48, now 48
 
 必须包含的参数：
 
-- name(String)：写入哪个模型，必须已存在
+- name(String)：目标模型（接口的 `target`），必须已存在
 - base(Mesh)：3D 底面网格，见 **§5.2**
 - apex(Vector4f)：四维顶点
 
@@ -1116,13 +1155,10 @@ Tetrahedrons added: 20, now 68
 
 必须包含的参数：
 
-- name(String)：写入哪个模型，必须已存在
+- name(String)：目标模型（接口的 `target`），必须已存在
 - center(Vector4f)：球心
 - radius(Float)：半径，`> 0`
-
-可选参数：
-
-- density(Int)：细分程度，`>= 1`，越大越接近球；未给出时用实现的默认值（建议 `2`）
+- density(Float)：细分程度（`> 0`，越大越接近理想球面、四面体越多）
 
 ```json
 {
@@ -1133,8 +1169,7 @@ Tetrahedrons added: 20, now 68
         "name": "Ball",
         "center": [0, 0, 0, 0],
         "radius": 2.0,
-        "density": 2,
-        "color": "#FF88FF88"
+        "density": 2.0
     }
 }
 ```
@@ -1142,7 +1177,7 @@ Tetrahedrons added: 20, now 68
 ```markdown
 # CREATE_BALL4(id=21)
 Successfully create BALL4 in "Ball"
-Center=(0, 0, 0, 0), radius=2.0, density=2
+Center=(0, 0, 0, 0), radius=2.0, density=2.0
 Tetrahedrons added: 96, now 96
 ```
 
@@ -1181,7 +1216,7 @@ AI 不写三角形，而是用 **JSON 描述一个基本几何体 + 一串 3D �
 | --- | --- | --- | --- |
 | `shape` | Enum | 是 | `SPHERE` / `CUBE` / `PRISM` / `PYRAMID` / `CONE` |
 | 几何参数 | Float / Int | 见上表 | 与 `shape` 对应，见 §5.2.2 |
-| `color` | Color | 否 | 网格统一顶点色，默认 `#FFB0B0B0` |
+| `color` | Color | 否 | 网格统一顶点色，默认 `#FFB0B0B0`（`base` 是解析器自己构造的 3D `Mesh`，它的顶点本来就带 `ColorARGB`，所以这里可以给颜色；接口的 `base: Mesh` 也是由解析器传入） |
 | `transforms` | Array | 否 | 3D 变换列表，按顺序应用，见 §5.2.3 |
 
 #### 5.2.2 各几何体的参数与朝向约定
@@ -1647,9 +1682,135 @@ Tetrahedrons: 96
 
 ---
 
-## 八、完整交互示例
+## 八、系统与渲染设置
 
-### 8.1 AI 返回的 json
+对应 `SystemInterface`，用于查看帧率、限制帧率、切换线框/光照渲染。
+这些操作**不影响模型数据**，纯粹是显示与性能设置。
+
+所有操作都不需要 `name` 之类的目标参数。
+
+### 8.1 设置 3D 最大帧率
+
+**SET_3D_MAX_FPS**：限制 3D 渲染器的最大帧率
+
+必须包含的参数：
+
+- fps(Float)：最大帧率，`> 0`
+
+```json
+{
+    "type": "SET_3D_MAX_FPS",
+    "id": 32,
+    "no_result": false,
+    "data": {
+        "fps": 60.0
+    }
+}
+```
+
+```markdown
+# SET_3D_MAX_FPS(id=32)
+Success
+3D max FPS = 60.0
+```
+
+### 8.2 获取 3D 帧率
+
+**GET_3D_FPS**：获取 3D 渲染器最近约 1 秒的平均帧率
+
+无参数
+
+```markdown
+# GET_3D_FPS(id=33)
+3D FPS=59.87
+```
+
+### 8.3 获取 3D 1% Low 帧率
+
+**GET_3D_1PERCENT_LOW_FPS**：获取 3D 渲染器最近约 1 秒的 1% Low 帧率
+（最慢的 1% 帧的平均帧率，用来判断卡顿）
+
+无参数
+
+```markdown
+# GET_3D_1PERCENT_LOW_FPS(id=34)
+3D 1% Low FPS=41.20
+```
+
+### 8.4 设置 4D 最大帧率
+
+**SET_4D_MAX_FPS**：限制 4D 渲染器的最大帧率
+
+必须包含的参数：
+
+- fps(Float)：最大帧率，`> 0`
+
+```markdown
+# SET_4D_MAX_FPS(id=35)
+Success
+4D max FPS = 30.0
+```
+
+### 8.5 获取 4D 帧率
+
+**GET_4D_FPS**：获取 4D 渲染器的帧率
+
+无参数
+
+```markdown
+# GET_4D_FPS(id=36)
+4D FPS=30.02
+```
+
+### 8.6 仅线框渲染
+
+**SET_TRIANGLE_LINE_RENDERING**：开关"仅线框渲染"
+
+必须包含的参数：
+
+- enable(Boolean)：`true` 只用线框画三角形，`false` 恢复实体填充
+
+实现上对应 `GL3DRegion.setOutlineRendering`（`glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)`）。
+
+```json
+{
+    "type": "SET_TRIANGLE_LINE_RENDERING",
+    "id": 37,
+    "no_result": false,
+    "data": {
+        "enable": true
+    }
+}
+```
+
+```markdown
+# SET_TRIANGLE_LINE_RENDERING(id=37)
+Success
+Triangle line rendering: ON
+```
+
+### 8.7 光照渲染
+
+**SET_LIGHT_RENDERING**：开关光照渲染
+
+必须包含的参数：
+
+- enable(Boolean)：`true` 开启光照，`false` 关闭（用纯顶点色/材质色显示）
+
+```markdown
+# SET_LIGHT_RENDERING(id=38)
+Success
+Light rendering: OFF
+```
+
+> 帧率是浮点数，返回统一保留 2 位小数；
+> 开关类操作返回 `ON` / `OFF`。
+
+---
+
+## 九、完整交互示例
+
+### 9.1 AI 返回的 json
 
 ```json
 {
@@ -1700,12 +1861,23 @@ Tetrahedrons: 96
             "id": 4,
             "no_result": false,
             "data": { "name": "Tower" }
+        },
+        {
+            "type": "SET_TRIANGLE_LINE_RENDERING",
+            "id": 5,
+            "no_result": true,
+            "data": { "enable": true }
+        },
+        {
+            "type": "GET_3D_FPS",
+            "id": 6,
+            "no_result": false
         }
     ]
 }
 ```
 
-### 8.2 返回给 AI 的 markdown
+### 9.2 返回给 AI 的 markdown
 
 > 其中数量为示例数值，实际以解析器输出为准。
 
@@ -1727,13 +1899,16 @@ Unique vertices: 100
 Edits: 0
 Bound: x[-1, 1] y[-1.5, 1.5] z[-1, 1] w[-2.5, 1.5]
 Note: vertex list truncated, use GET_TETRAHEDRON for details
+
+# GET_3D_FPS(id=6)
+3D FPS=59.87
 ````
 
-（`id=3` 的操作 `no_result` 为 true，所以没有返回段落；
+（`id=3` 与 `id=5` 的操作 `no_result` 为 true，所以没有返回段落；
 `TRANSFORM_MODEL` 只改模型矩阵，不算几何编辑，所以 `Edits` 仍是 0，
 而包围盒给的是**变换后**的世界坐标范围。）
 
-### 8.3 结束本轮
+### 9.3 结束本轮
 
 ```json
 {
@@ -1745,7 +1920,7 @@ Note: vertex list truncated, use GET_TETRAHEDRON for details
 
 ---
 
-## 九、附录
+## 十、附录
 
 ### 附录 A：操作名总表
 
@@ -1765,13 +1940,13 @@ Note: vertex list truncated, use GET_TETRAHEDRON for details
 | `APPLY_TRANSFORM_TO_VERTEX` | `name`, `dest` | — | 四面体数 |
 | `GET_MODEL_MATRIX` | `name` | — | 5 行矩阵 |
 | `TRANSFORM_MODEL` | `name`, `transforms` | `apply` | 变换后的模型矩阵 |
-| `CREATE_TETRAHEDRON` | `name`, `center`, `radius` | `color` | 新增四面体数 |
-| `CREATE_5CELL` | `name`, `center`, `size` | `color` | 新增四面体数 |
-| `CREATE_16CELL` | `name`, `center`, `radius` | `color` | 新增四面体数 |
-| `CREATE_TESSERACT` | `name`, `center`, `edgeLength` | `color` | 新增四面体数 |
-| `CREATE_PRISM4` | `name`, `base`, `ws`, `we` | `color` | base 摘要、w 范围、新增数 |
-| `CREATE_CONE4` | `name`, `base`, `apex` | `color` | base 摘要、apex、新增数 |
-| `CREATE_BALL4` | `name`, `center`, `radius` | `density`, `color` | 新增四面体数 |
+| `CREATE_TETRAHEDRON` | `name`, `center`, `radius` | — | 新增四面体数 |
+| `CREATE_5CELL` | `name`, `center`, `size` | — | 新增四面体数 |
+| `CREATE_16CELL` | `name`, `center`, `radius` | — | 新增四面体数 |
+| `CREATE_TESSERACT` | `name`, `center`, `edgeLength` | — | 新增四面体数 |
+| `CREATE_PRISM4` | `name`, `base`, `ws`, `we` | — | base 摘要、w 范围、新增数 |
+| `CREATE_CONE4` | `name`, `base`, `apex` | — | base 摘要、apex、新增数 |
+| `CREATE_BALL4` | `name`, `center`, `radius`, `density` | — | 新增四面体数 |
 | `GET_MODEL_INFO` | `name` | — | 统计 + 包围盒 |
 | `GET_TETRAHEDRON` | `name`, `tet` | — | 四个顶点 |
 | `SET_TETRAHEDRON_VERTEX` | `name`, `tet`, `vertex`, `pos` | `color`, `normal` | 新顶点值 |
@@ -1781,6 +1956,13 @@ Note: vertex list truncated, use GET_TETRAHEDRON for details
 | `SLICE_MODEL` | `name`, `plane`, `destA`, `destB` | — | 两个新模型与各自四面体数 |
 | `SAVE_MODEL` | `name`, `file` | — | 保存路径 |
 | `LOAD_MODEL` | `name`, `file` | — | 四面体数 |
+| `SET_3D_MAX_FPS` | `fps` | — | 新的最大帧率 |
+| `GET_3D_FPS` | 无 | — | `3D FPS=xx.xx` |
+| `GET_3D_1PERCENT_LOW_FPS` | 无 | — | `3D 1% Low FPS=xx.xx` |
+| `SET_4D_MAX_FPS` | `fps` | — | 新的最大帧率 |
+| `GET_4D_FPS` | 无 | — | `4D FPS=xx.xx` |
+| `SET_TRIANGLE_LINE_RENDERING` | `enable` | — | `ON` / `OFF` |
+| `SET_LIGHT_RENDERING` | `enable` | — | `ON` / `OFF` |
 
 ### 附录 B：枚举与取值表
 
@@ -1792,29 +1974,49 @@ Note: vertex list truncated, use GET_TETRAHEDRON for details
 | 3D 几何体 `shape` | `SPHERE` `CUBE` `PRISM` `PYRAMID` `CONE` | `CREATE_PRISM4` / `CREATE_CONE4` 的 `base` |
 | Mesh 变换 `method` | `TRANSLATE` `SCALE` `ROTATE` `MATRIX` | `base.transforms[]` |
 | 模型变换 `method` | `MATRIX` `TRANSLATE` `SCALE` `ROTATE` `CLIP` `COORDINATE` | `TRANSFORM_MODEL` |
+| 布尔开关 | `true` / `false` | `SET_TRIANGLE_LINE_RENDERING`、`SET_LIGHT_RENDERING` |
 
 ### 附录 C：与代码接口的对应与实现备注
 
 | 备注项 | 内容 |
 | --- | --- |
-| 形状操作的模型名 | `ShapeInterface` 的方法都不带模型名，但 JSON 里 `name` 必填；解析器取出 `name` 校验后传入，不维护隐式的"当前模型"状态 |
+| 形状操作的模型名 | `ShapeInterface` 每个方法的第一个参数就是 `target: String`；JSON 里统一写作 `name`，解析器取出后传给 `target` |
 | 形状操作无返回值 | `ShapeInterface` 的方法返回 `Unit`，因此返回段落里的数量信息由实现自行统计后拼装 |
+| 形状颜色 | 形状接口**没有颜色参数**；超立方体按 8 个胞用默认调色板（`constructHypercubeWithCellColors`），其余形状用实现默认色。要指定颜色只能用 §6.3 / §6.5 直接给顶点色 |
 | 顶点法向量 | 4D 形状的法向量由实现计算（参考 `cpu4dkt/generator/Hypercube.kt`，超立方体按胞给 4D 法向量） |
 | 3D Mesh 变换落点 | `Mesh` 带一个 3D `Transform` 矩阵；`base.transforms` 可以烘焙到顶点，也可以写进该矩阵，只要在该网格嵌入 4D 之前生效即可（§5.2.5） |
 | 超平面切片 | `plane` 直接就是 `sliceModel(name, plane: Tetrahedron, ...)` 里的那个四面体（4 个顶点），不额外引入法向量/偏移量表示 |
 | 四面体 id | 定义为模型内索引（按加入顺序，从 0 开始），删除后会顺移 |
-| 角度单位 | JSON 一律角度制，解析器负责转弧度（`Camera4D`、`Matrix5f` 内部都是弧度） |
+| 角度单位 | JSON 参数与接口参数**都是角度制**；`CameraInterfaceImpl` 内部 `toRadians` 转换（`Camera4D`、`Matrix5f` 用弧度） |
 | 旋转方向 | 左手系（§0.2），不适用右手定则；模型/几何 `ROTATE` 是"`a` 转向 `b`"为正（`Matrix5x5::rotate`），摄像机 `ROTATE_CAMERA_VIEW` 转的是基向量，符号相反（§3.2.2） |
-| 颜色缺省 | 未指定颜色时用统一默认色 `#FFB0B0B0`（若实现沿用按位置着色的方案，需在系统提示词中说明） |
+| 名称处理 | `ModelInterfaceImpl.listModel()` 返回 `name.trim()`，`removeModel` 也按 trim 后比较；建议 AI 提交的名称不带首尾空白 |
+| 复制模型 | `copyModel` 走 `Mesh4D.copy(newName)`：四面体逐个复制，**顶点实例复用**；模型矩阵尚未实现，因此不存在矩阵复制问题 |
+| 模型矩阵 | `Mesh4D` 目前**不持有**变换矩阵，`Renderer4D.projectMesh` 暂时传单位阵；`TransformInterface` 只有 `getModelMatrix(name)` 带 `name`，`transform/move/scale/rotate/clip/setCoordinate` 暂时没有目标参数——`TRANSFORM_MODEL` 里的 `name` 是本文档为 AI 交互保留的字段 |
+| 接口初始化 | `RendererInterface.INSTANCE` 在 `RendererInterface.init(region)` 之前访问会抛异常；UI 侧通过 `RendererInterfaceInitializer.initialize(region)` 注入 `GL4DRegion` |
 | `no_result` 缺省 | 缺省为 `true`，即默认不返回结果；需要结果必须显式写 `"no_result": false` |
 
-### 附录 D：待定 / 未实现
+### 附录 D：实现状态
+
+按当前 `interfaces/impl` 下的实现情况（未实现的方法会抛 `TODO`）：
+
+| 接口 | 已实现 | 未实现（TODO） |
+| --- | --- | --- |
+| `CameraInterface` | 全部（`getPosition` / `getView` / `setPosition` / `setView` / 四个移动 / 六个旋转） | — |
+| `ModelInterface` | `listModel`、`addModel`、`removeModel`、`copyModel` | `mergeModel`、`applyTransformToVertex` |
+| `TransformInterface` | — | 全部（含 `getModelMatrix`） |
+| `GeometryInterface` | — | 全部 |
+| `ShapeInterface` | `createTesseract` | `createTetrahedron`、`create5Cell`、`create16Cell`、`createPrism4`、`createCone4`、`createBall4` |
+| `IOInterface` | — | `saveModel`、`loadModel` |
+| `SystemInterface` | `get3DFPS`、`get3D1PercentLowFPS`、`enableTriangleLineRendering` | `set3DMaxFPS`、`set4DMaxFPS`、`get4DFPS`、`enableLightRendering` |
+
+### 附录 E：待定
 
 | 项 | 说明 |
 | --- | --- |
 | 模型编辑的撤销与历史 | 接口中无撤销操作，`GET_MODEL_INFO` 返回的 `Edits` 仅作计数 |
-| 材质与贴图 | 3D `Mesh` 支持 `Texture`/`GLMaterial`，但 4D 形状的 JSON 定义暂只开放单一顶点色 |
+| 材质与贴图 | 3D `Mesh` 支持 `Texture`/`GLMaterial`，但形状接口没有材质参数，JSON 只开放单一顶点色 |
 | UV 坐标 | 3D 基本几何体暂不生成 UV（`Vertex.uv` 置零），需要贴图时再补 |
 | 更多 3D 几何体 | 当前只支持球、正方体、正棱柱、正棱锥、圆锥；圆环、胶囊等后续再加 |
 | 布尔运算 / 并集 | `MERGE_MODEL` 只做简单拼接，不做几何布尔运算 |
 | `SLICE_MODEL` 精确切割 | 精确切分四面体为可选实现，最低要求是"按胞归属"的近似 |
+| 模型矩阵存储位置 | `Mesh4D` 不带矩阵，`TransformInterface` 的多数方法也没有目标参数，等实现时再定 `TRANSFORM_MODEL` 的落点 |

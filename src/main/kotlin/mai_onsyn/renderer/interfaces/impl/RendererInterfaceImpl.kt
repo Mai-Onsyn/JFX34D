@@ -1,15 +1,16 @@
 package mai_onsyn.renderer.interfaces.impl
 
-import mai_onsyn.renderer.cpu4dkt.Camera4D
+import mai_onsyn.renderer.core.GL4DRegion
 import mai_onsyn.renderer.interfaces.RendererInterface
 
 class RendererInterfaceImpl(
-    _IN_CAMERA: Camera4D
+    region: GL4DRegion
 ): RendererInterface {
-    override val camera = CameraInterfaceImpl(_IN_CAMERA)
-    override val model = ModelInterfaceImpl()
+    override val system = SystemInterfaceImpl(region)
+    override val camera = CameraInterfaceImpl(region.scene4D.getCamera())
+    override val model = ModelInterfaceImpl(region.scene4D)
     override val transform = TransformInterfaceImpl()
     override val geometry = GeometryInterfaceImpl()
-    override val shape = ShapeInterfaceImpl()
+    override val shape = ShapeInterfaceImpl(region.scene4D)
     override val io = IOInterfaceImpl()
 }

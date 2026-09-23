@@ -51,7 +51,7 @@ public class JNIRasterizer {
         for (int i = 0; i < arr.length; i += 36) {
             tetrahedrons.add(Tetrahedron.Companion.extract(arr, i));
         }
-        return new Mesh4D(tetrahedrons);
+        return new Mesh4D(tetrahedrons, "Test Name");
     }
 
     public static List<Tetrahedron3D> extractTetrahedrons(float[] arr) {
