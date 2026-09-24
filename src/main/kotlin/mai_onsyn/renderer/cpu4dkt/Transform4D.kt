@@ -15,4 +15,15 @@ class Transform4D @JvmOverloads constructor (
         )
         this.matrix *= new
     }
+
+    fun scale(x: Float, y: Float = x, z: Float = x, w: Float = x) {
+        val new = Matrix5f(
+            x, 0f, 0f, 0f, 0f,
+            0f, y, 0f, 0f, 0f,
+            0f, 0f, z, 0f, 0f,
+            0f, 0f, 0f, w, 0f,
+            0f, 0f, 0f, 0f, 1f
+        )
+        this.matrix *= new
+    }
 }

@@ -1,6 +1,7 @@
 package mai_onsyn.renderer.cpu4dkt
 
 import mai_onsyn.renderer.ogl3d.data.Mesh
+import mai_onsyn.renderer.ogl3d.data.MeshSourceType
 import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.ogl3d.data.toMesh
 import mai_onsyn.renderer.utils.FrequencyCounter
@@ -51,17 +52,18 @@ class Renderer4D(
 
     private fun projectMesh(mesh: Mesh4D): Mesh {
         val flattened = JNIRasterizer.packMesh4D(mesh)
-        val I = Matrix5f.IDENTITY.data
+        val transform = Transform4D()
+        transform.scale(2f)
         val outArray = JNIRasterizer.project(
             flattened,
             mesh.tetrahedrons.size,
-            I,
+            transform.matrix.data,
             scene.getCamera().viewMatrix.data,
             scene.getCamera().projectionMatrix().data,
             Matrix4f().scale(5f).toRowMajorFloatArray()
         )
         val tetrahedrons = JNIRasterizer.extractTetrahedrons(outArray)
-        return tetrahedrons.toMesh()
+        return tetrahedrons.toMesh().apply { this.type = MeshSourceType.D4 }
     }
 
     fun render(force: Boolean = false) {

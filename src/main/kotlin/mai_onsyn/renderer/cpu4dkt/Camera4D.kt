@@ -4,8 +4,11 @@ import org.joml.Vector4f
 import org.joml.plus
 import org.joml.plusAssign
 import org.joml.times
+import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.math.tan
 
 class Camera4D(
@@ -72,4 +75,50 @@ class Camera4D(
             0f, 0f, 0f, 1f, 0f
         )
     }
+
+    fun getCameraOrientation(): CameraOrientation {
+        val x = vx.normalize()
+        val y = vy.normalize()
+        val z = vz.normalize()
+        val w = vw.normalize()
+
+        // 1. 3D 传统姿态提取 (基于 X-Y-W 构成的 3D 投影)
+        // 视线在 3D 的水平偏航 (Yaw)
+        val yawRad = atan2(w.x, w.w)
+        // 视线在 3D 的垂直俯仰 (Pitch)
+        val pitchRad = asin(w.y.coerceIn(-1f, 1f))
+        // 上方向在 3D 的翻滚角 (Roll)
+        val rollRad = atan2(y.x, y.y)
+
+        // 2. 4D 各轴相对 Z 轴(第四维)的偏角 (Direct Angles to 4D Axis)
+        // 视线 vw 偏向 Z 的角度 (0° 代表完全在 3D，90° 代表直视第四维)
+        val fwdDepthRad = asin(w.z.coerceIn(-1f, 1f))
+        // 上方向 vy 偏向 Z 的角度
+        val upDepthRad = asin(y.z.coerceIn(-1f, 1f))
+        // 右方向 vx 偏向 Z 的角度
+        val rightDepthRad = asin(x.z.coerceIn(-1f, 1f))
+
+        return CameraOrientation(
+            yawDeg = Math.toDegrees(yawRad.toDouble()).toFloat(),
+            pitchDeg = Math.toDegrees(pitchRad.toDouble()).toFloat(),
+            rollDeg = Math.toDegrees(rollRad.toDouble()).toFloat(),
+            fwdDepthDeg = Math.toDegrees(fwdDepthRad.toDouble()).toFloat(),
+            upDepthDeg = Math.toDegrees(upDepthRad.toDouble()).toFloat(),
+            rightDepthDeg = Math.toDegrees(rightDepthRad.toDouble()).toFloat()
+        )
+    }
+}
+
+data class CameraOrientation(
+    // === 3D 姿态 (人脑最容易理解的部分) ===
+    val yawDeg: Float,     // 左右偏航 (rotateXW 主要是它在动)
+    val pitchDeg: Float,   // 上下俯仰 (rotateYW 主要是它在动)
+    val rollDeg: Float,    // 镜头翻滚 (rotateXY 主要是它在动)
+
+    // === 4D 侧倾 (相机各轴向第四维 Z 轴偏离的角度) ===
+    val fwdDepthDeg: Float,  // 主视线 vw 偏向 Z 轴的角度 (rotateZW 主要是它在动)
+    val upDepthDeg: Float,   // 上方向 vy 偏向 Z 轴的角度 (rotateYZ 主要是它在动)
+    val rightDepthDeg: Float // 右方向 vx 偏向 Z 轴的角度 (rotateXZ 主要是它在动)
+) {
+    override fun toString(): String = "Yaw: %.2f | Pitch: %.2f | Roll: %.2f | Depth: %.2f | Up: %.2f | Right: %.2f".format(yawDeg, pitchDeg, rollDeg, fwdDepthDeg, upDepthDeg, rightDepthDeg)
 }

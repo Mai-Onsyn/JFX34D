@@ -6,12 +6,14 @@ import com.huskerdev.openglfx.canvas.events.GLReshapeEvent
 import javafx.scene.paint.Color
 import mai_onsyn.renderer.ogl3d.data.GLMaterial
 import mai_onsyn.renderer.ogl3d.data.Mesh
+import mai_onsyn.renderer.ogl3d.data.MeshSourceType
 import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.ogl3d.data.Shader
 import mai_onsyn.renderer.utils.FrequencyCounter
 import org.joml.Vector3f
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
+import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import org.lwjgl.opengl.GL20.glGetUniformLocation
 import org.lwjgl.opengl.GL20.glUniform1f
 import org.lwjgl.opengl.GL20.glUniform3f
@@ -83,11 +85,13 @@ class GL3DEngine(
         GLMaterial.uMapBump = glGetUniformLocation(program, "material.mapBump")
 
         glEnable(GL_DEPTH_TEST)
-        // 当前像素按自己的 alpha 覆盖, 剩下的显示后面的像素: rgb = src*a + dst*(1-a)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        // 混合只在有透明材质时由 Mesh.draw 临时打开; 这里定好默认状态
-        glDepthMask(true)
-        glDisable(GL_BLEND)
+        // 混合全局开着, 别再按材质临时切: 切来切去容易和别处的状态打架。
+        //   rgb:   src*a + dst*(1-a)   普通的按 alpha 覆盖
+        //   alpha: dst*(1-a) + src     这一项很关键 —— 这块纹理是要交给 JavaFX 合成的,
+        //          用它 alpha 只会朝 1 靠, 不会因为透明面重叠而累加/饱和。
+        //          (之前用 GL_ONE, GL_ONE 累加, 重叠面一多 alpha 就飘, 画面会闪)
+        glEnable(GL_BLEND)
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
     }
 
     fun reshape(event: GLReshapeEvent) {
@@ -141,14 +145,21 @@ class GL3DEngine(
         glUniform1f(attnAPtr, attnA)
         glUniform1f(attnBPtr, attnB)
 
-        if (useOutlineRendering) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        // Mesh.draw 自己处理深度写入/混合 (透明材质分两趟), 外面只管调
+        // Mesh.draw 自己按材质组跑两趟 (实体先, 透明后), 外面只管调
         for (m in meshes) {
+            when (m.type) {
+                MeshSourceType.D3 -> {
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+                }
+                MeshSourceType.D4 -> {
+                    if (useOutlineRendering) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+                    else glPolygonMode(GL_FRONT, GL_FILL)
+                }
+            }
             m.draw(modelPtr, viewPos)
         }
 
-        val uploadedButRemoved = uploadedMeshes.filter { !scene.getMeshes().contains(it) }
-        val addedButNotUploaded = scene.getMeshes().filter { !uploadedMeshes.contains(it) }
+        val uploadedButRemoved = uploadedMeshes.filter { !meshes.contains(it) }
         uploadedButRemoved.forEach {
             it.dispose()
             uploadedMeshes.remove(it)

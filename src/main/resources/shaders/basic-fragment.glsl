@@ -35,11 +35,13 @@ uniform float attnB;
 void main() {
     // 有主贴图就 贴图 * kd, 否则退回顶点色
     vec4 base = uUseTexture ? texture(material.mapKd, vUV) * material.kd : vColor;
+    // 输出必须带上 alpha: 混合和 openglfx 合成都要靠它
+//    FragColor = vec4(base.rgb, base.a * material.d);
+
+
+    // ---- phone 光照, 之后要用时把上面 main 换掉 ----
     vec3 albedo = base.rgb;
     float alpha = base.a * material.d;
-
-    // 完全透明的像素丢掉, 不然它会写深度挡住后面的东西
-    if (uUseTexture && alpha <= 0.0) discard;
 
     // ---- phone 光照 ----
     vec3 N = normalize(vWorldNormal);
@@ -69,5 +71,5 @@ void main() {
     }
 
     FragColor = vec4(sum, alpha);
-//    FragColor = base;
 }
+

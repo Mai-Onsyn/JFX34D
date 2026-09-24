@@ -43,22 +43,30 @@ class GLMaterial(
         private set
 
     /**
-     * 材质带镂空/半透明 (贴图里有 alpha < 255 的像素)。
+     * 这个材质带的顶点里有没有非 1 的 alpha。由 Mesh 建组时写入,
+     * 因为顶点色本身也能表达透明度 (例如 ColorARGB(..., a = 0.2f))。
+     */
+    var vertexAlpha: Boolean = false
+
+    /**
+     * 材质带镂空/半透明: 贴图里有 alpha < 255 的像素, 或者顶点色 alpha != 1。
      * 这种组要放到透明那一遍里画: 关深度写入 + 开混合,
      * 让边缘像素按自己的 alpha 和后面的像素混合。
      */
     var transparent: Boolean = false
         private set
 
+    private var textureAlpha: Boolean = false
     private var alphaChecked = false
 
-    /** 不碰 GL, 只扫贴图的 alpha 通道; 建组时要用 (这时还没上传) */
+    /** 不碰 GL, 只扫一次贴图的 alpha 通道; 建组时要用 (这时还没上传) */
     fun checkTransparent(): Boolean {
         if (!alphaChecked) {
             val img = texture.mapKd
-            transparent = img != null && hasAlpha(img)
+            textureAlpha = img != null && hasAlpha(img)
             alphaChecked = true
         }
+        transparent = textureAlpha || vertexAlpha
         return transparent
     }
 

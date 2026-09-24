@@ -11,13 +11,18 @@ import org.lwjgl.opengl.GL20.glUniformMatrix4fv
 import org.lwjgl.opengl.GL30.*
 import java.nio.FloatBuffer
 
+enum class MeshSourceType {
+    D3, D4
+}
+
 class Mesh(
     /**
      * 顶点数据。外部线程往里面塞, 塞完把 [dirty] 置 true 通知渲染器。
      * 只加不改的话不用担心并发: 列表结构建好之后渲染器只是读。
      */
     val triangles: MutableList<Triangle> = mutableListOf(),
-    val transform: Transform = Transform.NONE
+    val transform: Transform = Transform.NONE,
+    var type: MeshSourceType = MeshSourceType.D3
 ) {
     /** 同一材质的连续三角形: EBO 里 [start, end) 这段索引共用一个材质 */
     class TriangleGroup(
@@ -98,12 +103,13 @@ class Mesh(
         }
     }
 
-    /** 边收集一组三角形, 边算这一组的包围盒中心 */
+    /** 边收集一组三角形, 边算这一组的包围盒中心, 边看有没有非 1 的顶点 alpha */
     private class GroupBuilder(val start: Int, val material: GLMaterial) {
         val min = Vector3f(BIG, BIG, BIG)
         val max = Vector3f(-BIG, -BIG, -BIG)
+        var vertexAlpha = false
 
-        fun expand(v: Vertex) {
+        fun add(v: Vertex) {
             val p = v.pos
             if (p.x < min.x) min.x = p.x
             if (p.y < min.y) min.y = p.y
@@ -111,16 +117,21 @@ class Mesh(
             if (p.x > max.x) max.x = p.x
             if (p.y > max.y) max.y = p.y
             if (p.z > max.z) max.z = p.z
+            if (v.color.alpha != 255) vertexAlpha = true
         }
 
-        fun build(end: Int): TriangleGroup = TriangleGroup(
-            start, end, material, material.checkTransparent(),
-            Vector3f(
-                (min.x + max.x) * 0.5f,
-                (min.y + max.y) * 0.5f,
-                (min.z + max.z) * 0.5f,
+        fun build(end: Int): TriangleGroup {
+            // 顶点 alpha 到这里才收集完, 补进材质: 贴图带 alpha 或 顶点带 alpha 都算透明
+            material.vertexAlpha = vertexAlpha
+            return TriangleGroup(
+                start, end, material, material.checkTransparent(),
+                Vector3f(
+                    (min.x + max.x) * 0.5f,
+                    (min.y + max.y) * 0.5f,
+                    (min.z + max.z) * 0.5f,
+                )
             )
-        )
+        }
     }
 
     private fun buildGLData(): GLMeshData {
@@ -141,9 +152,10 @@ class Mesh(
                 current?.let { groups.add(it.build(b.eboIdx)) }
                 current = GroupBuilder(b.eboIdx, material)
             }
-            current!!.expand(t.v0)
-            current!!.expand(t.v1)
-            current!!.expand(t.v2)
+            val g = current!!
+            g.add(t.v0)
+            g.add(t.v1)
+            g.add(t.v2)
             b.add(t.v0)
             b.add(t.v1)
             b.add(t.v2)
@@ -153,9 +165,7 @@ class Mesh(
         // 如果去重后没填满, 裁剪到真实长度；否则原样返回, 避免多余拷贝
         val vbo = if (b.vboFloatIdx == b.vbo.size) b.vbo else b.vbo.copyOf(b.vboFloatIdx)
         val ebo = if (b.eboIdx == b.ebo.size) b.ebo else b.ebo.copyOf(b.eboIdx)
-        return GLMeshData(vbo, ebo, groups).also {
-//            println("Build GL Data, groups = ${groups.size}, transparent = ${groups.count { g -> g.transparent }}")
-        }
+        return GLMeshData(vbo, ebo, groups)
     }
 
     /**
@@ -216,9 +226,9 @@ class Mesh(
      * 画这个 mesh —— 就这一个入口。
      *
      * 内部按材质组自己跑两趟, 外面不用关心:
-     *   不透明组: 正常写深度, 不混合
+     *   不透明组: 正常写深度 (混合是全局开着的, 源 alpha=1 时等价于直接覆盖)
      *   透明组:   关深度写入 + 开混合, 并按组中心从远到近排序
-     * 画完恢复成"写深度 + 不混合"的干净状态。
+     * 画完恢复成"写深度"的干净状态。
      *
      * @param cameraPos 世界空间相机位置, 透明排序用
      */
@@ -237,23 +247,22 @@ class Mesh(
 
         // 第一趟: 实体
         glDepthMask(true)
-        glDisable(GL_BLEND)
         for (g in groups) {
             if (!g.transparent) drawGroup(g)
         }
 
-        // 第二趟: 透明, 从远到近
+        // 第二趟: 透明, 从远到近。深度测试照旧开着, 只是不写深度,
+        // 所以透明物体不会挡住它后面的东西, 自己之间靠排序决定混合顺序
         glDepthMask(false)
-        glEnable(GL_BLEND)
+        val matrix = transform.matrix
+        val centerWS = Vector3f()
         for (g in groups.asSequence().filter { it.transparent }
-            .sortedByDescending { it.centerMS.distanceSquared(cameraPos) }) {
+            .sortedByDescending { matrix.transformPosition(it.centerMS, centerWS).distanceSquared(cameraPos) }) {
             drawGroup(g)
         }
 
-        // 还原成"干净"状态: 写深度 + 不混合 (透明组才临时开混合)
-        // 不查 GL 拿旧状态, 免得每帧同步一次
+        // 还原成"写深度"的干净状态
         glDepthMask(true)
-        glDisable(GL_BLEND)
 
         glBindVertexArray(0)
     }

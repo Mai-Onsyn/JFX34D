@@ -16,6 +16,8 @@ import mai_onsyn.renderer.cpu4dkt.generator.constructHypercubeWithCellColors
 import mai_onsyn.renderer.interfaces.RendererInterface
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.*
+import mai_onsyn.renderer.ogl3d.generator.CubeFace
+import mai_onsyn.renderer.ogl3d.generator.createCube
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
 import org.joml.Matrix4f
 import org.joml.Vector2f
@@ -36,14 +38,27 @@ fun start4DTest2(stage: Stage) {
 
     val region = GL4DRegion()
     region.scene4D.meshList.add(Mesh4D(constructHypercubeWithCellColors(edgeLength = 1f)))
-    region.setOutlineRendering(true)
+    region.scene3D.meshList.add(Mesh(createCube(colorOf = { face ->
+        when (face) {
+            CubeFace.TOP    -> ColorARGB(1f, 0f, 0f, 0.1f)
+            CubeFace.BOTTOM -> ColorARGB(0f, 1f, 0f, 0.1f)
+            CubeFace.LEFT   -> ColorARGB(0f, 0f, 1f, 0.1f)
+            CubeFace.RIGHT  -> ColorARGB(1f, 1f, 0f, 0.1f)
+            CubeFace.FRONT  -> ColorARGB(0f, 1f, 1f, 0.1f)
+            CubeFace.BACK   -> ColorARGB(1f, 0f, 1f, 0.1f)
+        }
+    })))
+    region.setOutlineRendering(false)
 
     val pos3Label = Label("pos")
     val pos4Label = Label("pos")
+    val cam4Label = Label("cam")
     pos3Label.font = Font(18.0)
     pos4Label.font = Font(18.0)
+    cam4Label.font = Font(18.0)
     pos3Label.textFill = Color.WHITE
     pos4Label.textFill = Color.WHITE
+    cam4Label.textFill = Color.WHITE
     Thread.ofVirtual().start {
         while (!Thread.currentThread().isInterrupted) {
             Platform.runLater {
@@ -51,6 +66,7 @@ fun start4DTest2(stage: Stage) {
                 val pos4 = region.scene4D.getCamera().pos
                 pos3Label.text = "3D Pos = (%.2f, %.2f, %.2f)".format(pos3.x, pos3.y, pos3.z)
                 pos4Label.text = "4D Pos = (%.2f, %.2f, %.2f, %.2f)".format(pos4.x, pos4.y, pos4.z, pos4.w)
+                cam4Label.text = "4D Cam = ${region.scene4D.getCamera().getCameraOrientation()}"
             }
             Thread.sleep(100)
         }
@@ -60,6 +76,7 @@ fun start4DTest2(stage: Stage) {
     val column = Column()
     column.add(pos3Label)
     column.add(pos4Label)
+    column.add(cam4Label)
     box.add(column, modifier.padding(top = 16.0, left = 16.0))
 
     RendererInterfaceInitializer.initialize(region)

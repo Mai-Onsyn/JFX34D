@@ -18,6 +18,8 @@ class GL4DRegion(
     private var enable4DInput = false
     private val movement = MovementState()
 
+    private var altPressed = false
+
     var maxFPS: Int
         get() = renderer.maxFPS
         set(value) {
@@ -48,6 +50,25 @@ class GL4DRegion(
                 KeyCode.SHIFT -> movement.down = 1f
                 KeyCode.E -> movement.ana = 1f
                 KeyCode.Q -> movement.negAna = 1f
+
+                KeyCode.COMMA -> if (altPressed) movement.nzw = 1f else movement.nxy = 1f
+                KeyCode.PERIOD -> if (altPressed) movement.zw = 1f else movement.xy = 1f
+
+                KeyCode.LEFT -> if (altPressed) movement.nxw = 1f else movement.nxz = 1f
+                KeyCode.RIGHT -> if (altPressed) movement.xw = 1f else movement.xz = 1f
+
+                KeyCode.UP -> if (altPressed) movement.nyw = 1f else movement.nyz = 1f
+                KeyCode.DOWN -> if (altPressed) movement.yw = 1f else movement.yz = 1f
+
+                KeyCode.ALT -> {
+                    altPressed = true
+                    movement.nxy = 0f
+                    movement.xy = 0f
+                    movement.nxw = 0f
+                    movement.xw = 0f
+                    movement.nyw = 0f
+                    movement.yw = 0f
+                }
                 else -> {}
             }
         }
@@ -62,6 +83,25 @@ class GL4DRegion(
                 KeyCode.SHIFT -> movement.down = 0f
                 KeyCode.E -> movement.ana = 0f
                 KeyCode.Q -> movement.negAna = 0f
+
+                KeyCode.COMMA -> if (altPressed) movement.nzw = 0f else movement.nxy = 0f
+                KeyCode.PERIOD -> if (altPressed) movement.zw = 0f else movement.xy = 0f
+
+                KeyCode.LEFT -> if (altPressed) movement.nxw = 0f else movement.nxz = 0f
+                KeyCode.RIGHT -> if (altPressed) movement.xw = 0f else movement.xz = 0f
+
+                KeyCode.UP -> if (altPressed) movement.nyw = 0f else movement.nyz = 0f
+                KeyCode.DOWN -> if (altPressed) movement.yw = 0f else movement.yz = 0f
+
+                KeyCode.ALT -> {
+                    altPressed = false
+                    movement.nzw = 0f
+                    movement.zw = 0f
+                    movement.nxz = 0f
+                    movement.xz = 0f
+                    movement.nyz = 0f
+                    movement.yz = 0f
+                }
                 else -> {}
             }
         }
@@ -71,7 +111,8 @@ class GL4DRegion(
 
     private fun startKeyEventHandlerThread() {
         Thread.ofVirtual().name("4D Region Key Event Handler").start {
-            val moveSpeed = 0.001f
+            val moveSpeed = 0.004f
+            val mouseSpeed = 0.0005f
             fixedFrame(1000, { !Thread.currentThread().isInterrupted }) {
                 if (!enable4DInput) {
                     Thread.sleep(500)
@@ -87,6 +128,20 @@ class GL4DRegion(
                 if (deltaY != 0f) scene4D.camera4D.moveUp(deltaY)
                 if (deltaZ != 0f) scene4D.camera4D.moveAna(deltaZ)
                 if (deltaW != 0f) scene4D.camera4D.moveForward(deltaW)
+
+                val deltaXY = mouseSpeed * (movement.xy - movement.nxy)
+                val deltaXZ = mouseSpeed * (movement.xz - movement.nxz)
+                val deltaXW = mouseSpeed * (movement.xw - movement.nxw)
+                val deltaYZ = mouseSpeed * (movement.yz - movement.nyz)
+                val deltaYW = mouseSpeed * (movement.yw - movement.nyw)
+                val deltaZW = mouseSpeed * (movement.zw - movement.nzw)
+
+                if (deltaXY != 0f) scene4D.camera4D.rotateXY(deltaXY)
+                if (deltaXZ != 0f) scene4D.camera4D.rotateXZ(deltaXZ)
+                if (deltaXW != 0f) scene4D.camera4D.rotateXW(deltaXW)
+                if (deltaYZ != 0f) scene4D.camera4D.rotateYZ(deltaYZ)
+                if (deltaYW != 0f) scene4D.camera4D.rotateYW(deltaYW)
+                if (deltaZW != 0f) scene4D.camera4D.rotateZW(deltaZW)
             }
         }
     }
@@ -107,5 +162,12 @@ private class MovementState(
     var xw: Float = 0f,
     var yz: Float = 0f,
     var yw: Float = 0f,
-    var zw: Float = 0f
+    var zw: Float = 0f,
+
+    var nxy: Float = 0f,
+    var nxz: Float = 0f,
+    var nxw: Float = 0f,
+    var nyz: Float = 0f,
+    var nyw: Float = 0f,
+    var nzw: Float = 0f
 )
