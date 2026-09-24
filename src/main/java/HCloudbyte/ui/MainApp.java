@@ -3,14 +3,10 @@ package HCloudbyte.ui;
 import atlantafx.base.theme.PrimerLight;
 import javafx.application.Application;
 import javafx.geometry.Insets;
-import javafx.scene.CacheHint;
 import javafx.scene.Scene;
-import javafx.scene.effect.GaussianBlur;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import mai_onsyn.renderer.core.GL4DRegion;
 import mai_onsyn.renderer.cpu4dkt.Mesh4D;
@@ -18,22 +14,26 @@ import mai_onsyn.renderer.cpu4dkt.generator.HypercubeKt;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 import mai_onsyn.renderer.ogl3d.data.ColorARGB;
 import org.joml.Vector4f;
+import weilantianhai.agent.execute.CommandExecutor;
+import weilantianhai.agent.interfaces.AgentInterface;
+import weilantianhai.agent.llm.LLMClient;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 主应用：组装背景、顶栏、视口、右侧面板、状态栏，并负责手写/语音模式切换。
+ * 主应用：组装顶栏、黑色 GL 视口、右侧面板、状态栏，并负责手写/语音模式切换。
  * 各面板拆分为独立类，此处只做装配与接线。
+ * 注意：浅色渐变背景层已移除（即黑色 GL 窗口下面被遮住的浅色画布 UI），窗口底色为浅色。
  *
  * <p>【接口调用】（AI Api Interface document v2.md §0.1，直接调用 Kotlin 侧已定义接口）
  * <ul>
  *   <li>视口：创建 {@link GL4DRegion}（渲染 + 内置 4D 键盘），加一个超立方体演示模型，开线框渲染</li>
- *   <li>绑定：{@code RendererInterface.init(region.getScene4D().getCamera())} —— 等价 start4DTest2 里
- *       RendererInterfaceInitializer.initialize(region) 的用法，把 RendererInterface 绑定到视口的
- *       scene4D.camera4D，UI 的 getCamera() 与视口键盘共用同一摄像机</li>
- *   <li>创建各面板时传入：{@code ViewportPanel(RendererInterface, GL4DRegion)}、
+ *   <li>绑定：{@code RendererInterface.init(region)} —— 等价 start4DTest2 里
+ *       RendererInterfaceInitializer.initialize(region) 的用法，把 RendererInterface 绑定到
+ *       GL4DRegion 的 scene4D.camera4D，UI 的 getCamera() 与视口键盘共用同一摄像机</li>
+ *   <li>创建各面板时传入：{@code ViewportPanel(GL4DRegion)}、
  *       {@code PropertyPanel(RendererInterface)}、{@code StatusBar(RendererInterface)}</li>
  *   <li>手写/语音模式切换本身是 UI 状态（isVisible），不调用接口</li>
  * </ul>
@@ -43,7 +43,6 @@ public class MainApp extends Application {
     private PropertyPanel propertyView;
     private ChatPanel chatView;
     private mai_onsyn.renderer.interfaces.RendererInterface renderer;   // Kotlin 侧已定义接口，直接调用
-    // AgentService agentService;          // v2 文档 §2，后端 TODO，暂不接入
 
     @Override
     public void start(Stage stage) {
@@ -59,15 +58,14 @@ public class MainApp extends Application {
         RendererInterface.Companion.init(region);
         renderer = RendererInterface.Companion.getINSTANCE();
 
-        StackPane rootStack = new StackPane();
-        Pane background = buildGlassBackground();
-        background.setMouseTransparent(true);
+        // 初始化 Agent（agent 侧已实现，UI 只负责调用）：
+        // sendToLLM = 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer → 黑色视口响应
+        AgentInterface.initialize(new LLMClient(), new CommandExecutor(renderer));
 
         BorderPane layoutRoot = buildLayout(region);
 
-        rootStack.getChildren().addAll(background, layoutRoot);
-
-        Scene scene = new Scene(rootStack, 1400, 900);
+        Scene scene = new Scene(layoutRoot, 1600, 1000);
+        scene.setFill(Color.web("#eef2f7"));   // 窗口底色保持浅色（与原背景同色调），背景画布（彩色圆）已删
         stage.setTitle("JFX 34D");
         stage.setScene(scene);
         stage.show();
@@ -81,7 +79,7 @@ public class MainApp extends Application {
 
         TopBar top = new TopBar(index -> switchRightPanel(index == 1));
         // 接口调用：TopBar 增加保存/打开后 → IOInterface#saveModel / #loadModel（后端 TODO，暂不接）
-        ViewportPanel center = new ViewportPanel(renderer, region);
+        ViewportPanel center = new ViewportPanel(region);
         // 接口调用：视口 = GL4DRegion（渲染 + 内置键盘），RendererInterface 已绑定其摄像机（§3.1 ✅）
         StackPane right = buildRightPanel();
         StatusBar bottom = new StatusBar(renderer);
@@ -129,24 +127,6 @@ public class MainApp extends Application {
     private void switchRightPanel(boolean voiceMode) {
         propertyView.setVisible(!voiceMode);
         chatView.setVisible(voiceMode);
-    }
-
-    /* ==================== 背景 ==================== */
-
-    private Pane buildGlassBackground() {
-        Pane bg = new Pane();
-        bg.setStyle("-fx-background-color: linear-gradient(to bottom right, #eef2f7, #f7f0f5);");
-
-        Circle c1 = new Circle(260, 180, 400, Color.web("#4a90e2", 0.55));
-        Circle c2 = new Circle(1150, 160, 5000, Color.web("#9b59b6", 0.45));
-        Circle c3 = new Circle(180, 760, 250, Color.web("#1abc9c", 0.42));
-        Circle c4 = new Circle(1250, 780, 290, Color.web("#ff6b9d", 0.45));
-
-        bg.getChildren().addAll(c1, c2, c3, c4);
-        bg.setEffect(new GaussianBlur(60));
-        bg.setCache(true);
-        bg.setCacheHint(CacheHint.QUALITY);
-        return bg;
     }
 
     public static void main(String[] args) {

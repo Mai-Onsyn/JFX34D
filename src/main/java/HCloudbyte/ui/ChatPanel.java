@@ -1,7 +1,5 @@
 package HCloudbyte.ui;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -14,24 +12,35 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.util.Duration;
+import weilantianhai.agent.interfaces.AgentInterface;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 右侧聊天视图（语音建模模式）。
- * 当前为模拟对话：用 Timeline 假扮 AI 思考过程，尚未接入 AgentInterface。
- *
- * <p>【接口接线点】（AI Api Interface document v2.md §2）
- * <ul>
- *   <li>发送消息 → {@link AgentService#send(String, String)}（userMessage + contextMarkdown），
- *       返回 {@code CompletableFuture<AgentService.ChatTurn>}</li>
- *   <li>contextMarkdown（场景上下文）由场景快照拼装：
- *       {@code ModelInterface#listModel()}（§4.1.1）+ {@code GeometryInterface#getModelInfos(name)}（§6.1）</li>
- *   <li>执行轨迹 steps → {@code AgentService.ChatTurn#steps()}（逐条打勾展示）</li>
- *   <li>最终回复 → {@code AgentService.ChatTurn#reply()}；结果 markdown → {@code #resultMarkdown()}</li>
- *   <li>AI 返回的 operations 落点：RendererInterface 六个子接口（camera / model / transform / shape / geometry / io）</li>
- * </ul>
+ * 已接入 agent 侧 {@link AgentInterface}：发送消息 → LLM 翻译成 IR JSON → CommandExecutor 执行到
+ * RendererInterface（黑色 GL 视口响应）。sendToLLM 为 void 且由 agent 内部吞掉异常，UI 只负责触发与状态提示。
  */
 public class ChatPanel extends VBox {
+
+    /** 发送中气泡样式。 */
+    private static final String STYLE_SENDING =
+            "-fx-background-color: rgba(255,255,255,0.95);" +
+                    "-fx-background-radius: 14;" +
+                    "-fx-text-fill: #666;" +
+                    "-fx-font-size: 12px;";
+    /** 执行成功气泡样式。 */
+    private static final String STYLE_SUCCESS =
+            "-fx-background-color: rgba(40,167,69,0.12);" +
+                    "-fx-background-radius: 14;" +
+                    "-fx-text-fill: #1a7f37;" +
+                    "-fx-font-size: 12px;";
+    /** 执行失败气泡样式。 */
+    private static final String STYLE_ERROR =
+            "-fx-background-color: rgba(220,53,69,0.12);" +
+                    "-fx-background-radius: 14;" +
+                    "-fx-text-fill: #c0392b;" +
+                    "-fx-font-size: 12px;";
 
     private final VBox chatMessages;
     private final ScrollPane chatScroll;
@@ -84,111 +93,59 @@ public class ChatPanel extends VBox {
         );
     }
 
-    /** 发送一条用户消息并播放 AI 模拟回复动画。 */
+    /** 发送一条用户消息给 Agent：LLM 翻译 → IR 执行到黑色 GL 视口。 */
     private void handleUserMessage(String text) {
-        // 【接口接线】真实实现时替换下方 Timeline 模拟：
-        //   1) 拼装 contextMarkdown：renderer.model().listModel() + renderer.geometry().getModelInfos(...)
-        //   2) agentService.send(text, contextMarkdown).thenAccept(turn -> {
-        //        // 用 turn.steps() 逐条打勾、turn.reply() 更新气泡、turn.resultMarkdown() 可调试
-        //      });
-        chatMessages.getChildren().add(buildBubble("user", text));
+        chatMessages.getChildren().add(buildUserBubble(text));
 
-        VBox aiBubble = new VBox(6);
-        aiBubble.setPadding(new Insets(8, 12, 8, 12));
-        aiBubble.setMaxWidth(220);
-        aiBubble.setStyle(
-                "-fx-background-color: rgba(255,255,255,0.95);" +
-                        "-fx-background-radius: 14;"
-        );
-
-        Label thinking = new Label("正在思考中…");
-        thinking.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
-        aiBubble.getChildren().add(thinking);
-
-        HBox aiRow = new HBox(aiBubble);
+        Label feedback = new Label("已发送给 Agent，正在执行…");
+        feedback.setWrapText(true);
+        feedback.setMaxWidth(220);
+        feedback.setPadding(new Insets(8, 12, 8, 12));
+        feedback.setStyle(STYLE_SENDING);
+        HBox aiRow = new HBox(feedback);
         aiRow.setAlignment(Pos.CENTER_LEFT);
         chatMessages.getChildren().add(aiRow);
-
         scrollToBottom();
 
-        String[] steps = {
-                "理解需求",
-                "检索四维模板",
-                "生成操作指令",
-                "执行建模"
-        };
-        // 接口接线：steps 对应 AgentService.ChatTurn#steps() 的执行轨迹
-
-        Timeline timeline = new Timeline();
-        KeyFrame replaceFrame = new KeyFrame(Duration.millis(600), e -> {
-            aiBubble.getChildren().clear();
-            VBox stepsBox = new VBox(6);
-            for (int i = 0; i < steps.length; i++) {
-                Label stepLabel = new Label("○ " + steps[i]);
-                stepLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #999;");
-                stepsBox.getChildren().add(stepLabel);
+        // 接口调用：AgentInterface#sendToLLM —— 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer（黑色视口响应）。
+        // sendToLLM 是阻塞调用（LLM 网络请求 + 操作间延迟），必须放后台线程；完成后回 UI 线程更新状态。
+        CompletableFuture.runAsync(() -> {
+            try {
+                AgentInterface.getInstance().sendToLLM(text);
+                Platform.runLater(() -> {
+                    feedback.setText("指令已执行，观察左侧视口变化。");
+                    feedback.setStyle(STYLE_SUCCESS);
+                    scrollToBottom();
+                });
+            } catch (Throwable t) {
+                // AgentInterface 未初始化 / 网络失败等情况（getInstance 抛 Error，故捕 Throwable）
+                Platform.runLater(() -> {
+                    feedback.setText("指令执行失败：" + t.getMessage());
+                    feedback.setStyle(STYLE_ERROR);
+                    scrollToBottom();
+                });
             }
-            aiBubble.getChildren().add(stepsBox);
-
-            Timeline stepTimeline = new Timeline();
-            for (int i = 0; i < steps.length; i++) {
-                final int idx = i;
-                KeyFrame kf = new KeyFrame(
-                        Duration.millis(700 + idx * 500),
-                        ev -> {
-                            Label stepLabel = (Label) stepsBox.getChildren().get(idx);
-                            stepLabel.setText("✓ " + steps[idx]);
-                            stepLabel.setStyle(
-                                    "-fx-font-size: 12px;" +
-                                            "-fx-text-fill: #28a745;" +
-                                            "-fx-font-weight: bold;"
-                            );
-                            scrollToBottom();
-                        }
-                );
-                stepTimeline.getKeyFrames().add(kf);
-            }
-
-            KeyFrame finalFrame = new KeyFrame(
-                    Duration.millis(700 + steps.length * 500 + 300),
-                    ev -> {
-                        Label result = new Label("已创建 Tesseract 001，共 16 个顶点、8 个胞。");
-                        // 接口接线：最终回复对应 AgentService.ChatTurn#reply()（数量来自 GeometryInterface#getModelInfos）
-                        result.setWrapText(true);
-                        result.setMaxWidth(200);
-                        result.setPadding(new Insets(6, 0, 0, 0));
-                        result.setStyle("-fx-font-size: 12px; -fx-text-fill: #222;");
-                        aiBubble.getChildren().add(result);
-                        scrollToBottom();
-                    }
-            );
-            stepTimeline.getKeyFrames().add(finalFrame);
-            stepTimeline.play();
         });
-        timeline.getKeyFrames().add(replaceFrame);
-        timeline.play();
     }
 
     private void scrollToBottom() {
         Platform.runLater(() -> chatScroll.setVvalue(1.0));
     }
 
-    private HBox buildBubble(String role, String msg) {
-        boolean isUser = "user".equals(role);
-
+    /** 用户消息气泡（蓝底白字）。 */
+    private HBox buildUserBubble(String msg) {
         Label label = new Label(msg);
         label.setWrapText(true);
         label.setMaxWidth(220);
         label.setPadding(new Insets(8, 12, 8, 12));
         label.setStyle(
-                "-fx-background-color: " + (isUser ? "rgba(74,144,226,0.9)" : "rgba(255,255,255,0.95)") + ";" +
+                "-fx-background-color: rgba(74,144,226,0.9);" +
                         "-fx-background-radius: 14;" +
-                        "-fx-text-fill: " + (isUser ? "white" : "#222") + ";" +
+                        "-fx-text-fill: white;" +
                         "-fx-font-size: 12px;"
         );
-
         HBox row = new HBox(label);
-        row.setAlignment(isUser ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        row.setAlignment(Pos.CENTER_RIGHT);
         return row;
     }
 }
