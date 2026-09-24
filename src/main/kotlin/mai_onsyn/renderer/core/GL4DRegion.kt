@@ -18,7 +18,7 @@ class GL4DRegion(
     private var enable4DInput = false
     private val movement = MovementState()
 
-    private var altPressed = false
+    private var switchPressed = false
 
     var maxFPS: Int
         get() = renderer.maxFPS
@@ -33,14 +33,15 @@ class GL4DRegion(
     init {
         renderer.start()
 
-        this.addEventFilter(KeyEvent.KEY_PRESSED) {
+        this.addEventHandler(KeyEvent.KEY_PRESSED) {
             if (it.code == KeyCode.I) {
                 this.enableInput = !this.enableInput
                 enable4DInput = !this.enableInput
             }
 
-            if (!enable4DInput) return@addEventFilter
+            if (!enable4DInput) return@addEventHandler
 
+            var consume = true
             when (it.code) {
                 KeyCode.W -> movement.forward = 1f
                 KeyCode.S -> movement.back = 1f
@@ -51,17 +52,17 @@ class GL4DRegion(
                 KeyCode.E -> movement.ana = 1f
                 KeyCode.Q -> movement.negAna = 1f
 
-                KeyCode.COMMA -> if (altPressed) movement.nzw = 1f else movement.nxy = 1f
-                KeyCode.PERIOD -> if (altPressed) movement.zw = 1f else movement.xy = 1f
+                KeyCode.COMMA -> if (switchPressed) movement.nzw = 1f else movement.nxy = 1f
+                KeyCode.PERIOD -> if (switchPressed) movement.zw = 1f else movement.xy = 1f
 
-                KeyCode.LEFT -> if (altPressed) movement.nxw = 1f else movement.nxz = 1f
-                KeyCode.RIGHT -> if (altPressed) movement.xw = 1f else movement.xz = 1f
+                KeyCode.LEFT -> if (switchPressed) movement.nxw = 1f else movement.nxz = 1f
+                KeyCode.RIGHT -> if (switchPressed) movement.xw = 1f else movement.xz = 1f
 
-                KeyCode.UP -> if (altPressed) movement.nyw = 1f else movement.nyz = 1f
-                KeyCode.DOWN -> if (altPressed) movement.yw = 1f else movement.yz = 1f
+                KeyCode.UP -> if (switchPressed) movement.nyw = 1f else movement.nyz = 1f
+                KeyCode.DOWN -> if (switchPressed) movement.yw = 1f else movement.yz = 1f
 
-                KeyCode.ALT -> {
-                    altPressed = true
+                KeyCode.R, KeyCode.ALT -> {
+                    switchPressed = true
                     movement.nxy = 0f
                     movement.xy = 0f
                     movement.nxw = 0f
@@ -69,11 +70,13 @@ class GL4DRegion(
                     movement.nyw = 0f
                     movement.yw = 0f
                 }
-                else -> {}
+                else -> consume = false
             }
+            if (consume) it.consume()
         }
         
-        this.addEventFilter(KeyEvent.KEY_RELEASED) {
+        this.addEventHandler(KeyEvent.KEY_RELEASED) {
+            var consume = true
             when (it.code) {
                 KeyCode.W -> movement.forward = 0f
                 KeyCode.S -> movement.back = 0f
@@ -84,17 +87,17 @@ class GL4DRegion(
                 KeyCode.E -> movement.ana = 0f
                 KeyCode.Q -> movement.negAna = 0f
 
-                KeyCode.COMMA -> if (altPressed) movement.nzw = 0f else movement.nxy = 0f
-                KeyCode.PERIOD -> if (altPressed) movement.zw = 0f else movement.xy = 0f
+                KeyCode.COMMA -> if (switchPressed) movement.nzw = 0f else movement.nxy = 0f
+                KeyCode.PERIOD -> if (switchPressed) movement.zw = 0f else movement.xy = 0f
 
-                KeyCode.LEFT -> if (altPressed) movement.nxw = 0f else movement.nxz = 0f
-                KeyCode.RIGHT -> if (altPressed) movement.xw = 0f else movement.xz = 0f
+                KeyCode.LEFT -> if (switchPressed) movement.nxw = 0f else movement.nxz = 0f
+                KeyCode.RIGHT -> if (switchPressed) movement.xw = 0f else movement.xz = 0f
 
-                KeyCode.UP -> if (altPressed) movement.nyw = 0f else movement.nyz = 0f
-                KeyCode.DOWN -> if (altPressed) movement.yw = 0f else movement.yz = 0f
+                KeyCode.UP -> if (switchPressed) movement.nyw = 0f else movement.nyz = 0f
+                KeyCode.DOWN -> if (switchPressed) movement.yw = 0f else movement.yz = 0f
 
-                KeyCode.ALT -> {
-                    altPressed = false
+                KeyCode.R, KeyCode.ALT -> {
+                    switchPressed = false
                     movement.nzw = 0f
                     movement.zw = 0f
                     movement.nxz = 0f
@@ -102,8 +105,9 @@ class GL4DRegion(
                     movement.nyz = 0f
                     movement.yz = 0f
                 }
-                else -> {}
+                else -> consume = false
             }
+            if (consume) it.consume()
         }
 
         startKeyEventHandlerThread()
