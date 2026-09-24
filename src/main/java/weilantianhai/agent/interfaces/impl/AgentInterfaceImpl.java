@@ -1,15 +1,37 @@
-import javafx.application.Application;
-import javafx.scene.Scene;
-import javafx.stage.Stage;
-import mai_onsyn.renderer.core.GL4DRegion;
-import mai_onsyn.renderer.cpu4dkt.Mesh4D;
-import mai_onsyn.renderer.cpu4dkt.generator.HypercubeKt;
-import mai_onsyn.renderer.interfaces.RendererInterface;
+package weilantianhai.agent.interfaces.impl;
 
 import weilantianhai.agent.execute.CommandExecutor;
+import weilantianhai.agent.interfaces.AgentInterface;
 import weilantianhai.agent.llm.LLMClient;
 
-public class agentTest extends Application {
+public class AgentInterfaceImpl implements AgentInterface {
+    private final LLMClient client;
+    private final CommandExecutor executor;
+
+    public AgentInterfaceImpl(LLMClient client, CommandExecutor executor) {
+        this.client = client;
+        this.executor = executor;
+    }
+
+    @Override
+    public void sendToLLM(String userInput) {
+        try {
+            System.out.println("=== 用户输入 ===\n" + userInput);
+
+            String json = client.chat(SYSTEM_PROMPT, userInput);
+            System.out.println("\n=== LLM JSON ===\n" + json);
+
+            String md = executor.execute(json);
+            System.out.println("\n=== Markdown ===\n" + md);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void startThread() {
+        System.out.println("aaa");
+    }
 
     private static final String SYSTEM_PROMPT = """
 你是 JFX34D 四维建模助手 Agent，负责把用户的自然语言指令翻译成四维操作 JSON。
@@ -59,46 +81,4 @@ distance 为正数表示沿正方向，负数表示反方向。
 用户：你好
 输出：{"version":1,"done":true,"operations":[]}
             """;
-
-    @Override
-    public void start(Stage stage) throws Exception {
-        GL4DRegion region = new GL4DRegion();
-        region.setOutlineRendering(true);
-        region.getScene4D().getMeshList().add(new Mesh4D(HypercubeKt.constructHypercubeWithCellColors()));
-        RendererInterface.Companion.init(region);
-
-        stage.setScene(new Scene(region, 800, 600));
-        stage.show();
-
-        // 窗口起来后，起后台线程跑 Agent
-        Thread agentThread = new Thread(this::runAgent, "agent-test");
-        agentThread.setDaemon(true);
-        agentThread.start();
-    }
-
-    private void runAgent() {
-        try {
-            Thread.sleep(500);   // 给窗口留一点就绪时间
-
-            LLMClient client = new LLMClient();
-            CommandExecutor executor = new CommandExecutor(RendererInterface.Companion.getINSTANCE());
-
-            String userInput = "向上5，向左3，向后4，第四维正方向3，向后3，向右7";
-            System.out.println("=== 用户输入 ===\n" + userInput);
-
-            String json = client.chat(SYSTEM_PROMPT, userInput);
-            System.out.println("\n=== LLM JSON ===\n" + json);
-
-            String md = executor.execute(json);
-            System.out.println("\n=== Markdown ===\n" + md);
-
-        } catch (Throwable t) {
-            System.out.println("\n!!! Agent 执行失败 !!!");
-            t.printStackTrace(System.out);
-        }
-    }
-
-    public static void main(String[] args) {
-        launch(args);
-    }
 }
