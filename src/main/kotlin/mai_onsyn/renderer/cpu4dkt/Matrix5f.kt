@@ -39,6 +39,10 @@ class Matrix5f(
         return data[i]
     }
 
+    operator fun set(i: Int, v: Float) {
+        data[i] = v
+    }
+
     /**
      * 行主序，与joml(列主序)不同
      */

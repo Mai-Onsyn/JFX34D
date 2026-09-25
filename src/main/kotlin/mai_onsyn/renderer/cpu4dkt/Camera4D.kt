@@ -1,14 +1,19 @@
 package mai_onsyn.renderer.cpu4dkt
 
+import org.joml.Matrix3f
+import org.joml.Matrix4f
+import org.joml.Vector3f
 import org.joml.Vector4f
+import org.joml.Math.toDegrees
+import org.joml.minus
 import org.joml.plus
-import org.joml.plusAssign
 import org.joml.times
+import kotlin.math.abs
+import kotlin.math.acos
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 import kotlin.math.tan
 
 class Camera4D(
@@ -77,36 +82,85 @@ class Camera4D(
     }
 
     fun getCameraOrientation(): CameraOrientation {
-        val x = vx.normalize()
-        val y = vy.normalize()
-        val z = vz.normalize()
-        val w = vw.normalize()
+        // 1. XZ 平面：计算 vx 与 vz 在 (X, Z) 子空间构成的旋转角
+        // 使用 vx.z 和 vz.z (或 vx.x 与 vx.z 的组合)，直接抓取 XZ 平面的旋转相位
+        val xzRad = atan2(vx.z, vx.x)
 
-        // 1. 3D 传统姿态提取 (基于 X-Y-W 构成的 3D 投影)
-        // 视线在 3D 的水平偏航 (Yaw)
-        val yawRad = atan2(w.x, w.w)
-        // 视线在 3D 的垂直俯仰 (Pitch)
-        val pitchRad = asin(w.y.coerceIn(-1f, 1f))
-        // 上方向在 3D 的翻滚角 (Roll)
-        val rollRad = atan2(y.x, y.y)
+        // 2. XY 平面：vx 在 (X, Y) 平面上的相位
+        val xyRad = atan2(vx.y, vx.x)
 
-        // 2. 4D 各轴相对 Z 轴(第四维)的偏角 (Direct Angles to 4D Axis)
-        // 视线 vw 偏向 Z 的角度 (0° 代表完全在 3D，90° 代表直视第四维)
-        val fwdDepthRad = asin(w.z.coerceIn(-1f, 1f))
-        // 上方向 vy 偏向 Z 的角度
-        val upDepthRad = asin(y.z.coerceIn(-1f, 1f))
-        // 右方向 vx 偏向 Z 的角度
-        val rightDepthRad = asin(x.z.coerceIn(-1f, 1f))
+        // 3. XW 平面：vx 在 (X, W) 平面上的相位
+        val xwRad = atan2(vx.w, vx.x)
+
+        // 4. YZ 平面：vy 在 (Y, Z) 平面上的相位
+        val yzRad = atan2(vy.z, vy.y)
+
+        // 5. YW 平面：vy 在 (Y, W) 平面上的相位
+        val ywRad = atan2(vy.w, vy.y)
+
+        // 6. ZW 平面：vz 在 (Z, W) 平面上的相位 (或 vw.z 与 vw.w)
+        val zwRad = atan2(vz.w, vz.z)
 
         return CameraOrientation(
-            yawDeg = Math.toDegrees(yawRad.toDouble()).toFloat(),
-            pitchDeg = Math.toDegrees(pitchRad.toDouble()).toFloat(),
-            rollDeg = Math.toDegrees(rollRad.toDouble()).toFloat(),
-            fwdDepthDeg = Math.toDegrees(fwdDepthRad.toDouble()).toFloat(),
-            upDepthDeg = Math.toDegrees(upDepthRad.toDouble()).toFloat(),
-            rightDepthDeg = Math.toDegrees(rightDepthRad.toDouble()).toFloat()
+            Math.toDegrees(xyRad.toDouble()).toFloat(),
+            Math.toDegrees(xzRad.toDouble()).toFloat(),
+            Math.toDegrees(xwRad.toDouble()).toFloat(),
+            Math.toDegrees(yzRad.toDouble()).toFloat(),
+            Math.toDegrees(ywRad.toDouble()).toFloat(),
+            Math.toDegrees(zwRad.toDouble()).toFloat()
         )
     }
+
+    fun getCameraOrientation2(): CameraOrientation {
+        val theta1 = acos(vw.w)
+        val theta2: Float
+        val theta3: Float
+        if (sin(theta1) > 1e-6f) {
+            theta2 = acos(vw.z / sin(theta1))
+            theta3 = atan2(vw.y, vw.x)
+        } else {
+            theta2 = 0f
+            theta3 = 0f
+        }
+
+        val e4 = Vector4f(0f, 0f, 0f, 1f)
+        val rLook = if ((e4 - vw).length() < 1e-6f) {
+            Matrix4f()
+        } else {
+            val v = e4 - vw
+            val h = Matrix4f() - 2f * squareBy(v) / v.dot(v)
+            val d = Matrix4f().identity().scale(-1f, 1f, 1f)
+            h * d
+        }
+
+        val r0 = (rLook * Vector4f(1f, 0f, 0f, 0f)).toVec3()
+        val u0 = (rLook * Vector4f(0f, 1f, 0f, 0f)).toVec3()
+        val k0 = (rLook * Vector4f(0f, 0f, 1f, 0f)).toVec3()
+
+        val rRoll = Matrix3f(r0, u0, k0).transpose() * Matrix3f(vx.toVec3(), vy.toVec3(), vz.toVec3())
+
+        val beta = asin(-rRoll.get(0, 2))
+        val alpha = if (abs(cos(beta)) < 1e-6) 0f else atan2(rRoll.get(1, 2), rRoll.get(2, 2))
+        val gamma = atan2(rRoll.get(0, 1), rRoll.get(0, 0))
+
+        return CameraOrientation(
+            toDegrees(theta1), toDegrees(theta2), toDegrees(theta3),
+            toDegrees(beta), toDegrees(alpha), toDegrees(gamma)
+        )
+    }
+
+    private fun squareBy(v: Vector4f): Matrix4f {
+        return Matrix4f(
+            v.x * v.x, v.x * v.y, v.x * v.z, v.x * v.w,
+            v.y * v.x, v.y * v.y, v.y * v.z, v.y * v.w,
+            v.z * v.x, v.z * v.y, v.z * v.z, v.z * v.w,
+            v.w * v.x, v.w * v.y, v.w * v.z, v.w * v.w
+        )
+    }
+
+    private operator fun Float.times(m: Matrix4f): Matrix4f = m.scale(this)
+    private operator fun Matrix4f.div(f: Float): Matrix4f = this.scale(1 / f)
+    private fun Vector4f.toVec3(): Vector3f = Vector3f(x, y, z)
 }
 
 data class CameraOrientation(
@@ -120,5 +174,5 @@ data class CameraOrientation(
     val upDepthDeg: Float,   // 上方向 vy 偏向 Z 轴的角度 (rotateYZ 主要是它在动)
     val rightDepthDeg: Float // 右方向 vx 偏向 Z 轴的角度 (rotateXZ 主要是它在动)
 ) {
-    override fun toString(): String = "Yaw: %.2f | Pitch: %.2f | Roll: %.2f | Depth: %.2f | Up: %.2f | Right: %.2f".format(yawDeg, pitchDeg, rollDeg, fwdDepthDeg, upDepthDeg, rightDepthDeg)
+    override fun toString(): String = "XY: %.2f | XZ: %.2f | XW: %.2f | YZ: %.2f | YW: %.2f | ZW: %.2f".format(yawDeg, pitchDeg, rollDeg, fwdDepthDeg, upDepthDeg, rightDepthDeg)
 }

@@ -28,11 +28,11 @@ class TransformInterfaceImpl(
     }
 
     override fun scale(name: String, x: Float, y: Float, z: Float, w: Float) {
-        TODO("Not yet implemented")
+        scene.requireContains(name).transform.scale(x, y, z, w)
     }
 
     override fun rotate(name: String, axis: Direction.Plane, angle: Float) {
-        TODO("Not yet implemented")
+        scene.requireContains(name).transform.rotate(axis, angle)
     }
 
     override fun clip(
@@ -41,10 +41,10 @@ class TransformInterfaceImpl(
         dest: Direction.Axis,
         amount: Float
     ) {
-        TODO("Not yet implemented")
+        scene.requireContains(name).transform.clip(src, dest, amount)
     }
 
     override fun setCoordinate(name: String, origin: Vector4f, coordinate: Coordinate4D) {
-        TODO("Not yet implemented")
+        scene.requireContains(name).transform.setTransformCoordinate(origin, coordinate)
     }
 }

@@ -30,6 +30,8 @@ class GL4DRegion(
 
     fun get4D1PercentLowFPS(): Float = renderer.fpsCounter.getOnePercentLowFrequency()
 
+    fun setViewPortLength(length: Float) { renderer.viewPortLength = length }
+
     init {
         renderer.start()
 

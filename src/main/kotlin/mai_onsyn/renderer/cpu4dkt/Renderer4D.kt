@@ -21,6 +21,8 @@ class Renderer4D(
 
     var maxFPS: Int = 100
 
+    var viewPortLength = 8f
+
     val fpsCounter: FrequencyCounter = FrequencyCounter()
 
 //    init {
@@ -52,15 +54,13 @@ class Renderer4D(
 
     private fun projectMesh(mesh: Mesh4D): Mesh {
         val flattened = JNIRasterizer.packMesh4D(mesh)
-        val transform = Transform4D()
-        transform.scale(2f)
         val outArray = JNIRasterizer.project(
             flattened,
             mesh.tetrahedrons.size,
-            transform.matrix.data,
+            mesh.transform.matrix.data,
             scene.getCamera().viewMatrix.data,
             scene.getCamera().projectionMatrix().data,
-            Matrix4f().scale(5f).toRowMajorFloatArray()
+            Matrix4f().scale(viewPortLength * 0.5f).toRowMajorFloatArray()
         )
         val tetrahedrons = JNIRasterizer.extractTetrahedrons(outArray)
         return tetrahedrons.toMesh().apply { this.type = MeshSourceType.D4 }

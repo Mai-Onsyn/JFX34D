@@ -31,4 +31,6 @@ class SystemInterfaceImpl(
     override fun enableLightRendering(enable: Boolean) {
         TODO("Not yet implemented")
     }
+
+    override fun setDisplaySize(edgeLength: Float) = region.setViewPortLength(edgeLength)
 }

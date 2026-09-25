@@ -25,7 +25,11 @@ interface TransformInterface {
     /** 旋转 */
     fun rotate(name: String, axis: Direction.Plane, angle: Float)
 
-    /** 裁剪 */
+    /**
+     * 裁剪
+     * @param src 源轴，不改变
+     * @param dest 目标轴，改变的轴
+     */
     fun clip(name: String, src: Direction.Axis, dest: Direction.Axis, amount: Float)
 
     /** 设置变换坐标系 */

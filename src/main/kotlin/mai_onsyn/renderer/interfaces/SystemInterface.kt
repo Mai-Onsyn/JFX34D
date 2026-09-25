@@ -29,4 +29,7 @@ interface SystemInterface {
 
     /** 开启光照渲染 */
     fun enableLightRendering(enable: Boolean)
+
+    /** 设置视口矩阵的边长，也就是四维超平面屏幕的尺寸 */
+    fun setDisplaySize(edgeLength: Float)
 }

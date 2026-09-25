@@ -47,7 +47,7 @@ fun start4DTest2(stage: Stage) {
             CubeFace.FRONT  -> ColorARGB(0f, 1f, 1f, 0.1f)
             CubeFace.BACK   -> ColorARGB(1f, 0f, 1f, 0.1f)
         }
-    })))
+    }, size = 8f)))
     region.setOutlineRendering(true)
 
     val pos3Label = Label("pos")
