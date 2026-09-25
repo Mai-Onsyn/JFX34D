@@ -2,13 +2,14 @@ package mai_onsyn.renderer.cpu4dkt
 
 import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector4f
+import kotlin.random.Random
 
 data class Tetrahedron(
     val v0: Vertex4D,
     val v1: Vertex4D,
     val v2: Vertex4D,
     val v3: Vertex4D,
-    val id: Int = -1
+    val id: Long = Random.nextLong(),
 ) {
     fun pack(dest: FloatArray, offset: Int) {
         var offset = offset

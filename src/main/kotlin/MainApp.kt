@@ -103,6 +103,8 @@ fun start4DTest2(stage: Stage) {
         }
     }
 
+    println(i.geometry.getModelInfos("TestModel"))
+
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()
 }

@@ -16,7 +16,7 @@ interface GeometryInterface {
      * @param id 四面体的id
      * @return 格式化的四面体markdown
      */
-    fun getTetrahedronInfos(name: String, tetId: Int): String
+    fun getTetrahedronInfos(name: String, tetId: Long): String
 
     /**
      * 设置四面体的一个顶点
@@ -24,7 +24,7 @@ interface GeometryInterface {
      * @param vertexNum 顶点编号，可选[0, 1, 2, 3]
      * @param vertex 包含了颜色、位置的顶点
      */
-    fun setVertex(name: String, tetId: Int, vertexNum: Int, vertex: Vertex4D)
+    fun setVertex(name: String, tetId: Long, vertexNum: Int, vertex: Vertex4D)
 
     /**
      * 用矩阵对指定四面体进行变换
@@ -42,7 +42,7 @@ interface GeometryInterface {
     fun addTetrahedron(name: String, tetrahedron: Tetrahedron): Int
 
     /** 删除四面体 */
-    fun removeTetrahedron(name: String, tetId: Int)
+    fun removeTetrahedron(name: String, tetId: Long)
 
     /**
      * 用超平面切片模型

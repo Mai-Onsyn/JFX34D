@@ -10,7 +10,7 @@ class RendererInterfaceImpl(
     override val camera = CameraInterfaceImpl(region.scene4D.getCamera())
     override val model = ModelInterfaceImpl(region.scene4D)
     override val transform = TransformInterfaceImpl(region.scene4D)
-    override val geometry = GeometryInterfaceImpl()
+    override val geometry = GeometryInterfaceImpl(region.scene4D)
     override val shape = ShapeInterfaceImpl(region.scene4D)
-    override val io = IOInterfaceImpl()
+    override val io = IOInterfaceImpl(region.scene3D, region.scene4D)
 }

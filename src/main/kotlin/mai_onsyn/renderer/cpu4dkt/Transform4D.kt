@@ -116,4 +116,18 @@ class Transform4D @JvmOverloads constructor (
             )
         }
     }
+
+    override fun toString(): String = """
+        %.2f, %.2f, %.2f, %.2f, %.2f
+        %.2f, %.2f, %.2f, %.2f, %.2f
+        %.2f, %.2f, %.2f, %.2f, %.2f
+        %.2f, %.2f, %.2f, %.2f, %.2f
+        %.2f, %.2f, %.2f, %.2f, %.2f
+    """.trimIndent().format(
+        matrix[0], matrix[1], matrix[2], matrix[3], matrix[4],
+        matrix[5], matrix[6], matrix[7], matrix[8], matrix[9],
+        matrix[10], matrix[11], matrix[12], matrix[13], matrix[14],
+        matrix[15], matrix[16], matrix[17], matrix[18], matrix[19],
+        matrix[20], matrix[21], matrix[22], matrix[23], matrix[24],
+    )
 }
