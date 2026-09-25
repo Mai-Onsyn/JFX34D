@@ -6,7 +6,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface
 class RendererInterfaceImpl(
     region: GL4DRegion
 ): RendererInterface {
-    override val system = SystemInterfaceImpl(region)
+    override val scene = SceneInterfaceImpl(region)
     override val camera = CameraInterfaceImpl(region.scene4D.getCamera())
     override val model = ModelInterfaceImpl(region.scene4D)
     override val transform = TransformInterfaceImpl(region.scene4D)

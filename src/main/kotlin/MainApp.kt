@@ -12,12 +12,13 @@ import mai_onsyn.renderer.core.GL4DRegion
 import mai_onsyn.renderer.cpu4dkt.*
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercube
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercubeWithCellColors
-import mai_onsyn.renderer.data.OBJLoader
+import mai_onsyn.renderer.utils.OBJLoader
 import mai_onsyn.renderer.interfaces.RendererInterface
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.*
 import mai_onsyn.renderer.ogl3d.generator.CubeFace
 import mai_onsyn.renderer.ogl3d.generator.createCube
+import mai_onsyn.renderer.utils.ColorARGB
 import mai_onsyn.renderer.utils.Coordinate4D
 import mai_onsyn.renderer.utils.Direction
 import mai_onsyn.renderer.utils.fixedFrame
@@ -32,8 +33,8 @@ import kotlin.math.sin
 class MainApp : Application() {
     override fun start(stage: Stage?) {
         stage!!
-//        start4DTest2(stage)
-        start3DTest(stage)
+        start4DTest2(stage)
+//        start3DTest(stage)
     }
 }
 
@@ -51,7 +52,6 @@ fun start4DTest2(stage: Stage) {
             CubeFace.BACK   -> ColorARGB(1f, 0f, 1f, 0.1f)
         }
     }, size = 8f)))
-    region.setOutlineRendering(false)
 
     val pos3Label = Label("pos")
     val pos4Label = Label("pos")
@@ -86,13 +86,20 @@ fun start4DTest2(stage: Stage) {
 
     val i = RendererInterface.INSTANCE
     i.camera.moveForward(-5f)
+    i.scene.enableLightRendering(false)
+    i.scene.enableTriangleLineRendering(true)
 
     i.model.createModel("TestModel")
-    i.shape.createTesseract("TestModel", Vector4f(0f, 0f, 0f, 3f), 1f)
-    i.transform.setCoordinate("TestModel", Vector4f(0f, 0f, 0f, 3f), Coordinate4D())
+    i.shape.createTesseract("TestModel", Vector4f(0f, 0f, 0f, 0f), 1f)
+    i.shape.createTesseract("TestModel", Vector4f(1f, 0f, 0f, 0f), 1f)
+    i.shape.createTesseract("TestModel", Vector4f(-1f, 0f, 0f, 0f), 1f)
+    i.shape.createTesseract("TestModel", Vector4f(0f, 0f, 0f, 1f), 1f)
+    i.shape.createTesseract("TestModel", Vector4f(0f, 1f, 0f, 0f), 1f)
+//    i.transform.setCoordinate("TestModel", Vector4f(0f, 0f, 0f, 0f), Coordinate4D())
     Thread.ofVirtual().start {
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
             i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
+//            i.transform.rotate("TestModel", Direction.Plane.YW, 0.25f)
         }
     }
 
@@ -134,10 +141,8 @@ fun start3DTest(stage: Stage) {
     val scene = SimpleScene3D()
     scene.addMesh(makeTestMesh())
     scene.addMesh(makeTest4DMesh())
-    val mesh = OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj")
-    mesh.transform.move(Vector3f(100f, 0f, 0f))
-    scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\Sponza Palace\\scene.obj"))
-    scene.addMesh(mesh)
+    scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj").apply { transform.move(Vector3f(0f, 0f, 15f)) })
+    scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\Sponza Palace\\scene.obj").apply { transform.move(Vector3f(30f, 0f, 0f)) })
 
     val gL3DRegion = GL3DRegion(scene)
     box.add(gL3DRegion, modifier.fillMaxSize())
@@ -177,6 +182,8 @@ fun start3DTest(stage: Stage) {
     }
 
     box.add(infoColumn, modifier.padding(top = 24.0, left = 24.0))
+
+    scene.addLight(Light("Green", Vector3f(0f, 0f, 0f), ColorARGB(1f, 1f, 1f)))
 
     stage.scene = Scene(box, 640.0, 480.0)
     stage.show()

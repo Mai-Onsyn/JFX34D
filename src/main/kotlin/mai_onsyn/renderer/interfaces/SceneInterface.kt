@@ -1,8 +1,10 @@
 package mai_onsyn.renderer.interfaces
 
 import javafx.scene.paint.Color
+import mai_onsyn.renderer.ogl3d.data.Light
+import mai_onsyn.renderer.utils.ColorARGB
 
-interface SystemInterface {
+interface SceneInterface {
     /** 调整3D渲染器最大FPS */
     fun set3DMaxFPS(fps: Float)
 
@@ -29,6 +31,18 @@ interface SystemInterface {
 
     /** 开启光照渲染 */
     fun enableLightRendering(enable: Boolean)
+
+    /** 列出光源 */
+    fun listLights(): String
+
+    /** 添加光源 */
+    fun addLights(light: Light)
+
+    /** 删除光源 */
+    fun removeLights(names: List<String>)
+
+    /** 设置环境光 */
+    fun setAmbientLight(ambientLight: ColorARGB)
 
     /** 设置视口矩阵的边长，也就是四维超平面屏幕的尺寸 */
     fun setDisplaySize(edgeLength: Float)

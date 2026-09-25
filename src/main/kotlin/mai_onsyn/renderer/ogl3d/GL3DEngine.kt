@@ -5,6 +5,7 @@ import com.huskerdev.openglfx.canvas.events.GLRenderEvent
 import com.huskerdev.openglfx.canvas.events.GLReshapeEvent
 import javafx.scene.paint.Color
 import mai_onsyn.renderer.ogl3d.data.GLMaterial
+import mai_onsyn.renderer.ogl3d.data.Light
 import mai_onsyn.renderer.ogl3d.data.Mesh
 import mai_onsyn.renderer.ogl3d.data.MeshSourceType
 import mai_onsyn.renderer.ogl3d.data.Scene3D
@@ -15,8 +16,10 @@ import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL14.glBlendFuncSeparate
 import org.lwjgl.opengl.GL20.glGetUniformLocation
-import org.lwjgl.opengl.GL20.glUniform1f
+import org.lwjgl.opengl.GL20.glUniform1i
 import org.lwjgl.opengl.GL20.glUniform3f
+import org.lwjgl.opengl.GL20.glUniform3fv
+import org.lwjgl.opengl.GL20.glUniform4fv
 import org.lwjgl.opengl.GL20.glUniformMatrix4fv
 import org.lwjgl.opengl.GL20.glUseProgram
 
@@ -30,28 +33,41 @@ class GL3DEngine(
     private var projectionPtr = 0
     private var viewPosPtr = 0
     private var ambientPtr = 0
+    private var lightingPtr = 0
+    private var lightCountPtr = 0
     private var lightPosPtr = 0
     private var lightColorPtr = 0
-    private var lightIntensityPtr = 0
-    private var lightRangePtr = 0
-    private var attnAPtr = 0
-    private var attnBPtr = 0
+    private var lightDirPtr = 0
+    private var lightParamPtr = 0
 
-    /** 全局环境光 */
-    private val ambient = Vector3f(0.3f, 0.3f, 0.3f)
-    /** 灯光先写死 (世界空间), 之后要做多光源/可调时改这里 */
-    private val lightPos = Vector3f(-5f, 35f, 0f)
-    private val lightColor = Vector3f(1.0f, 1.0f, 1.0f)
-    private var lightIntensity = 0.6f
-    private var lightRange = 600.0f
-    private var attnA = 0.00007f
-    private var attnB = 0.00003f
     /** 世界空间的相机位置 = -view 矩阵的平移列 */
     private val viewPos = Vector3f()
 
     private var aspect = 1.0f
     var useOutlineRendering: Boolean = false
     var bgColor: Color = Color(0.5294, 0.8078, 0.9216, 1.0)
+
+    /**
+     * 光照总开关。false = 材质原样输出, 光源和环境光都不参与, 但光源列表原封不动留着,
+     * 打开就立刻恢复。
+     */
+    @Volatile
+    var lightingEnabled: Boolean = true
+
+    private companion object {
+        /**
+         * shader 里光源数组的长度, 必须和 basic-fragment.glsl 的 MAX_LIGHTS 一致。
+         * 场景里多出来的光源会被丢掉。
+         */
+        const val MAX_LIGHTS = 16
+    }
+
+    // 每帧要提交的光源数据, 预分配好避免每帧建对象
+    private val lightPosBuffer = BufferUtils.createFloatBuffer(MAX_LIGHTS * 3)
+    private val lightColorBuffer = BufferUtils.createFloatBuffer(MAX_LIGHTS * 3)
+    private val lightDirBuffer = BufferUtils.createFloatBuffer(MAX_LIGHTS * 3)
+    /** 每个光源 4 个: intensity / range / a / b */
+    private val lightParamBuffer = BufferUtils.createFloatBuffer(MAX_LIGHTS * 4)
 
     fun init(event: GLInitializeEvent) {
         val program = Shader.basic.program
@@ -65,12 +81,12 @@ class GL3DEngine(
         // phone 光照需要用到的
         viewPosPtr = glGetUniformLocation(program, "viewPos")
         ambientPtr = glGetUniformLocation(program, "ambient")
-        lightPosPtr = glGetUniformLocation(program, "lightPos")
-        lightColorPtr = glGetUniformLocation(program, "lightColor")
-        lightIntensityPtr = glGetUniformLocation(program, "lightIntensity")
-        lightRangePtr = glGetUniformLocation(program, "lightRange")
-        attnAPtr = glGetUniformLocation(program, "attnA")
-        attnBPtr = glGetUniformLocation(program, "attnB")
+        lightingPtr = glGetUniformLocation(program, "uLighting")
+        lightCountPtr = glGetUniformLocation(program, "lightCount")
+        lightPosPtr = glGetUniformLocation(program, "lightPositions")
+        lightColorPtr = glGetUniformLocation(program, "lightColors")
+        lightDirPtr = glGetUniformLocation(program, "lightDirs")
+        lightParamPtr = glGetUniformLocation(program, "lightParams")
 
         // 材质 uniform 位置, 只取一次
         GLMaterial.uKa = glGetUniformLocation(program, "material.ka")
@@ -115,6 +131,8 @@ class GL3DEngine(
             uploadedMeshes.add(m)
         }
         glUseProgram(program)
+        // 光照开关: 每帧提交一次, 外部改了立刻生效
+        glUniform1i(lightingPtr, if (lightingEnabled) 1 else 0)
 
         val view = scene.getCamera().viewMatrix
         view.get(viewMatrixBuffer)
@@ -137,13 +155,9 @@ class GL3DEngine(
             view.m20() * c0 + view.m21() * c1 + view.m22() * c2,   // vz
         )
         glUniform3f(viewPosPtr, viewPos.x, viewPos.y, viewPos.z)
-        glUniform3f(ambientPtr, ambient.x, ambient.y, ambient.z)
-        glUniform3f(lightPosPtr, lightPos.x, lightPos.y, lightPos.z)
-        glUniform3f(lightColorPtr, lightColor.x, lightColor.y, lightColor.z)
-        glUniform1f(lightIntensityPtr, lightIntensity)
-        glUniform1f(lightRangePtr, lightRange)
-        glUniform1f(attnAPtr, attnA)
-        glUniform1f(attnBPtr, attnB)
+
+        // 光照: 每帧从场景取一次快照提交给 uniform 数组
+        uploadLights(scene.getLights())
 
         // Mesh.draw 自己按材质组跑两趟 (实体先, 透明后), 外面只管调
         for (m in meshes) {
@@ -166,5 +180,54 @@ class GL3DEngine(
         }
 
         fpsCounter.tick()
+    }
+
+    /**
+     * 把场景里的光源打包成 uniform 数组。
+     *
+     * 环境光来自场景 (scene.getAmbient()), 不是光源的属性;
+     * 点光源的方向写成 0 向量 (shader 里 0 向量 → 方向衰减恒为 1);
+     * 面光源的方向直接写它的朝向; 颜色是 ColorARGB, 这里转成 0..1 的浮点。
+     */
+    private fun uploadLights(lights: List<Light>) {
+        val count = minOf(lights.size, MAX_LIGHTS)
+
+        lightPosBuffer.clear()
+        lightColorBuffer.clear()
+        lightDirBuffer.clear()
+        lightParamBuffer.clear()
+
+        for (i in 0 until count) {
+            // 列表是并发安全的, 但外部可能正在增删, 序号访问会越界
+            val light = lights.getOrNull(i) ?: break
+            val pos = light.pos
+            val color = light.color
+            val dir = light.direction
+
+            lightPosBuffer.put(pos.x).put(pos.y).put(pos.z)
+            lightColorBuffer.put(color.redF).put(color.greenF).put(color.blueF)
+            if (dir != null) lightDirBuffer.put(dir.x).put(dir.y).put(dir.z)
+            else lightDirBuffer.put(0f).put(0f).put(0f)
+            lightParamBuffer
+                .put(light.intensity).put(light.range)
+                .put(light.attenuationA).put(light.attenuationB)
+        }
+
+        // 用实际填进去的光源数, 别用上面算的 count
+        val uploaded = lightPosBuffer.position() / 3
+        lightPosBuffer.flip()
+        lightColorBuffer.flip()
+        lightDirBuffer.flip()
+        lightParamBuffer.flip()
+
+        val ambient = scene.getAmbient()
+        glUniform3f(ambientPtr, ambient.redF, ambient.greenF, ambient.blueF)
+        glUniform1i(lightCountPtr, uploaded)
+        if (uploaded > 0) {
+            glUniform3fv(lightPosPtr, lightPosBuffer)
+            glUniform3fv(lightColorPtr, lightColorBuffer)
+            glUniform3fv(lightDirPtr, lightDirBuffer)
+            glUniform4fv(lightParamPtr, lightParamBuffer)
+        }
     }
 }

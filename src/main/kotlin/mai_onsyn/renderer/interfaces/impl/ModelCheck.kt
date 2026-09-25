@@ -1,4 +1,4 @@
-package mai_onsyn.renderer.interfaces
+package mai_onsyn.renderer.interfaces.impl
 
 import mai_onsyn.renderer.cpu4dkt.Mesh4D
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D

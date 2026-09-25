@@ -3,8 +3,6 @@ package mai_onsyn.renderer.interfaces.impl
 import mai_onsyn.renderer.cpu4dkt.Mesh4D
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
 import mai_onsyn.renderer.interfaces.ModelInterface
-import mai_onsyn.renderer.interfaces.requireContains
-import mai_onsyn.renderer.interfaces.requireNotContains
 
 class ModelInterfaceImpl(
     private val scene: SimpleScene4D,

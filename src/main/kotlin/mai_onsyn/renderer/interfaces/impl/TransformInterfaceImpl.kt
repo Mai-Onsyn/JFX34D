@@ -1,10 +1,8 @@
 package mai_onsyn.renderer.interfaces.impl
 
 import mai_onsyn.renderer.cpu4dkt.Matrix5f
-import mai_onsyn.renderer.cpu4dkt.Scene4D
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
 import mai_onsyn.renderer.interfaces.TransformInterface
-import mai_onsyn.renderer.interfaces.requireContains
 import mai_onsyn.renderer.utils.Coordinate4D
 import mai_onsyn.renderer.utils.Direction
 import org.joml.Vector4f

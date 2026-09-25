@@ -12,7 +12,7 @@ import mai_onsyn.renderer.core.GL4DRegion;
 import mai_onsyn.renderer.cpu4dkt.Mesh4D;
 import mai_onsyn.renderer.cpu4dkt.generator.HypercubeKt;
 import mai_onsyn.renderer.interfaces.RendererInterface;
-import mai_onsyn.renderer.ogl3d.data.ColorARGB;
+import mai_onsyn.renderer.utils.ColorARGB;
 import org.joml.Vector4f;
 import weilantianhai.agent.execute.CommandExecutor;
 import weilantianhai.agent.interfaces.AgentInterface;
@@ -83,7 +83,7 @@ public class MainApp extends Application {
         // 接口调用：视口 = GL4DRegion（渲染 + 内置键盘），RendererInterface 已绑定其摄像机（§3.1 ✅）
         StackPane right = buildRightPanel();
         StatusBar bottom = new StatusBar(renderer);
-        // 接口调用：状态栏 CAM 坐标 → CameraInterface#getPosition（§3.1.1 ✅）
+        // 接口调用：状态栏 CAM 坐标 → CameraInterface#getPos（§3.1.1 ✅）
 
         root.setTop(top);
         root.setCenter(center);
@@ -100,7 +100,7 @@ public class MainApp extends Application {
 
     private StackPane buildRightPanel() {
         propertyView = new PropertyPanel(renderer);
-        // 接口调用：PropertyPanel 摄像机位置 → camera().getPosition()/setPosition()（§3.1 ✅）
+        // 接口调用：PropertyPanel 摄像机位置 → camera().getPos()/setPos()（§3.1 ✅）
         chatView = new ChatPanel(new SceneOutliner());
         // 接口调用：ChatPanel → agentService.send()（后端 TODO，暂不接）
         // 注意：SceneOutliner 若同时挂到 PropertyPanel 与 ChatPanel，须各持一份或显式切换，

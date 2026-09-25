@@ -18,7 +18,7 @@ import org.joml.Vector4f;
  *
  * <p>【接口调用】（AI Api Interface document v2.md §0.1，直接调用 Kotlin 侧已定义接口）
  * <ul>
- *   <li>摄像机位置 → {@code RendererInterface.getCamera().getPosition()}（§3.1.1 ✅）/ {@code setPosition(pos)}（§3.1.3 ✅）</li>
+ *   <li>摄像机位置 → {@code RendererInterface.getCamera().getPos()}（§3.1.1 ✅）/ {@code setPos(pos)}（§3.1.3 ✅）</li>
  *   <li>对象属性 XYZW：选中对象 ——
  *       {@code getTransform().getModelMatrix(name)}（§4.3，后端 TODO，暂不接）、
  *       {@code getGeometry().getTetrahedronInfos(name, tetId)}（§6.2，后端 TODO，暂不接）</li>
@@ -94,7 +94,7 @@ public class PropertyPanel extends VBox {
         );
     }
 
-    /** 接口调用：摄像机位置区块 —— 读取 getPosition() / 应用 setPosition(pos)。 */
+    /** 接口调用：摄像机位置区块 —— 读取 getPos() / 应用 setPos(pos)。 */
     private VBox buildCameraBox() {
         VBox box = new VBox(8);
         box.getChildren().add(new Label("摄像机位置"));

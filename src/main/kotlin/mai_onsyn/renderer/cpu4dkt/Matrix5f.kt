@@ -60,8 +60,9 @@ class Matrix5f(
     ))
 
     companion object {
-        val IDENTITY = Matrix5f(
-            a1 = 1f, b2 = 1f, c3 = 1f, d4 = 1f, e5 = 1f
-        )
+        val IDENTITY: Matrix5f
+            get() = Matrix5f(
+                a1 = 1f, b2 = 1f, c3 = 1f, d4 = 1f, e5 = 1f
+            )
     }
 }

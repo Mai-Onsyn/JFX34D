@@ -1,5 +1,6 @@
 package mai_onsyn.renderer.ogl3d.data
 
+import mai_onsyn.renderer.utils.ColorARGB
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL13.GL_TEXTURE0
 import org.lwjgl.opengl.GL13.glActiveTexture

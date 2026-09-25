@@ -1,7 +1,6 @@
 package mai_onsyn.renderer.interfaces
 
 import mai_onsyn.renderer.core.GL4DRegion
-import mai_onsyn.renderer.cpu4dkt.Camera4D
 import mai_onsyn.renderer.interfaces.impl.RendererInterfaceImpl
 
 interface RendererInterface {
@@ -29,7 +28,7 @@ interface RendererInterface {
     /**
      * 渲染器系统相关操作，比如fps这些
      */
-    val system: SystemInterface
+    val scene: SceneInterface
 
     /**
      * 摄像机相关的操作

@@ -1,6 +1,6 @@
 package mai_onsyn.renderer.cpu4dkt
 
-import mai_onsyn.renderer.ogl3d.data.ColorARGB
+import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector4f
 
 data class Tetrahedron(

@@ -60,6 +60,10 @@ open class GL3DRegion(val scene: Scene3D) : GLCanvas(
 
     fun setOutlineRendering(b: Boolean) { engine.useOutlineRendering = b }
 
+    fun enableLightRendering(enable: Boolean) {
+        engine.lightingEnabled = enable
+    }
+
     fun setBackgroundColor(color: Color) {
         engine.bgColor = color
     }

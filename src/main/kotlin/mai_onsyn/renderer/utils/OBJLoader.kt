@@ -1,6 +1,5 @@
-package mai_onsyn.renderer.data
+package mai_onsyn.renderer.utils
 
-import mai_onsyn.renderer.ogl3d.data.ColorARGB
 import mai_onsyn.renderer.ogl3d.data.Mesh
 import mai_onsyn.renderer.ogl3d.data.Texture
 import mai_onsyn.renderer.ogl3d.data.Triangle
@@ -12,7 +11,7 @@ import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 import javax.imageio.ImageIO
-import kotlin.random.Random
+import kotlin.collections.iterator
 
 //private val random
 // ==================== 中间结构 ====================

@@ -3,7 +3,6 @@ package mai_onsyn.renderer.interfaces.impl
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercubeWithCellColors
 import mai_onsyn.renderer.interfaces.ShapeInterface
-import mai_onsyn.renderer.interfaces.requireContains
 import mai_onsyn.renderer.ogl3d.data.Mesh
 import org.joml.Vector4f
 

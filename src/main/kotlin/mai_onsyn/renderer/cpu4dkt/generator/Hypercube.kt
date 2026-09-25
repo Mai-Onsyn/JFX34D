@@ -2,8 +2,7 @@ package mai_onsyn.renderer.cpu4dkt.generator
 
 import mai_onsyn.renderer.cpu4dkt.Tetrahedron
 import mai_onsyn.renderer.cpu4dkt.Vertex4D
-import mai_onsyn.renderer.ogl3d.data.ColorARGB
-import mai_onsyn.renderer.ogl3d.data.ColorARGB.Companion.invoke
+import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector4f
 
 

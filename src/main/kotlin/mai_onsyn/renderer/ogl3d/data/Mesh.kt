@@ -1,5 +1,6 @@
 package mai_onsyn.renderer.ogl3d.data
 
+import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector3f
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11.glDrawElements

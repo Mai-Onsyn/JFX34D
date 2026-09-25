@@ -9,12 +9,13 @@ class Transform(
     var matrix: Matrix4f
 ) {
     companion object {
-        val NONE = Transform(Matrix4f(
-            1f, 0f, 0f, 0f,
-            0f, 1f, 0f, 0f,
-            0f, 0f, 1f, 0f,
-            0f, 0f, 0f, 1f
-        ))
+        val NONE: Transform
+            get() = Transform(Matrix4f(
+                1f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f,
+                0f, 0f, 1f, 0f,
+                0f, 0f, 0f, 1f
+            ))
     }
 
     fun move(v: Vector3f) {

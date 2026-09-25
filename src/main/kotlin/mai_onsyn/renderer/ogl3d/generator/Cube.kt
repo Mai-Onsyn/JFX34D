@@ -1,9 +1,9 @@
 package mai_onsyn.renderer.ogl3d.generator
 
-import mai_onsyn.renderer.ogl3d.data.ColorARGB
 import mai_onsyn.renderer.ogl3d.data.Texture
 import mai_onsyn.renderer.ogl3d.data.Triangle
 import mai_onsyn.renderer.ogl3d.data.Vertex
+import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector2f
 import org.joml.Vector3f
 
