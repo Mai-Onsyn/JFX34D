@@ -12,7 +12,7 @@ import javafx.scene.layout.VBox;
  * <ul>
  *   <li>树加载 → {@code ModelInterface#listModel()}（§4.1.1 LIST_MODEL，按返回列表动态构建行）</li>
  *   <li>增删复制合并工具（将来加按钮）→
- *       {@code ModelInterface#addModel(name)}（§4.1.2 CREATE_MODEL）、
+ *       {@code ModelInterface#createModel(name)}（§4.1.2 CREATE_MODEL）、
  *       {@code #removeModel(name)}（§4.1.3 DELETE_MODEL）、
  *       {@code #copyModel(src, dst)}（§4.1.4 COPY_MODEL）、
  *       {@code #mergeModel(s1, s2, dst)}（§4.1.5 MERGE_MODEL）</li>

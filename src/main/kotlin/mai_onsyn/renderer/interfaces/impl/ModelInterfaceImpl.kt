@@ -11,7 +11,7 @@ class ModelInterfaceImpl(
 ): ModelInterface {
     override fun listModel(): List<String> = scene.getMeshes().map { it.name }
 
-    override fun addModel(name: String) {
+    override fun createModel(name: String) {
         scene.requireNotContains(name)
         scene.meshList.add(Mesh4D(name = name))
     }

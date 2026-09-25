@@ -16,7 +16,6 @@ class Matrix5f(
                 }
             }
         }
-//        System.arraycopy(buffer, 0, data, 0, buffer.size)
         return Matrix5f(buffer)
     }
 

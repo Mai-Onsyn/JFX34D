@@ -6,7 +6,7 @@ interface ModelInterface {
     fun listModel(): List<String>
 
     /** 创建模型，需要校验名称是否合法 */
-    fun addModel(name: String)
+    fun createModel(name: String)
 
     /** 删除模型，必须存在 */
     fun removeModel(name: String)

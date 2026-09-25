@@ -9,15 +9,18 @@ import mai_onsyn.jfx_tools.layout.Box
 import mai_onsyn.jfx_tools.layout.Column
 import mai_onsyn.jfx_tools.layout.modifier
 import mai_onsyn.renderer.core.GL4DRegion
-import mai_onsyn.renderer.core.RendererInterfaceInitializer
 import mai_onsyn.renderer.cpu4dkt.*
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercube
 import mai_onsyn.renderer.cpu4dkt.generator.constructHypercubeWithCellColors
+import mai_onsyn.renderer.data.OBJLoader
 import mai_onsyn.renderer.interfaces.RendererInterface
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.*
 import mai_onsyn.renderer.ogl3d.generator.CubeFace
 import mai_onsyn.renderer.ogl3d.generator.createCube
+import mai_onsyn.renderer.utils.Coordinate4D
+import mai_onsyn.renderer.utils.Direction
+import mai_onsyn.renderer.utils.fixedFrame
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
 import org.joml.Matrix4f
 import org.joml.Vector2f
@@ -29,7 +32,8 @@ import kotlin.math.sin
 class MainApp : Application() {
     override fun start(stage: Stage?) {
         stage!!
-        start4DTest2(stage)
+//        start4DTest2(stage)
+        start3DTest(stage)
     }
 }
 
@@ -37,7 +41,6 @@ fun start4DTest2(stage: Stage) {
     val box = Box()
 
     val region = GL4DRegion()
-    region.scene4D.meshList.add(Mesh4D(constructHypercubeWithCellColors(edgeLength = 1f)))
     region.scene3D.meshList.add(Mesh(createCube(colorOf = { face ->
         when (face) {
             CubeFace.TOP    -> ColorARGB(1f, 0f, 0f, 0.1f)
@@ -48,7 +51,7 @@ fun start4DTest2(stage: Stage) {
             CubeFace.BACK   -> ColorARGB(1f, 0f, 1f, 0.1f)
         }
     }, size = 8f)))
-    region.setOutlineRendering(true)
+    region.setOutlineRendering(false)
 
     val pos3Label = Label("pos")
     val pos4Label = Label("pos")
@@ -79,10 +82,19 @@ fun start4DTest2(stage: Stage) {
     column.add(cam4Label)
     box.add(column, modifier.padding(top = 16.0, left = 16.0))
 
-    RendererInterfaceInitializer.initialize(region)
+    RendererInterface.init(region)
 
-    RendererInterface.INSTANCE.camera.moveForward(-5f)
-    RendererInterface.INSTANCE.camera.rotateXY(45f)
+    val i = RendererInterface.INSTANCE
+    i.camera.moveForward(-5f)
+
+    i.model.createModel("TestModel")
+    i.shape.createTesseract("TestModel", Vector4f(0f, 0f, 0f, 3f), 1f)
+    i.transform.setCoordinate("TestModel", Vector4f(0f, 0f, 0f, 3f), Coordinate4D())
+    Thread.ofVirtual().start {
+        fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
+            i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
+        }
+    }
 
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()
@@ -122,8 +134,10 @@ fun start3DTest(stage: Stage) {
     val scene = SimpleScene3D()
     scene.addMesh(makeTestMesh())
     scene.addMesh(makeTest4DMesh())
-//        scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj"))
-//        scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\Sponza Palace\\scene.obj"))
+    val mesh = OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\mika\\mika test.obj")
+    mesh.transform.move(Vector3f(100f, 0f, 0f))
+    scene.addMesh(OBJLoader.load("D:\\Users\\Desktop\\Files\\Projects\\Cpp\\Renderer4\\assets\\meshes\\Sponza Palace\\scene.obj"))
+    scene.addMesh(mesh)
 
     val gL3DRegion = GL3DRegion(scene)
     box.add(gL3DRegion, modifier.fillMaxSize())

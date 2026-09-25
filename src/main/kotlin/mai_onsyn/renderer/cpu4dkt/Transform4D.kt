@@ -21,9 +21,7 @@ class Transform4D @JvmOverloads constructor (
             0f, 0f, 0f, 1f, v.w,
             0f, 0f, 0f, 0f, 1f
         )
-        this.matrix *= tT
-        this.matrix *= new
-        this.matrix *= tTn1
+        this.matrix = tTn1 * new * tT * this.matrix
     }
 
     fun scale(x: Float, y: Float = x, z: Float = x, w: Float = x) {
@@ -34,9 +32,7 @@ class Transform4D @JvmOverloads constructor (
             0f, 0f, 0f, w, 0f,
             0f, 0f, 0f, 0f, 1f
         )
-        this.matrix *= tT
-        this.matrix *= new
-        this.matrix *= tTn1
+        this.matrix = tTn1 * new * tT * this.matrix
     }
 
     fun rotate(axis: Direction.Plane, angle: Float) {
@@ -53,43 +49,41 @@ class Transform4D @JvmOverloads constructor (
             )
             Direction.Plane.XZ -> Matrix5f(
                 c, 0f, -s, 0f, 0f,
-                0f, 0f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f, 0f,
                 s, 0f, c, 0f, 0f,
                 0f, 0f, 0f, 1f, 0f,
                 0f, 0f, 0f, 0f, 1f
             )
             Direction.Plane.XW -> Matrix5f(
                 c, 0f, 0f, -s, 0f,
-                0f, 0f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f, 0f,
                 0f, 0f, 1f, 0f, 0f,
                 s, 0f, 0f, c, 0f,
                 0f, 0f, 0f, 0f, 1f
             )
             Direction.Plane.YZ -> Matrix5f(
-                0f, 0f, 0f, 0f, 0f,
+                1f, 0f, 0f, 0f, 0f,
                 0f, c, -s, 0f, 0f,
                 0f, s, c, 0f, 0f,
                 0f, 0f, 0f, 1f, 0f,
                 0f, 0f, 0f, 0f, 1f
             )
             Direction.Plane.YW -> Matrix5f(
-                0f, 0f, 0f, 0f, 0f,
+                1f, 0f, 0f, 0f, 0f,
                 0f, c, 0f, -s, 0f,
                 0f, 0f, 1f, 0f, 0f,
                 0f, s, 0f, c, 0f,
                 0f, 0f, 0f, 0f, 1f
             )
             Direction.Plane.ZW -> Matrix5f(
-                0f, 0f, 0f, 0f, 0f,
-                0f, 0f, 0f, 0f, 0f,
+                1f, 0f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f, 0f,
                 0f, 0f, c, -s, 0f,
                 0f, 0f, s, c, 0f,
                 0f, 0f, 0f, 0f, 1f
             )
         }
-        this.matrix *= tT
-        this.matrix *= new
-        this.matrix *= tTn1
+        this.matrix = tTn1 * new * tT * this.matrix
     }
 
     fun clip(src: Direction.Axis, dest: Direction.Axis, k: Float) {
@@ -99,9 +93,7 @@ class Transform4D @JvmOverloads constructor (
         } else {
             new[dest.ordinal * 5 + src.ordinal] = k
         }
-        this.matrix *= tT
-        this.matrix *= new
-        this.matrix *= tTn1
+        this.matrix = tTn1 * new * tT * this.matrix
     }
 
     fun setTransformCoordinate(origin: Vector4f, coordinate: Coordinate4D) {
