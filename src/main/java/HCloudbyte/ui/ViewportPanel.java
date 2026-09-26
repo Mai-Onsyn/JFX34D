@@ -20,7 +20,8 @@ import mai_onsyn.renderer.core.GL4DRegion;
 public class ViewportPanel extends StackPane {
 
     public ViewportPanel(GL4DRegion viewport) {
-        setStyle(UiTheme.GLASS);
+        // 中央视口：去圆角（GLASS 基础上覆盖 radius=0），其余面板圆角不变
+        setStyle(UiTheme.GLASS + "-fx-background-radius: 0; -fx-border-radius: 0;");
         StackPane.setAlignment(viewport, Pos.CENTER);
         getChildren().add(viewport);
     }

@@ -31,10 +31,10 @@ public class TopBar extends StackPane {
      */
     public TopBar(IntConsumer onInputModeChange) {
         Label title = new Label("JFX 34D");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #e8eaed;");
 
         Label file = new Label("scene.4do");
-        file.setStyle("-fx-text-fill: #888;");
+        file.setStyle("-fx-text-fill: #8a8f94;");
 
         Separator sep = new Separator(Orientation.VERTICAL);
 
@@ -49,7 +49,7 @@ public class TopBar extends StackPane {
                 new String[]{"手写模式", "语音模式"}, 0, onInputModeChange);
 
         Label agentStatus = new Label("● Agent 在线");
-        agentStatus.setStyle("-fx-text-fill: #28a745;");
+        agentStatus.setStyle("-fx-text-fill: #7fd08a;");
         // 接口接线：Agent 状态 → AgentService 生命周期（可用 send() 后置为在线）
 
         Button renderSettings = UiTheme.buildLiquidButton("渲染设置");

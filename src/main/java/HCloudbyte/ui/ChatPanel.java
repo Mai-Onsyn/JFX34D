@@ -25,25 +25,27 @@ public class ChatPanel extends VBox {
 
     /** 发送中气泡样式。 */
     private static final String STYLE_SENDING =
-            "-fx-background-color: rgba(255,255,255,0.95);" +
+            "-fx-background-color: rgba(58,62,67,0.95);" +
                     "-fx-background-radius: 14;" +
-                    "-fx-text-fill: #666;" +
+                    "-fx-text-fill: #c4c9cf;" +
                     "-fx-font-size: 12px;";
     /** 执行成功气泡样式。 */
     private static final String STYLE_SUCCESS =
-            "-fx-background-color: rgba(40,167,69,0.12);" +
+            "-fx-background-color: rgba(127,208,138,0.14);" +
                     "-fx-background-radius: 14;" +
-                    "-fx-text-fill: #1a7f37;" +
+                    "-fx-text-fill: #7fd08a;" +
                     "-fx-font-size: 12px;";
     /** 执行失败气泡样式。 */
     private static final String STYLE_ERROR =
-            "-fx-background-color: rgba(220,53,69,0.12);" +
+            "-fx-background-color: rgba(224,108,117,0.14);" +
                     "-fx-background-radius: 14;" +
-                    "-fx-text-fill: #c0392b;" +
+                    "-fx-text-fill: #e06c75;" +
                     "-fx-font-size: 12px;";
 
     private final VBox chatMessages;
     private final ScrollPane chatScroll;
+    private final TextField input;
+    private final Button sendBtn;
 
     public ChatPanel(SceneOutliner outliner) {
         super(12);
@@ -51,7 +53,7 @@ public class ChatPanel extends VBox {
         setStyle(UiTheme.GLASS);
 
         Label title = new Label("语音建模");
-        title.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #333;");
+        title.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e8eaed;");
 
         chatMessages = new VBox(10);
         chatMessages.setPadding(new Insets(4, 2, 4, 2));
@@ -62,12 +64,12 @@ public class ChatPanel extends VBox {
         chatScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         VBox.setVgrow(chatScroll, Priority.ALWAYS);
 
-        TextField input = new TextField();
+        input = new TextField();
         input.setPromptText("帮我用…建模");
         input.setStyle("-fx-background-radius: 18; -fx-padding: 8 14;");
         HBox.setHgrow(input, Priority.ALWAYS);
 
-        Button sendBtn = new Button("↑");
+        sendBtn = new Button("↑");
         sendBtn.getStyleClass().add("accent");
         sendBtn.setStyle("-fx-background-radius: 18; -fx-font-size: 14px; -fx-padding: 6 12;");
         sendBtn.setCursor(Cursor.HAND);
@@ -91,6 +93,12 @@ public class ChatPanel extends VBox {
                 chatScroll,
                 inputBar
         );
+    }
+
+    /** 是否允许发送消息（Agent 初始化失败时禁用输入框与发送按钮）。 */
+    public void setInputEnabled(boolean enabled) {
+        input.setDisable(!enabled);
+        sendBtn.setDisable(!enabled);
     }
 
     /** 发送一条用户消息给 Agent：LLM 翻译 → IR 执行到黑色 GL 视口。 */
@@ -132,14 +140,14 @@ public class ChatPanel extends VBox {
         Platform.runLater(() -> chatScroll.setVvalue(1.0));
     }
 
-    /** 用户消息气泡（蓝底白字）。 */
+    /** 用户消息气泡（橙色底，Blender 强调色）。 */
     private HBox buildUserBubble(String msg) {
         Label label = new Label(msg);
         label.setWrapText(true);
         label.setMaxWidth(220);
         label.setPadding(new Insets(8, 12, 8, 12));
         label.setStyle(
-                "-fx-background-color: rgba(74,144,226,0.9);" +
+                "-fx-background-color: rgba(255,138,26,0.9);" +
                         "-fx-background-radius: 14;" +
                         "-fx-text-fill: white;" +
                         "-fx-font-size: 12px;"

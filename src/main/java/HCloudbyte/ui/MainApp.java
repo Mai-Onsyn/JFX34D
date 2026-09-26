@@ -1,9 +1,10 @@
 package HCloudbyte.ui;
 
-import atlantafx.base.theme.PrimerLight;
+import atlantafx.base.theme.PrimerDark;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
@@ -23,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 主应用：组装顶栏、黑色 GL 视口、右侧面板、状态栏，并负责手写/语音模式切换。
+ * 主应用：组装顶栏、黑色 GL 视口、右侧面板，并负责手写/语音模式切换。
  * 各面板拆分为独立类，此处只做装配与接线。
  * 注意：浅色渐变背景层已移除（即黑色 GL 窗口下面被遮住的浅色画布 UI），窗口底色为浅色。
  *
@@ -34,7 +35,7 @@ import java.util.List;
  *       RendererInterfaceInitializer.initialize(region) 的用法，把 RendererInterface 绑定到
  *       GL4DRegion 的 scene4D.camera4D，UI 的 getCamera() 与视口键盘共用同一摄像机</li>
  *   <li>创建各面板时传入：{@code ViewportPanel(GL4DRegion)}、
- *       {@code PropertyPanel(RendererInterface)}、{@code StatusBar(RendererInterface)}</li>
+ *       {@code PropertyPanel(RendererInterface)}</li>
  *   <li>手写/语音模式切换本身是 UI 状态（isVisible），不调用接口</li>
  * </ul>
  */
@@ -43,10 +44,14 @@ public class MainApp extends Application {
     private PropertyPanel propertyView;
     private ChatPanel chatView;
     private mai_onsyn.renderer.interfaces.RendererInterface renderer;   // Kotlin 侧已定义接口，直接调用
+    /** Agent 初始化是否成功（失败时禁用语音输入并弹窗提示）。 */
+    private boolean agentReady;
+    /** Agent 初始化异常（用于提示用户）。 */
+    private Exception agentInitError;
 
     @Override
     public void start(Stage stage) {
-        Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
+        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
 
         // 初始化渲染视口（等价 Kotlin MainApp.kt 的 start4DTest2 用法）：
         // GL4DRegion 渲染 4D 模型 + 内置键盘；RendererInterface.init(region.scene4D.camera4D)
@@ -57,21 +62,37 @@ public class MainApp extends Application {
         region.setOutlineRendering(true);
         RendererInterface.Companion.init(region);
         renderer = RendererInterface.Companion.getINSTANCE();
+        RendererInterface.Companion.getINSTANCE().getScene().setBackgroundColor(Color.color(0.25,0.25,0.25));
 
         // 初始化 Agent（agent 侧已实现，UI 只负责调用）：
         // sendToLLM = 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer → 黑色视口响应
-        try{AgentInterface.initialize(LLMClient.deepSeek(), new CommandExecutor(renderer));}
-        catch(Exception e){
-            // TODO(UI): 初始化失败时给用户提示并禁用发送按钮，不要静默吞掉异常
+        try {
+            AgentInterface.initialize(LLMClient.deepSeek(), new CommandExecutor(renderer));
+            agentReady = true;
+        } catch (Exception e) {
+            // 初始化失败时给用户提示并禁用发送按钮，不要静默吞掉异常（UI 构建完成后统一处理）
+            agentReady = false;
+            agentInitError = e;
         }
 
         BorderPane layoutRoot = buildLayout(region);
 
-        Scene scene = new Scene(layoutRoot, 1600, 1000);
-        scene.setFill(Color.web("#eef2f7"));   // 窗口底色保持浅色（与原背景同色调），背景画布（彩色圆）已删
+        Scene scene = new Scene(layoutRoot, 1280, 800);
+        scene.setFill(Color.web("#232527"));   // 深色窗口底色（Blender 背景灰蓝），背景画布（彩色圆）已删
         stage.setTitle("JFX 34D");
         stage.setScene(scene);
         stage.show();
+
+        // Agent 初始化失败：禁用语音输入 + 弹窗提示（UI 已就绪后再处理，不阻塞启动）
+        if (!agentReady) {
+            chatView.setInputEnabled(false);
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Agent 初始化失败");
+            alert.setHeaderText("语音建模不可用，输入框与发送按钮已禁用");
+            alert.setContentText("原因：" + (agentInitError != null ? agentInitError.getMessage() : "未知错误")
+                    + "\n\n请检查 LLM 服务配置（deepSeek 连接）后重启应用。");
+            alert.show();
+        }
     }
 
     /* ==================== 主布局 ==================== */
@@ -85,17 +106,13 @@ public class MainApp extends Application {
         ViewportPanel center = new ViewportPanel(region);
         // 接口调用：视口 = GL4DRegion（渲染 + 内置键盘），RendererInterface 已绑定其摄像机（§3.1 ✅）
         StackPane right = buildRightPanel();
-        StatusBar bottom = new StatusBar(renderer);
-        // 接口调用：状态栏 CAM 坐标 → CameraInterface#getPos（§3.1.1 ✅）
 
         root.setTop(top);
         root.setCenter(center);
         root.setRight(right);
-        root.setBottom(bottom);
 
         BorderPane.setMargin(top, new Insets(0, 0, 14, 0));
         BorderPane.setMargin(right, new Insets(0, 0, 0, 14));
-        BorderPane.setMargin(bottom, new Insets(14, 0, 0, 0));
         return root;
     }
 
@@ -104,7 +121,7 @@ public class MainApp extends Application {
     private StackPane buildRightPanel() {
         propertyView = new PropertyPanel(renderer);
         // 接口调用：PropertyPanel 摄像机位置 → camera().getPos()/setPos()（§3.1 ✅）
-        chatView = new ChatPanel(new SceneOutliner());
+        chatView = new ChatPanel(new SceneOutliner(renderer));
         // 接口调用：ChatPanel → agentService.send()（后端 TODO，暂不接）
         // 注意：SceneOutliner 若同时挂到 PropertyPanel 与 ChatPanel，须各持一份或显式切换，
         //       否则 JavaFX 会把节点从旧父容器中夺走（此前诊断过的双父 bug）。
@@ -114,6 +131,7 @@ public class MainApp extends Application {
         // 右侧内容超高时滚动 + 压平 minHeight，防止把顶栏/状态栏挤出窗口（上传版布局溢出 bug 的修复）
         javafx.scene.control.ScrollPane scroll = new javafx.scene.control.ScrollPane(propertyView);
         scroll.setFitToWidth(true);
+        scroll.setFitToHeight(true);   // 内容矮于视口时也撑满高度，右侧面板与左侧视口等高
         scroll.setMinHeight(0);
         scroll.setHbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
