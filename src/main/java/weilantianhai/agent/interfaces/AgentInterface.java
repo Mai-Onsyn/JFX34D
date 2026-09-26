@@ -6,9 +6,17 @@ import weilantianhai.agent.llm.LLMClient;
 
 public interface AgentInterface {
 
-    void sendToLLM(String userInput);
+    //生命周期
+    void start();
+    void shutdown();
+    boolean isRunning();
 
-    void startThread();
+    //提交输入
+    int submitUserInput(String userInput);
+
+    //接受回复
+    void setResponseListener(ResponseListener listener);
+    void clearResponseListener();
 
     static AgentInterface getInstance() {
         if (InterfaceValue._INSTANCE == null) {

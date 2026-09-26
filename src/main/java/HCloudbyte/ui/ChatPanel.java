@@ -111,7 +111,7 @@ public class ChatPanel extends VBox {
         // sendToLLM 是阻塞调用（LLM 网络请求 + 操作间延迟），必须放后台线程；完成后回 UI 线程更新状态。
         CompletableFuture.runAsync(() -> {
             try {
-                AgentInterface.getInstance().sendToLLM(text);
+                AgentInterface.getInstance().submitUserInput(text);
                 Platform.runLater(() -> {
                     feedback.setText("指令已执行，观察左侧视口变化。");
                     feedback.setStyle(STYLE_SUCCESS);

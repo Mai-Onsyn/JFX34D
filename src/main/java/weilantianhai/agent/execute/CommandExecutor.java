@@ -6,13 +6,10 @@ import weilantianhai.agent.ir.IRCommand;
 import weilantianhai.agent.ir.IRException;
 import weilantianhai.agent.ir.resolver.IRParser;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class CommandExecutor {
 
     /** done=true 时返回的结束标记 */
-    public static final String DOWN_MARKER = "# Done";
+    public static final String DONE_MARKER = "# Done";
 
     private final IRParser parser;
     private final RendererInterface renderer;
@@ -40,7 +37,7 @@ public class CommandExecutor {
         }
 
         if(bundle.isDone()){
-            return DOWN_MARKER;
+            return DONE_MARKER;
         }
 
         StringBuilder sb = new StringBuilder();
@@ -58,7 +55,7 @@ public class CommandExecutor {
                 sb.append(ResultFormatter.success(cmd,body)).append("\n\n");
             }
 
-            // 操作之间延迟 0.5 秒，让渲染有过渡效果
+            // 操作之间延迟 3 秒，让渲染有过渡效果
             try {
                 Thread.sleep(3000);
             } catch (InterruptedException ie) {
