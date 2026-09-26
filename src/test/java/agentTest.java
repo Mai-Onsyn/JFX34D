@@ -80,7 +80,7 @@ distance 为正数表示沿正方向，负数表示反方向。
         try {
             Thread.sleep(500);   // 给窗口留一点就绪时间
 
-            LLMClient client = new LLMClient();
+            LLMClient client = LLMClient.deepSeek();
             CommandExecutor executor = new CommandExecutor(RendererInterface.Companion.getINSTANCE());
 
             String userInput = "向上5，向左3，向后4，第四维正方向3，向后3，向右7";

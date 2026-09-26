@@ -42,3 +42,5 @@ src/main/java/weilantianhai/.workbuddy/
 
 #weilantianhai的进度文件
 src/main/java/weilantianhai/progress/
+#apikey
+.env

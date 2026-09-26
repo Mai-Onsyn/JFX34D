@@ -60,7 +60,10 @@ public class MainApp extends Application {
 
         // 初始化 Agent（agent 侧已实现，UI 只负责调用）：
         // sendToLLM = 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer → 黑色视口响应
-        AgentInterface.initialize(new LLMClient(), new CommandExecutor(renderer));
+        try{AgentInterface.initialize(LLMClient.deepSeek(), new CommandExecutor(renderer));}
+        catch(Exception e){
+            // TODO(UI): 初始化失败时给用户提示并禁用发送按钮，不要静默吞掉异常
+        }
 
         BorderPane layoutRoot = buildLayout(region);
 

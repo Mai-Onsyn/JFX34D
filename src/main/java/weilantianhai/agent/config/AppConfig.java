@@ -3,6 +3,8 @@ package weilantianhai.agent.config;
 public class AppConfig {
     public static final String LLM_BASE_URL = "http://localhost:1234/v1";
     public static final String LLM_CHAT_URL = LLM_BASE_URL + "/chat/completions";
+    public static final String DEEPSEEK_CONFIG = "src/main/resources/deepseek.properties";
+    public static final String DOTENV_PATH = ".env";
 
     public static final String MODEL_NAME = "qwen/qwen3.5-9b";
 
