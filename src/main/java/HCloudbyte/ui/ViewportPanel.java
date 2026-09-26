@@ -6,7 +6,7 @@ import mai_onsyn.renderer.core.GL4DRegion;
 
 /**
  * 中央视口：直接承载 {@link GL4DRegion}（OpenGL 渲染区域，自带 4D 键盘操作）。
- * 对应 Kotlin 侧 MainApp.kt 的 start4DTest2 用法，视口区域保持干净，不加遮挡浮层。
+ * 对应 Kotlin 侧 MainApp.kt 的 start4DTest2 用法，视git口区域保持干净，不加遮挡浮层。
  *
  * <p>【键盘操作（由 GL4DRegion 内置）】
  * <ul>
