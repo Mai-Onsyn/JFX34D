@@ -65,9 +65,10 @@ public class MainApp extends Application {
         RendererInterface.Companion.getINSTANCE().getScene().setBackgroundColor(Color.color(0.25,0.25,0.25));
 
         // 初始化 Agent（agent 侧已实现，UI 只负责调用）：
-        // sendToLLM = 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer → 黑色视口响应
+        // submitUserInput = 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer → 黑色视口响应
         try {
             AgentInterface.initialize(LLMClient.deepSeek(), new CommandExecutor(renderer));
+            AgentInterface.getInstance().start();   // 启动 agent worker 线程（消费指令队列，必须 start 才处理）
             agentReady = true;
         } catch (Exception e) {
             // 初始化失败时给用户提示并禁用发送按钮，不要静默吞掉异常（UI 构建完成后统一处理）
