@@ -17,7 +17,7 @@ import java.util.function.Consumer;
  * <ul>
  *   <li>树加载 → {@code ModelInterface#listModel()}（§4.1.1 LIST_MODEL ✅）</li>
  *   <li>增删复制合并（将来加按钮）→
- *       {@code ModelInterface#createModel(name)}（§4.1.2 CREATE_MODEL）、
+ *       {@code ModelInterface#createEmptyModel(name)}（§4.1.2 CREATE_MODEL）、
  *       {@code #removeModel(name)}（§4.1.3 DELETE_MODEL）、
  *       {@code #copyModel(src, dst)}、{@code #mergeModel(s1, s2, dst)}</li>
  *   <li>选中行：回调 {@link Consumer}{@code <String>} 通知上层（PropertyPanel 变换区联动）</li>

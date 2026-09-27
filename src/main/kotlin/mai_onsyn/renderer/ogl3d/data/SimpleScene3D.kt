@@ -14,7 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  * 这里不管生命周期。光源是纯数据, 也没有生命周期问题。
  */
 class SimpleScene3D(
-    val meshList: MutableList<Mesh> = CopyOnWriteArrayList(),
+    var meshList: MutableList<Mesh> = CopyOnWriteArrayList(),
     /** 光源。默认放一盏点光源, 不然场景只有环境光 */
     val lightList: MutableList<Light> = CopyOnWriteArrayList(listOf(Light())),
     private val camera: Camera = Camera()

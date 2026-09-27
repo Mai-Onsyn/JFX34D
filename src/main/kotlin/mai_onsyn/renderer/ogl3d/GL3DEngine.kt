@@ -167,7 +167,7 @@ class GL3DEngine(
                 }
                 MeshSourceType.D4 -> {
                     if (useOutlineRendering) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-                    else glPolygonMode(GL_FRONT, GL_FILL)
+                    else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
                 }
             }
             m.draw(modelPtr, viewPos)

@@ -25,15 +25,6 @@ class Renderer4D(
 
     val fpsCounter: FrequencyCounter = FrequencyCounter()
 
-//    init {
-//        Thread.ofVirtual().start {
-//            while (!Thread.interrupted()) {
-//                render(true)
-//                Thread.sleep(10)
-//            }
-//        }
-//    }
-
     private var thread: Thread? = null
 
     fun start() {
@@ -68,10 +59,11 @@ class Renderer4D(
 
     fun render(force: Boolean = false) {
         synchronized(lock) {
-            val currentMeshes = scene.getMeshes()
+            val currentMeshes = scene.getMeshes().toList()
             val alive = IdentityHashMap<Mesh4D, Boolean>(currentMeshes.size)
             for (m4 in currentMeshes) alive[m4] = true
 
+            val results = bindingSpace.meshList.toMutableList()
             // 1. 先处理当前场景内的所有 Mesh4D（更新或新增）
             for (m4 in currentMeshes) {
                 val cachedM3 = projected[m4]
@@ -81,26 +73,27 @@ class Renderer4D(
                     val newM3 = projectMesh(m4)
                     projected[m4] = newM3
                     m4.dirty = false
-                    bindingSpace.meshList.add(newM3)
+                    results.add(newM3)
                 } else if (m4.dirty || force) {
                     // 【需更新模型】：重新投影，并在 meshList 中直接原位替换（不经过 remove，无闪烁中间态）
                     val newM3 = projectMesh(m4)
                     projected[m4] = newM3
                     m4.dirty = false
 
-                    val idx = bindingSpace.meshList.indexOf(cachedM3)
+                    val idx = results.indexOf(cachedM3)
                     if (idx >= 0) {
-                        bindingSpace.meshList[idx] = newM3 // 👈 原位原子替换：渲染线程读到的要么是旧 m3，要么是新 m3，绝不会是 null 或缺失
+                        results[idx] = newM3 // 👈 原位原子替换：渲染线程读到的要么是旧 m3，要么是新 m3，绝不会是 null 或缺失
                     } else {
-                        bindingSpace.meshList.add(newM3)   // 防御性补回
+                        results.add(newM3)   // 防御性补回
                     }
                 } else {
                     // 【无变化模型】：若因异常不在列表中，则补回
-                    if (!bindingSpace.meshList.contains(cachedM3)) {
-                        bindingSpace.meshList.add(cachedM3)
+                    if (!results.contains(cachedM3)) {
+                        results.add(cachedM3)
                     }
                 }
             }
+            bindingSpace.meshList = results
 
             // 2. 清理已被销毁/移除的 Mesh4D（只有真正死亡的模型才删）
             val it = projected.entries.iterator()

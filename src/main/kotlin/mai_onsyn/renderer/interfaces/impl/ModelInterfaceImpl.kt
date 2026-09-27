@@ -1,22 +1,25 @@
 package mai_onsyn.renderer.interfaces.impl
 
+import com.alibaba.fastjson2.JSONObject
 import mai_onsyn.renderer.cpu4dkt.Mesh4D
+import mai_onsyn.renderer.cpu4dkt.MeshKind
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
 import mai_onsyn.renderer.interfaces.ModelInterface
 
 class ModelInterfaceImpl(
     private val scene: SimpleScene4D,
 ): ModelInterface {
-    override fun listModel(): List<String> = scene.getMeshes().map { it.name }
+    override fun listModel(): List<String> = scene.getMeshes().map { it.rootPath }.toSet().toList()
 
-    override fun createModel(name: String) {
+    override fun createEmptyModel(name: String) {
         scene.requireNotContains(name)
-        scene.meshList.add(Mesh4D(name = name))
+        scene.meshList.add(Mesh4D(name = name).apply { this.kind = MeshKind.GROUP })
     }
 
+    /** 删除模型及其全部子模型（路径前缀） */
     override fun removeModel(name: String) {
-        scene.requireContains(name)
-        scene.meshList.removeIf { it.name == name }
+        val removed = scene.meshList.removeIf { it.name == name || it.name.startsWith("$name/") }
+        if (!removed) throw NoSuchElementException(scene.noSuchMeshMessage(name))
     }
 
     override fun copyModel(srcName: String, dstName: String) {
@@ -34,13 +37,26 @@ class ModelInterfaceImpl(
             val m2 = originMesh2.applyTransform()
             this.tetrahedrons.addAll(m1.tetrahedrons)
             this.tetrahedrons.addAll(m2.tetrahedrons)
+            this.kind = MeshKind.MERGED
+            this.params = JSONObject(mapOf(
+                "type" to "Merged",
+                "source A" to originMesh1.params,
+                "source B" to originMesh2.params
+            ))
         })
     }
 
     override fun applyTransformToVertex(srcName: String, dstName: String) {
         scene.requireNotContains(dstName)
-        val applied = scene.requireContains(srcName).applyTransform()
-        applied.name = dstName
+        val sourceMesh = scene.requireContains(srcName)
+        val applied = sourceMesh.applyTransform().apply {
+            name = dstName
+            params = JSONObject(mapOf(
+                "type" to "Transformed",
+                "source" to sourceMesh.params,
+                "transformed matrix" to sourceMesh.transform.toString()
+            ))
+        }
         scene.meshList.add(applied)
     }
 }

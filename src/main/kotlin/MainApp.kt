@@ -19,7 +19,6 @@ import mai_onsyn.renderer.ogl3d.data.*
 import mai_onsyn.renderer.ogl3d.generator.CubeFace
 import mai_onsyn.renderer.ogl3d.generator.createCube
 import mai_onsyn.renderer.utils.ColorARGB
-import mai_onsyn.renderer.utils.Coordinate4D
 import mai_onsyn.renderer.utils.Direction
 import mai_onsyn.renderer.utils.fixedFrame
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
@@ -85,25 +84,25 @@ fun start4DTest2(stage: Stage) {
     RendererInterface.init(region)
 
     val i = RendererInterface.INSTANCE
+    i.scene.setBackgroundColor(Color.color(0.25, 0.25, 0.25))
     i.camera.moveForward(-5f)
-    i.scene.enableLightRendering(false)
+    i.scene.enableLightRendering(true)
     i.scene.enableTriangleLineRendering(true)
 
-    i.model.createModel("TestModel")
-    i.shape.createTesseract("TestModel", Vector4f(0f, 0f, 0f, 0f), 1f)
-    i.shape.createTesseract("TestModel", Vector4f(1f, 0f, 0f, 0f), 1f)
-    i.shape.createTesseract("TestModel", Vector4f(-1f, 0f, 0f, 0f), 1f)
-    i.shape.createTesseract("TestModel", Vector4f(0f, 0f, 0f, 1f), 1f)
-    i.shape.createTesseract("TestModel", Vector4f(0f, 1f, 0f, 0f), 1f)
-//    i.transform.setCoordinate("TestModel", Vector4f(0f, 0f, 0f, 0f), Coordinate4D())
+    i.model.createEmptyModel("TestModel")
+    i.shape.createTesseract("TestModel", "Tesseract1", Vector4f(2f, 0f, 0f, 0f), 1f)
+    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 6f)
     Thread.ofVirtual().start {
+        var frame = 0
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
             i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
-//            i.transform.rotate("TestModel", Direction.Plane.YW, 0.25f)
+            if (frame++ % 200 == 0) {
+                i.scene.enableTriangleLineRendering((frame - 1) % 400 == 0)
+            }
         }
     }
 
-    println(i.geometry.getModelInfos("TestModel"))
+    println(i.geometry.getModelInfos("TestModel/Ball1"))
 
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()

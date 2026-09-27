@@ -11,6 +11,9 @@ data class Tetrahedron(
     val v3: Vertex4D,
     val id: Long = Random.nextLong(),
 ) {
+    /** 四个顶点，按 v0..v3 顺序 */
+    val vertices: List<Vertex4D> get() = listOf(v0, v1, v2, v3)
+
     fun pack(dest: FloatArray, offset: Int) {
         var offset = offset
         fun packVertex(v: Vertex4D) {
@@ -71,4 +74,9 @@ data class Vertex4D(
     val pos: Vector4f,
     val color: ColorARGB,
     val normal: Vector4f
-)
+) {
+    override fun toString(): String = "Vertex4D{pos=(%.2f, %.2f, %.2f, %.2f), color=$color, normal=(%.2f, %.2f, %.2f, %.2f)}".format(
+        pos.x, pos.y, pos.z, pos.w,
+        normal.x, normal.y, normal.z, normal.w
+    )
+}

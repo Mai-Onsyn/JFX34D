@@ -81,6 +81,7 @@ fun constructHypercube(
     val result = mutableListOf<Tetrahedron>()
 
     // 2. 遍历 8 个 3D 胞 (Cell)
+    var tetId = 0L
     for (ax in 0..3) {
         for (valFixed in 0..1) {
             // 计算当前胞的外法向量 (4D 法向量)
@@ -110,7 +111,8 @@ fun constructHypercube(
                         cellVertices[tet[0]],
                         cellVertices[tet[1]],
                         cellVertices[tet[2]],
-                        cellVertices[tet[3]]
+                        cellVertices[tet[3]],
+                        tetId++
                     )
                 )
             }
@@ -174,6 +176,7 @@ fun constructHypercubeWithCellColors(
     var cellIndex = 0
 
     // 遍历 8 个超面 (Cell)
+    var tetId = 0L
     for (ax in 0..3) {
         for (valFixed in 1 downTo 0) { // 先生成 + 轴，再生成 - 轴
             // 1. 获取当前胞的统一颜色与 4D 法向量
@@ -204,7 +207,8 @@ fun constructHypercubeWithCellColors(
                         cellVertices[tet[0]],
                         cellVertices[tet[1]],
                         cellVertices[tet[2]],
-                        cellVertices[tet[3]]
+                        cellVertices[tet[3]],
+                        tetId++
                     )
                 )
             }

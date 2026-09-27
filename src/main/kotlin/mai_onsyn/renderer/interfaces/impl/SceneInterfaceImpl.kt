@@ -35,6 +35,10 @@ class SceneInterfaceImpl(
     override fun listLights(): String = StringBuilder("## Lights in 3D Scene").apply {
         for (l in region.scene3D.lightList) {
             append("\n- ")
+            // 名字必须显式打出来：removeLights 是按名字删的，
+            // 而 Light.toString() 里没有名字，光靠它 AI 永远不知道光源叫什么
+            append(l.name)
+            append(' ')
             append(l)
         }
     }.toString()
