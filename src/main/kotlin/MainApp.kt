@@ -91,7 +91,7 @@ fun start4DTest2(stage: Stage) {
 
     i.model.createEmptyModel("TestModel")
     i.shape.createTesseract("TestModel", "Tesseract1", Vector4f(2f, 0f, 0f, 0f), 1f)
-    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 6f)
+    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 12f)
     Thread.ofVirtual().start {
         var frame = 0
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {

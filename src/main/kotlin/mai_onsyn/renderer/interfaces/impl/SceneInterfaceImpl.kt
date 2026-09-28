@@ -26,13 +26,13 @@ class SceneInterfaceImpl(
 
     override fun get4D1PercentLowFPS(): Float = region.get4D1PercentLowFPS()
 
-    override fun enableTriangleLineRendering(enable: Boolean) = region.setOutlineRendering(enable)
+    override fun enableTriangleLineRendering(enable: Boolean) = region.set4DOutlineRendering(enable)
 
     override fun setBackgroundColor(color: Color) = region.setBackgroundColor(color)
 
     override fun enableLightRendering(enable: Boolean) = region.enableLightRendering(enable)
 
-    override fun listLights(): String = StringBuilder("## Lights in 3D Scene").apply {
+    override fun listLight(): String = StringBuilder("## Lights in 3D Scene").apply {
         for (l in region.scene3D.lightList) {
             append("\n- ")
             // 名字必须显式打出来：removeLights 是按名字删的，
@@ -42,6 +42,8 @@ class SceneInterfaceImpl(
             append(l)
         }
     }.toString()
+
+    override fun listLights(): List<Light> = region.scene3D.lightList
 
     override fun addLights(light: Light) = region.scene3D.addLight(light)
 
@@ -56,4 +58,10 @@ class SceneInterfaceImpl(
     override fun setAmbientLight(ambientLight: ColorARGB) = region.scene3D.setAmbient(ambientLight)
 
     override fun setDisplaySize(edgeLength: Float) = region.setViewPortLength(edgeLength)
+
+    override fun setOnEnable4DInputChanged(eventHandler: (Boolean) -> Unit) {
+        region.onEnable4DInputChanged = eventHandler
+    }
+
+    override fun setEnable4DInput(enable: Boolean) = region.enable4DInput(enable)
 }

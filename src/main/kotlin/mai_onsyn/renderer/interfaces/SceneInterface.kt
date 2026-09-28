@@ -32,8 +32,11 @@ interface SceneInterface {
     /** 开启光照渲染 */
     fun enableLightRendering(enable: Boolean)
 
-    /** 列出光源 */
-    fun listLights(): String
+    /** 列出光源(AI用) */
+    fun listLight(): String
+
+    /** 列出光源(UI用) */
+    fun listLights(): List<Light>
 
     /** 添加光源 */
     fun addLights(light: Light)
@@ -46,4 +49,10 @@ interface SceneInterface {
 
     /** 设置视口矩阵的边长，也就是四维超平面屏幕的尺寸 */
     fun setDisplaySize(edgeLength: Float)
+
+    /** 当键盘切换输入键按下时或手动调用[setEnable4DInput]时触发 */
+    fun setOnEnable4DInputChanged(eventHandler: (Boolean) -> Unit)
+
+    /** 设置是否开启4D输入 如果关闭，即为开启3D输入，两者互斥，初始应调用一次，通过[setOnEnable4DInputChanged]回调初始化UI */
+    fun setEnable4DInput(enable: Boolean)
 }

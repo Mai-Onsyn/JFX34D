@@ -96,10 +96,10 @@ class VisualAllInterfacesApp : Application() {
         check("SceneInterface.set4DMaxFPS", region.maxFPS == 60, "maxFPS=${region.maxFPS}")
 
         api.scene.addLights(Light.point("KeyLight", Vector3f(0f, 40f, 0f), ColorARGB(1f, 1f, 1f), 0.8f))
-        val lights = api.scene.listLights()
-        check("SceneInterface.listLights", lights.contains("KeyLight"), lights.lines().firstOrNull() ?: "")
+        val lights = api.scene.listLight()
+        check("SceneInterface.listLight", lights.contains("KeyLight"), lights.lines().firstOrNull() ?: "")
         api.scene.removeLights(listOf("KeyLight"))
-        check("SceneInterface.removeLights", !api.scene.listLights().contains("KeyLight"))
+        check("SceneInterface.removeLights", !api.scene.listLight().contains("KeyLight"))
         check("SceneInterface 非法光源名应报错", runCatching {
             api.scene.removeLights(listOf("NoSuchLight"))
         }.exceptionOrNull() is IllegalArgumentException)

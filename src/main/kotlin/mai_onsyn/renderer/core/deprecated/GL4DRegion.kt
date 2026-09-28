@@ -1,95 +1,45 @@
-package mai_onsyn.renderer.core
+package mai_onsyn.renderer.core.deprecated
 
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
+import mai_onsyn.renderer.cpu4dkt.Renderer4D
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
-import mai_onsyn.renderer.ogl4d.DirectGL4DEngine
 import mai_onsyn.renderer.utils.fixedFrame
 
-/**
- * 4D 场景的画布 —— 用 compute shader 直接变换 4D 顶点, 取代 [mai_onsyn.renderer.core.deprecated.GL4DRegion]
- * 里那条「CPU(C++) 串行变换 + JNI 回传 + 重建 Mesh」的路径。
- *
- * 用法和 GL4DRegion 基本一样:
- * ```
- * val region = DirectGL4DRegion()
- * region.scene4D.meshList.add(Mesh4D(constructHypercube()))
- * box.add(region, modifier.fillMaxSize())
- * ```
- * 输入也一样: 默认鼠标键盘控制 3D 相机, 按 I 切到 4D 相机 (WASD/空格/Shift/EQ 移动,
- * 方向键 + R/Alt 做六个平面的旋转)。
- *
- * 与 GL4DRegion 的差别:
- *  - 没有后台投影线程, 4D 数据只在使用时才打包上传 (改 transform 不会重传顶点)。
- *  - 4D 网格由 [mai_onsyn.renderer.ogl4d.DirectGL4DEngine] 用同一个 basic shader 在 3D 场景之后画一遍,
- *    共用颜色/深度缓冲, 所以背景色、光照、透明、线框的语义都跟老路径一致。
- *  - 因为 GL3DRegion.setOutlineRendering 是 final 的且只作用于 3D 引擎, 4D 的线框开关
- *    走 [set4DOutlineRendering]。光照开关继续用继承来的 enableLightRendering (同一个 uniform)。
- *  - 它不继承 GL4DRegion, 所以不能传给 RendererInterface.init (那个只收 GL4DRegion)。
- */
+@Deprecated("Use New Region Instead")
 class GL4DRegion(
     val scene3D: SimpleScene3D = SimpleScene3D(),
     val scene4D: SimpleScene4D = SimpleScene4D()
 ) : GL3DRegion(scene3D) {
 
-    private val engine = DirectGL4DEngine(scene4D, scene3D)
+    private val renderer = Renderer4D(scene4D, scene3D)
 
     private var enable4DInput = false
-    private val movement = MovementState()
+    private val movement = MovementState_()
 
     private var switchPressed = false
-    private var inputThread: Thread? = null
 
-    var onEnable4DInputChanged: ((Boolean) -> Unit)? = null
-
-    /** 4D 侧 (compute + 上传) 的帧率上限, <= 0 不限制 */
     var maxFPS: Int
-        get() = engine.maxFPS
+        get() = renderer.maxFPS
         set(value) {
-            engine.maxFPS = value
+            renderer.maxFPS = value
         }
 
-    /** 当前上下文能不能跑 compute; false 时画布只剩 3D 场景 */
-    val isComputeSupported: Boolean
-        get() = engine.isSupported
+    fun get4DFPS(): Float = renderer.fpsCounter.getAverageFrequency()
 
-    fun get4DFPS(): Float = engine.fpsCounter.getAverageFrequency()
+    fun get4D1PercentLowFPS(): Float = renderer.fpsCounter.getOnePercentLowFrequency()
 
-    fun get4D1PercentLowFPS(): Float = engine.fpsCounter.getOnePercentLowFrequency()
-
-    fun setViewPortLength(length: Float) {
-        engine.viewPortLength = length
-    }
-
-    /**
-     * 当开启时关闭3D输入，两者互斥
-     */
-    fun enable4DInput(enable: Boolean) {
-        enable4DInput = enable
-        enableInput = !enable
-        onEnable4DInputChanged?.invoke(enable)
-    }
-
-    /** 4D 网格的线框开关 (3D 的那个是继承来的 setOutlineRendering, 只作用于 3D 引擎) */
-    fun set4DOutlineRendering(enable: Boolean) {
-        engine.useOutlineRendering = enable
-    }
+    fun setViewPortLength(length: Float) { renderer.viewPortLength = length }
 
     init {
-        // 父类 init 先把 3D 引擎的事件挂上, 所以这里的 handler 一定在它之后跑:
-        // 3D 引擎先清屏 + 画 3D 场景, 本引擎再往同一个 framebuffer 上画 4D 网格。
-        this.addOnInitEvent(engine::init)
-        this.addOnReshapeEvent(engine::reshape)
-        this.addOnRenderEvent(engine::render)
-        this.addOnDisposeEvent { onDispose() }
+        renderer.start()
 
         this.addEventHandler(KeyEvent.KEY_PRESSED) {
             if (it.code == KeyCode.I) {
                 this.enableInput = !this.enableInput
                 enable4DInput = !this.enableInput
-                onEnable4DInputChanged?.invoke(this.enableInput)
             }
 
             if (!enable4DInput) return@addEventHandler
@@ -127,7 +77,7 @@ class GL4DRegion(
             }
             if (consume) it.consume()
         }
-
+        
         this.addEventHandler(KeyEvent.KEY_RELEASED) {
             var consume = true
             when (it.code) {
@@ -166,12 +116,8 @@ class GL4DRegion(
         startKeyEventHandlerThread()
     }
 
-    private fun onDispose() {
-        inputThread?.interrupt()
-    }
-
     private fun startKeyEventHandlerThread() {
-        inputThread = Thread.ofVirtual().name("Direct 4D Region Key Event Handler").start {
+        Thread.ofVirtual().name("4D Region Key Event Handler").start {
             val moveSpeed = 0.004f
             val mouseSpeed = 0.0005f
             fixedFrame(1000, { !Thread.currentThread().isInterrupted }) {
@@ -208,7 +154,8 @@ class GL4DRegion(
     }
 }
 
-private class MovementState(
+@Deprecated("Use New Region Instead")
+private class MovementState_(
     var left: Float = 0f,
     var right: Float = 0f,
     var down: Float = 0f,

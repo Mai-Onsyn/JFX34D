@@ -1,0 +1,136 @@
+#version 430 core
+
+/*
+ * 4D 顶点变换 (compute) —— 取代原来 JNI 里那段 CPU 串行变换。
+ *
+ * 一个 invocation 处理一个四面体: 读 4 个 4D 顶点 → 5x5 mvp 变换 + 透视除法 + 视口缩放
+ * → 4 个面的屏幕空间法线 → 把 12 个顶点 (4 个三角形) 直接写进 GPU 的 VBO。
+ *
+ * 数学与 C++ VertexProcessor4D_::process + Kotlin List<Tetrahedron3D>.toMesh() 逐条对齐:
+ *   mvp      = projection * view * model          (5x5, 行主序)
+ *   屏幕坐标 = (mvp * (x,y,z,w,1)).xyz / 第5分量 * (viewPortLength * 0.5)
+ *   法线     = 屏幕空间三点叉乘重算 (calcNormal), uv = (0,0), 颜色原样
+ */
+
+layout(local_size_x = 64) in;
+
+// 输入: 与 JNIRasterizer.packMesh4D 的输出逐字节一致 (36 float / 四面体)
+//   每个顶点 9 个 float: pos(x,y,z,w) | color(ARGB 的位模式) | normal(x,y,z,w)
+//   颜色用 float 存只是搬运位模式, 这里用 floatBitsToUint 解回 ARGB。
+layout(std430, binding = 0) readonly buffer Tetrahedron4DBuffer {
+    float inData[];
+};
+
+// 输出: 直接就是这个 mesh 的 VBO, 顶点布局和 Mesh 完全一致 (12 float = 48 字节 / 顶点)
+//   pos(x,y,z) | color(r,g,b,a) | normal(x,y,z) | uv(u,v)
+layout(std430, binding = 1) writeonly buffer VertexBuffer {
+    float outData[];
+};
+
+// mvp = projection * view * model, 行主序 5x5 (与 Kotlin Matrix5f / C++ Matrix5x5 一致)
+uniform float uMvp[25];
+// viewPort = Matrix4f().scale(viewPortLength * 0.5) 的对角项
+uniform float uViewScale;
+// 这次 dispatch 要处理多少个四面体
+uniform int uTetCount;
+
+const int IN_FLOATS_PER_VERTEX = 9;
+const int IN_FLOATS_PER_TET = 36;
+const int OUT_FLOATS_PER_VERTEX = 12;
+const int OUT_VERTICES_PER_TET = 12;   // 4 个面 * 3 个顶点
+
+struct Vertex4D {
+    vec4 pos;
+    vec4 color;
+};
+
+/** 和 ColorARGB 的 redF/greenF/blueF/alphaF 用同一个换算常数 */
+vec4 decodeColor(float bits) {
+    uint argb = floatBitsToUint(bits);
+    return vec4(
+        float((argb >> 16) & 0xFFu),
+        float((argb >>  8) & 0xFFu),
+        float( argb        & 0xFFu),
+        float((argb >> 24) & 0xFFu)
+    ) * 0.003921569;
+}
+
+Vertex4D readVertex(int tet, int i) {
+    int base = tet * IN_FLOATS_PER_TET + i * IN_FLOATS_PER_VERTEX;
+    Vertex4D v;
+    v.pos   = vec4(inData[base], inData[base + 1], inData[base + 2], inData[base + 3]);
+    v.color = decodeColor(inData[base + 4]);
+    return v;
+}
+
+/** 与 toMesh() 里的 calcNormal 完全同式同顺序 (用第 4 个点决定朝向, 需要时翻转) */
+vec3 calcNormal(vec3 a, vec3 b, vec3 c, vec3 d) {
+    vec3 n = cross(b - a, c - a);
+    float s = dot(n, d - a);
+    return s > 0.0 ? n / (-length(n)) : normalize(n);
+}
+
+void writeVertex(int tet, int slot, vec3 pos, vec4 color, vec3 normal) {
+    int base = (tet * OUT_VERTICES_PER_TET + slot) * OUT_FLOATS_PER_VERTEX;
+    outData[base +  0] = pos.x;
+    outData[base +  1] = pos.y;
+    outData[base +  2] = pos.z;
+    outData[base +  3] = color.r;
+    outData[base +  4] = color.g;
+    outData[base +  5] = color.b;
+    outData[base +  6] = color.a;
+    outData[base +  7] = normal.x;
+    outData[base +  8] = normal.y;
+    outData[base +  9] = normal.z;
+    outData[base + 10] = 0.0;   // uv
+    outData[base + 11] = 0.0;
+}
+
+void main() {
+    int tet = int(gl_GlobalInvocationID.x);
+    if (tet >= uTetCount) return;
+
+    Vertex4D vin[4];
+    vec3 p[4];
+
+    for (int i = 0; i < 4; i++) {
+        vin[i] = readVertex(tet, i);
+
+        // 5D 齐次坐标 (x, y, z, w, 1), 逐项累加的顺序与 CPU 侧一致
+        float v[5] = float[5](vin[i].pos.x, vin[i].pos.y, vin[i].pos.z, vin[i].pos.w, 1.0);
+        float c[5];
+        for (int r = 0; r < 5; r++) {
+            float sum = 0.0;
+            for (int k = 0; k < 5; k++) sum += uMvp[r * 5 + k] * v[k];
+            c[r] = sum;
+        }
+
+        // 透视除法 (除以第 5 分量) → 4D NDC 的前三分量, 再过视口缩放
+        float invW = 1.0 / c[4];
+        vec3 ndc = vec3(c[0], c[1], c[2]) * invW;
+        p[i] = ndc * uViewScale;
+    }
+
+    // 四个面各自的屏幕空间法线
+    vec3 n0 = calcNormal(p[1], p[2], p[3], p[0]);
+    vec3 n1 = calcNormal(p[2], p[3], p[0], p[1]);
+    vec3 n2 = calcNormal(p[3], p[0], p[1], p[2]);
+    vec3 n3 = calcNormal(p[0], p[1], p[2], p[3]);
+
+    // 与 toMesh() 的四个三角形顺序一致: v0v1v2 / v0v1v3 / v0v2v3 / v1v2v3
+    writeVertex(tet,  0, p[0], vin[0].color, n3);
+    writeVertex(tet,  1, p[1], vin[1].color, n3);
+    writeVertex(tet,  2, p[2], vin[2].color, n3);
+
+    writeVertex(tet,  3, p[0], vin[0].color, n2);
+    writeVertex(tet,  4, p[1], vin[1].color, n2);
+    writeVertex(tet,  5, p[3], vin[3].color, n2);
+
+    writeVertex(tet,  6, p[0], vin[0].color, n1);
+    writeVertex(tet,  7, p[2], vin[2].color, n1);
+    writeVertex(tet,  8, p[3], vin[3].color, n1);
+
+    writeVertex(tet,  9, p[1], vin[1].color, n0);
+    writeVertex(tet, 10, p[2], vin[2].color, n0);
+    writeVertex(tet, 11, p[3], vin[3].color, n0);
+}
