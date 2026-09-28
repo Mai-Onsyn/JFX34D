@@ -17,6 +17,7 @@ class Mesh4D @JvmOverloads constructor (
     var dirty: Boolean = true
     var kind: MeshKind = MeshKind.CARVED
     var params: JSONObject? = null
+    var visible: Boolean = true
 
     val rootPath: String    get() = name.substringBefore('/')
     val parentPath: String? get() = name.substringBeforeLast('/', "").ifEmpty { null }

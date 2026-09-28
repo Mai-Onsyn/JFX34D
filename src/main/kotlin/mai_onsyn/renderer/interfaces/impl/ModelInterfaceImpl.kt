@@ -59,4 +59,10 @@ class ModelInterfaceImpl(
         }
         scene.meshList.add(applied)
     }
+
+    override fun setModelVisible(name: String, visible: Boolean) {
+        scene.requireContains(name).visible = visible
+    }
+
+    override fun getModel(name: String): Mesh4D = scene.requireContains(name)
 }

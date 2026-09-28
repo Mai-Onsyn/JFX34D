@@ -25,4 +25,15 @@ class SimpleScene4D(
     fun subModels(parent: String): List<String> {
         return childrenOf(parent).map { it.name }
     }
+
+    fun filterVisible(): List<Mesh4D> {
+        val hidden = mutableSetOf<String>()
+        meshList.forEach { mesh ->
+            if (!mesh.visible && !hidden.contains(mesh.name)) {
+                hidden.add(mesh.name)
+                this.subModels(mesh.name).forEach { hidden.add(it) }
+            }
+        }
+        return meshList.mapNotNull { if (hidden.contains(it.name)) null else it }
+    }
 }

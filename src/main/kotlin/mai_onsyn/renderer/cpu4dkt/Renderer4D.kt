@@ -59,7 +59,7 @@ class Renderer4D(
 
     fun render(force: Boolean = false) {
         synchronized(lock) {
-            val currentMeshes = scene.getMeshes().toList()
+            val currentMeshes = scene.filterVisible()
             val alive = IdentityHashMap<Mesh4D, Boolean>(currentMeshes.size)
             for (m4 in currentMeshes) alive[m4] = true
 

@@ -97,7 +97,10 @@ fun start4DTest2(stage: Stage) {
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
             i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
             if (frame++ % 200 == 0) {
-                i.scene.enableTriangleLineRendering((frame - 1) % 400 == 0)
+                val enable = (frame - 1) % 400 == 0
+                i.scene.enableTriangleLineRendering(enable)
+//                i.model.setModelVisible("TestModel/Ball1", enable)
+//                i.model.setModelVisible("TestModel", enable)
             }
         }
     }
