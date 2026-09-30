@@ -71,7 +71,7 @@ class Camera4D(
         )
 
     fun projectionMatrix(aspectX: Float = 1f, aspectZ: Float = 1f): Matrix5f {
-        val sy = 1f / tan(fov / 2)
+        val sy = -1f / tan(fov / 2)
         return Matrix5f(
             sy / aspectX, 0f, 0f, 0f, 0f,
             0f, sy, 0f, 0f, 0f,
@@ -104,8 +104,8 @@ class Camera4D(
         return CameraOrientation(
             Math.toDegrees(xyRad.toDouble()).toFloat(),
             Math.toDegrees(xzRad.toDouble()).toFloat(),
-            Math.toDegrees(xwRad.toDouble()).toFloat(),
             Math.toDegrees(yzRad.toDouble()).toFloat(),
+            Math.toDegrees(xwRad.toDouble()).toFloat(),
             Math.toDegrees(ywRad.toDouble()).toFloat(),
             Math.toDegrees(zwRad.toDouble()).toFloat()
         )
@@ -164,15 +164,13 @@ class Camera4D(
 }
 
 data class CameraOrientation(
-    // === 3D 姿态 (人脑最容易理解的部分) ===
-    val yawDeg: Float,     // 左右偏航 (rotateXW 主要是它在动)
-    val pitchDeg: Float,   // 上下俯仰 (rotateYW 主要是它在动)
-    val rollDeg: Float,    // 镜头翻滚 (rotateXY 主要是它在动)
+    val xy: Float,
+    val xz: Float,
+    val yz: Float,
 
-    // === 4D 侧倾 (相机各轴向第四维 Z 轴偏离的角度) ===
-    val fwdDepthDeg: Float,  // 主视线 vw 偏向 Z 轴的角度 (rotateZW 主要是它在动)
-    val upDepthDeg: Float,   // 上方向 vy 偏向 Z 轴的角度 (rotateYZ 主要是它在动)
-    val rightDepthDeg: Float // 右方向 vx 偏向 Z 轴的角度 (rotateXZ 主要是它在动)
+    val xw: Float,
+    val yw: Float,
+    val zw: Float
 ) {
-    override fun toString(): String = "XY: %.2f | XZ: %.2f | XW: %.2f | YZ: %.2f | YW: %.2f | ZW: %.2f".format(yawDeg, pitchDeg, rollDeg, fwdDepthDeg, upDepthDeg, rightDepthDeg)
+    override fun toString(): String = "XY: %.2f | XZ: %.2f | YZ: %.2f | XW: %.2f | YW: %.2f | ZW: %.2f".format(xy, xz, yz, xw, yw, zw)
 }

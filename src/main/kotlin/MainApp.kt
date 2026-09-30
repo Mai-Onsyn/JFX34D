@@ -1,3 +1,5 @@
+import com.alibaba.fastjson2.JSON
+import com.alibaba.fastjson2.JSONWriter
 import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Scene
@@ -31,6 +33,8 @@ import kotlin.math.sin
 
 class MainApp : Application() {
     override fun start(stage: Stage?) {
+        JSON.config(JSONWriter.Feature.PrettyFormat, true)
+        JSON.config(JSONWriter.Feature.WriteMapNullValue, true)
         stage!!
         start4DTest2(stage)
 //        start3DTest(stage)
@@ -105,7 +109,10 @@ fun start4DTest2(stage: Stage) {
         }
     }
 
-    println(i.geometry.getModelInfos("TestModel/Ball1"))
+//    i.model.mergeAllSubModels("TestModel", "DestTest/TestModelMerged")
+//    i.transform.move("DestTest/TestModelMerged", Vector4f(0f, 3f, 0f, 0f))
+//    println(i.geometry.getModelInfos("TestModel"))
+//    println(i.geometry.getModelInfos("DestTest/TestModelMerged"))
 
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()

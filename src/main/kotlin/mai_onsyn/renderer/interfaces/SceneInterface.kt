@@ -1,6 +1,7 @@
 package mai_onsyn.renderer.interfaces
 
 import javafx.scene.paint.Color
+import mai_onsyn.renderer.cpu4dkt.CameraOrientation
 import mai_onsyn.renderer.ogl3d.data.Light
 import mai_onsyn.renderer.utils.ColorARGB
 
@@ -55,4 +56,25 @@ interface SceneInterface {
 
     /** 设置是否开启4D输入 如果关闭，即为开启3D输入，两者互斥，初始应调用一次，通过[setOnEnable4DInputChanged]回调初始化UI */
     fun setEnable4DInput(enable: Boolean)
+
+    /** 设置四维相机移动速度倍率 */
+    fun set4DCameraMoveSpeed(speed: Float)
+
+    /** 设置四维相机移动速度倍率 */
+    fun set4DCameraRotateSpeed(speed: Float)
+
+    /** 设置四维相机fov (0~90°) */
+    fun set4DCameraFov(fov: Float)
+
+    /** 获取四维相机在6个平面的旋转姿态 */
+    fun get4DCameraOrientation(): CameraOrientation
+
+    /** 设置三维相机移动速度倍率 */
+    fun set3DCameraMoveSpeed(speed: Float)
+
+    /** 设置三维相机移动速度倍率 */
+    fun set3DCameraRotateSpeed(speed: Float)
+
+    /** 设置四维相机fov (0~90°) */
+    fun set3DCameraFov(fov: Float)
 }
