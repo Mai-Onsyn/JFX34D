@@ -95,7 +95,7 @@ fun start4DTest2(stage: Stage) {
 
     i.model.createEmptyModel("TestModel")
     i.shape.createTesseract("TestModel", "Tesseract1", Vector4f(2f, 0f, 0f, 0f), 1f)
-    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 12f)
+    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 4f)
     Thread.ofVirtual().start {
         var frame = 0
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
@@ -113,6 +113,8 @@ fun start4DTest2(stage: Stage) {
 //    i.transform.move("DestTest/TestModelMerged", Vector4f(0f, 3f, 0f, 0f))
 //    println(i.geometry.getModelInfos("TestModel"))
 //    println(i.geometry.getModelInfos("DestTest/TestModelMerged"))
+
+    i.io.saveModel("TestModel", "D:/Users/Desktop/test.4do")
 
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()

@@ -6,6 +6,17 @@
 > 涉及的接口：`RendererInterface`、`SceneInterface`、`CameraInterface`、`ModelInterface`、
 > `TransformInterface`、`GeometryInterface`、`ShapeInterface`、`IOInterface`。
 >
+> **本次同步（对应 `mai_onsyn.renderer.interfaces` 的改动）**：
+>
+> - `ModelInterface` 新增 `renameModel`（§4.1.7）、`mergeAllSubModels`（§4.1.8）、`setModelVisible`（§4.1.9）；
+> - `SceneInterface` 新增三维/四维相机的移动速度、旋转速度、fov 设置与 `get4DCameraOrientation`（§8.15~§8.21）；
+> - `MERGE_MODEL` 的 `params` 由平铺改为**嵌套**结构（§4.1.5）；
+> - 分组寻址辅助 `targets()` 从 `TransformInterfaceImpl` 移入 `impl/ModelCheck.kt`，与 `mergeAllSubModels` 共用（内部重构，对外行为不变）；
+> - `Mesh4D` 新增 `visible` 字段（§1.2）。
+>
+> 同时修复了这三处实现缺陷：`renameModel`（嵌套路径拼错、子树不跟随改名）、
+> `mergeAllSubModels`（缺 `dst` 重名校验）、`setModelVisible`（隔代子模型漏隐藏）。
+>
 > **渲染包现状**：除 `IOInterface`（`saveModel` / `loadModel`）外，其余接口**全部已实现**；
 > 模型按**名称路径**组成树（见 §0.3），形状操作要求显式给出目标路径。
 >
@@ -51,6 +62,10 @@
 | | `copyModel(src, dst)` | `COPY_MODEL` | §4.1.4 |
 | | `mergeModel(s1, s2, dst)` | `MERGE_MODEL` | §4.1.5 |
 | | `applyTransformToVertex(src, dst)` | `APPLY_TRANSFORM_TO_VERTEX` | §4.1.6 |
+| | `renameModel(path, newName)` | `RENAME_MODEL` | §4.1.7 |
+| | `mergeAllSubModels(src, dst)` | `MERGE_ALL_SUB_MODELS` | §4.1.8 |
+| | `setModelVisible(name, visible)` | `SET_MODEL_VISIBLE` | §4.1.9 |
+| | `getModel(name): Mesh4D` | —（AI 不使用，见下） | — |
 | `TransformInterface` | `getModelMatrix(name): Matrix5f` | `GET_MODEL_MATRIX` | §4.3 |
 | | `setModelMatrix(name, m)` | `TRANSFORM_MODEL` + `apply: false` | §4.2 |
 | | `transform(name, m)` | `TRANSFORM_MODEL` method `MATRIX` | §4.2.1 |
@@ -84,11 +99,24 @@
 | | `enableTriangleLineRendering(b)` | `SET_TRIANGLE_LINE_RENDERING` | §8.7 |
 | | `setBackgroundColor(color)` | `SET_BACKGROUND_COLOR` | §8.8 |
 | | `enableLightRendering(b)` | `SET_LIGHT_RENDERING` | §8.9 |
-| | `listLights(): String` | `LIST_LIGHTS` | §8.10 |
+| | `listLight(): String` | `LIST_LIGHTS` | §8.10 |
+| | `listLights(): List<Light>` | —（UI 使用，返回对象列表） | §8.10 |
 | | `addLights(light)` | `ADD_LIGHT` | §8.11 |
 | | `removeLights(names)` | `REMOVE_LIGHTS` | §8.12 |
 | | `setAmbientLight(argb)` | `SET_AMBIENT_LIGHT` | §8.13 |
 | | `setDisplaySize(edgeLength)` | `SET_DISPLAY_SIZE` | §8.14 |
+| | `set4DCameraMoveSpeed(speed)` | `SET_4D_CAMERA_MOVE_SPEED` | §8.15 |
+| | `set4DCameraRotateSpeed(speed)` | `SET_4D_CAMERA_ROTATE_SPEED` | §8.16 |
+| | `set4DCameraFov(fov)` | `SET_4D_CAMERA_FOV` | §8.17 |
+| | `get4DCameraOrientation(): CameraOrientation` | `GET_4D_CAMERA_ORIENTATION` | §8.18 |
+| | `set3DCameraMoveSpeed(speed)` | `SET_3D_CAMERA_MOVE_SPEED` | §8.19 |
+| | `set3DCameraRotateSpeed(speed)` | `SET_3D_CAMERA_ROTATE_SPEED` | §8.20 |
+| | `set3DCameraFov(fov)` | `SET_3D_CAMERA_FOV` | §8.21 |
+
+> **非 AI 接口**（程序内部 / UI 调用，AI 不应生成对应操作）：
+> `ModelInterface.getModel`（返回 `Mesh4D` 实例供程序使用）、
+> `SceneInterface.listLights(): List<Light>`（UI 拿光源对象）、
+> `SceneInterface.setEnable4DInput` / `setOnEnable4DInputChanged`（3D/4D 输入模式切换与回调）。
 
 > **接口初始化**：`RendererInterface.INSTANCE` 在 `RendererInterface.init(region)` 之前访问会报错；
 > 由 `GL4DRegion`（`renderer/core/GL4DRegion.kt`）注入场景与渲染器，见附录 C。
@@ -144,7 +172,7 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 | `GROUP` | 纯容器，自己没有几何 | `CREATE_MODEL` 建出来的空模型 |
 | `SHAPE` | 参数化几何：几何是 `params` 的纯函数，可重建 | 七个 `CREATE_*` 形状操作 |
 | `CARVED` | 被雕刻过：几何就是顶点本身，`params` 已失效 | 顶点/四面体级编辑、切片、烘焙变换的产物 |
-| `MERGED` | 两个模型合并的结果 | `MERGE_MODEL` |
+| `MERGED` | 多个模型烘焙后拼接的结果 | `MERGE_MODEL`（2 个源）、`MERGE_ALL_SUB_MODELS`（自身 + 全部后代） |
 
 `params` 是一段 JSON（给人/AI 看），例如
 `{"type":"Tesseract","center":"(0, 0, 0, 0)","edge length":"2.0","cells":"8"}`。
@@ -160,6 +188,9 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 | 几何编辑（§6.3~§6.7） | **只能是没有子节点的真实模型** | 分组路径、带子节点的模型会被拒绝，并在错误里给出可选路径 |
 | `CREATE_*` 形状 | `target` 可为多级路径（不必存在） | 结果路径 = `target` + `/` + `name`，且必须**尚不存在** |
 | `COPY_MODEL` / `MERGE_MODEL` / `APPLY_TRANSFORM_TO_VERTEX` | 源必须是真实存在的路径 | 只复制/读取该节点自身，**不递归子模型** |
+| `MERGE_ALL_SUB_MODELS` | 真实模型，或分组路径 / 带子节点的模型 | 与 `TRANSFORM_MODEL` 同一套寻址：命中自身 + **全部后代**（`exact + subTree`） |
+| `RENAME_MODEL` | **只接受真实存在的路径** | 改该节点名字，并**同步整棵子树的路径前缀**（§4.1.7） |
+| `SET_MODEL_VISIBLE` | **只接受真实存在的路径** | 作用于该节点**及其整棵子树**的可见标志（§4.1.9） |
 | `DELETE_MODEL` | 任意前缀 | 删除该路径**及其整棵子树**（`name` 和 `name/...`） |
 
 #### 找不到模型时的报错
@@ -206,6 +237,7 @@ class Mesh4D(
     var dirty: Boolean = true
     var kind: MeshKind = MeshKind.CARVED
     var params: JSONObject? = null              // 参数化描述，给人/AI 看
+    var visible: Boolean = true                 // 渲染可见性，SET_MODEL_VISIBLE 改它
 
     val rootPath: String                        // "Tower"
     val parentPath: String?                     // "Tower/Upper"
@@ -646,8 +678,22 @@ Tetrahedrons: 48
 - src2(String)：源 2，必须存在
 - dst(String)：新路径，必须不存在
 
-语义：两个源的**变换矩阵先烘焙进顶点**再拼接，结果 `kind = MERGED`，
-`params = {"type":"Merged","source A":...,"source B":...}`；两个源模型保持不变。
+语义：两个源的**变换矩阵先烘焙进顶点**再拼接，结果 `kind = MERGED`；两个源模型保持不变。
+`params` 采用嵌套结构，每个源分别记录降级前的 `params` 与**当时被烘焙的矩阵**：
+
+```json
+{
+    "type": "Merged",
+    "source A": {
+        "params": { "type": "Tesseract", "center": "(0, 0, 0, 0)", "edge length": "2.0", "cells": "8" },
+        "transform matrix": "(1 0 0 0 0)(0 1 0 0 0)(0 0 1 0 0)(0 0 0 1 0)(0 0 0 0 1)"
+    },
+    "source B": { "params": {}, "transform matrix": "..." }
+}
+```
+
+> `transform matrix` 是 `Transform4D.toString()` 的输出（5 组 `(...)`，行主序）。
+> 这样即使源模型后来又被移动，也能从 `params` 里还原出"合并时它在哪里"。
 
 ```markdown
 # MERGE_MODEL(id=10)
@@ -673,6 +719,125 @@ Successfully apply transform of "Tower/Base"
 Created "Tower/Baked", matrix is identity
 Tetrahedrons: 48
 ```
+
+#### 4.1.7 重命名模型
+
+**RENAME_MODEL**：重命名一个模型节点的**叶名**
+
+必须包含的参数：
+
+- path(String)：现有完整路径，必须精确存在
+- newName(String)：新的叶名（接口注释明确：**是名字，不是路径**）
+
+语义：
+
+- 根节点：`Tower` + newName = `Tower2` → 整棵 `Tower` 子树改名到 `Tower2/...`；
+- 嵌套节点：`Tower/Base` + newName = `Lid` → `Tower/Lid`，其子树同样换成新前缀；
+- newName 只是个**叶名**，里面带 `/` 也不会新建层级，会被原样拼到父路径后面。
+
+重命名会**连整棵子树一起改名**，父子关系保持不变：`Tower` → `Tower2` 之后，
+`Tower/Base` 会变成 `Tower2/Base`，不会出现断链。
+
+```json
+{
+    "type": "RENAME_MODEL",
+    "id": 12,
+    "no_result": false,
+    "data": { "path": "Tower/Base", "newName": "Lid" }
+}
+```
+
+```markdown
+# RENAME_MODEL(id=12)
+Successfully rename "Tower/Base" to "Tower/Lid"
+```
+
+校验：`path` 必须精确存在；目标路径（以及它的子树前缀）若已被占用，会抛
+`Model "<newPath>" already exists`。
+
+#### 4.1.8 合并全部子模型
+
+**MERGE_ALL_SUB_MODELS**：把 `src` 命中的节点**连同它整棵子树**烘焙后合并成一个新模型
+
+必须包含的参数：
+
+- src(String)：源路径；既可以是真实模型，也可以是**分组路径**（寻址同 `TRANSFORM_MODEL`，见 §0.3）
+- dst(String)：新路径
+
+语义：用 `scene.targets(src)` 把 `src` 展开成"自身 + 全部后代"（`exact + subTree`），
+逐个 `applyTransform()` 把变换烘焙进顶点后拼进结果；结果 `kind = MERGED`。
+
+`params` 用数组记录每个来源：
+
+```json
+{
+    "type": "Merged",
+    "sources": [
+        { "name": "Tower/Base", "transform matrix": "...", "params": { "type": "Tesseract", "cells": "8" } },
+        { "name": "Tower/Top",  "transform matrix": "...", "params": { "type": "Ball4", "radius": "0.9" } }
+    ]
+}
+```
+
+```json
+{
+    "type": "MERGE_ALL_SUB_MODELS",
+    "id": 13,
+    "no_result": false,
+    "data": { "src": "Tower", "dst": "Tower/All" }
+}
+```
+
+```markdown
+# MERGE_ALL_SUB_MODELS(id=13)
+Successfully merge 3 models into "Tower/All"
+Tetrahedrons: 492
+```
+
+与 `MERGE_MODEL`（§4.1.5）的差别：
+
+| | `MERGE_MODEL` | `MERGE_ALL_SUB_MODELS` |
+| --- | --- | --- |
+| 源 | `src1`、`src2`，都必须精确存在 | 一个 `src`，可展开成整棵子树 |
+| `params` | `source A` / `source B` 两个键 | `sources` 数组（每项带 `name`） |
+| `dst` 重名校验 | 有（`requireNotContains`） | 有（`requireNotContains`） |
+
+源模型（含被 `targets` 展开的子树）**不会被删除**，仍然是独立节点；
+结果节点默认 `visible = true`，不受源模型可见性影响。
+
+#### 4.1.9 设置模型可见性
+
+**SET_MODEL_VISIBLE**：控制某个节点是否参与渲染
+
+必须包含的参数：
+
+- name(String)：目标路径，必须**精确存在**
+- visible(Boolean)：`true` 显示，`false` 隐藏
+
+```json
+{
+    "type": "SET_MODEL_VISIBLE",
+    "id": 14,
+    "no_result": false,
+    "data": { "name": "Tower", "visible": false }
+}
+```
+
+```markdown
+# SET_MODEL_VISIBLE(id=14)
+Success
+"Tower" visible = false
+```
+
+语义与边界：
+
+- 只写 `Mesh4D.visible` 标志，**不改** `kind` / `params`，也**不动几何**；
+- 作用范围是目标节点**及其整棵子树**：`setModelVisible("Tower", false)` 会把 `Tower`
+  以及 `Tower/Base`、`Tower/Upper/Lid` 等所有后代一起置为隐藏，一次就能隐藏一整棵子树；
+- 渲染前 `SimpleScene4D.filterVisible()` 会剔除所有 `visible = false` 的节点
+  （并连带其直接子节点），因此整棵子树都不会出现在画面里；
+- 重新置 `true` 同样作用于整棵子树，会覆盖后代各自的可见性设置；
+- 路径不存在时报错并带候选（§0.3）。
 
 ### 4.2 模型变换
 
@@ -1608,6 +1773,9 @@ Light rendering: OFF
 
 **LIST_LIGHTS**：无参数。返回场景里所有光源（3D 场景默认有一盏点光源 `Light`）。
 
+> 实现上 `SceneInterface` 有两个方法：`listLight(): String` 生成下面这段 markdown，**给 AI 用**；
+> `listLights(): List<Light>` 直接返回光源对象列表，**只给 UI 用**，不映射成 AI 操作。
+
 ```markdown
 # LIST_LIGHTS(id=40)
 ## Lights in 3D Scene
@@ -1730,6 +1898,104 @@ Ambient light = #FF595959
 Success
 Display size = 16.0
 ```
+
+### 8.15 设置 4D 相机移动速度
+
+**SET_4D_CAMERA_MOVE_SPEED**：`speed`(Float)。四维相机键盘平移的**速度倍率**（初始 `1.0`，越大越快）。
+
+```json
+{ "type": "SET_4D_CAMERA_MOVE_SPEED", "id": 47, "no_result": false, "data": { "speed": 2.0 } }
+```
+
+```markdown
+# SET_4D_CAMERA_MOVE_SPEED(id=47)
+Success
+4D camera move speed = 2.0
+```
+
+### 8.16 设置 4D 相机旋转速度
+
+**SET_4D_CAMERA_ROTATE_SPEED**：`speed`(Float)。四维相机鼠标转视角的速度倍率（初始 `1.0`）。
+
+```json
+{ "type": "SET_4D_CAMERA_ROTATE_SPEED", "id": 48, "no_result": false, "data": { "speed": 0.5 } }
+```
+
+```markdown
+# SET_4D_CAMERA_ROTATE_SPEED(id=48)
+Success
+4D camera rotate speed = 0.5
+```
+
+### 8.17 设置 4D 相机 fov
+
+**SET_4D_CAMERA_FOV**：`fov`(Float)。四维相机视场角，**单位度**，合理范围 `(0, 90)`（`Camera4D.fov` 初始 `80`）。
+
+```json
+{ "type": "SET_4D_CAMERA_FOV", "id": 49, "no_result": false, "data": { "fov": 60.0 } }
+```
+
+```markdown
+# SET_4D_CAMERA_FOV(id=49)
+Success
+4D camera fov = 60.0
+```
+
+### 8.18 获取 4D 相机姿态
+
+**GET_4D_CAMERA_ORIENTATION**：无参数。返回四维相机在**六个平面**里的旋转角（度）。
+
+```markdown
+# GET_4D_CAMERA_ORIENTATION(id=50)
+XY: 0.00 | XZ: 0.00 | YZ: 0.00 | XW: 30.00 | YW: 0.00 | ZW: 0.00
+```
+
+返回类型是 `CameraOrientation(xy, xz, yz, xw, yw, zw)`，六个角由基向量的**相位**求出（再转成度）：
+
+| 字段 | 计算 |
+| --- | --- |
+| `xy` | `atan2(vx.y, vx.x)` |
+| `xz` | `atan2(vx.z, vx.x)` |
+| `xw` | `atan2(vx.w, vx.x)` |
+| `yz` | `atan2(vy.z, vy.y)` |
+| `yw` | `atan2(vy.w, vy.y)` |
+| `zw` | `atan2(vz.w, vz.z)` |
+
+> 这是**相位式**读数，不是唯一的欧拉角分解：同一组基向量可以有等价的角度组合，
+> 所以**不要**用它反推"该转多少度才能回去"。要精确判断朝向请用 `GET_CAMERA_VIEW`（§3.2.1）的四个基向量。
+
+### 8.19 设置 3D 相机移动速度
+
+**SET_3D_CAMERA_MOVE_SPEED**：`speed`(Float)。三维（显示）相机平移速度倍率，初始 `1.0`。
+
+```json
+{ "type": "SET_3D_CAMERA_MOVE_SPEED", "id": 51, "no_result": false, "data": { "speed": 2.0 } }
+```
+
+### 8.20 设置 3D 相机旋转速度
+
+**SET_3D_CAMERA_ROTATE_SPEED**：`speed`(Float)。三维相机鼠标旋转速度倍率，初始 `1.0`。
+
+```json
+{ "type": "SET_3D_CAMERA_ROTATE_SPEED", "id": 52, "no_result": false, "data": { "speed": 0.5 } }
+```
+
+### 8.21 设置 3D 相机 fov
+
+**SET_3D_CAMERA_FOV**：`fov`(Float)。三维相机视场角，单位度。
+
+```json
+{ "type": "SET_3D_CAMERA_FOV", "id": 53, "no_result": false, "data": { "fov": 60.0 } }
+```
+
+```markdown
+# SET_3D_CAMERA_FOV(id=53)
+Success
+3D camera fov = 60.0
+```
+
+> 8.15~8.21 都是**手感/视野**参数，不改任何模型数据；与 §3 的相机位置、视角相互独立
+> （`SET_CAMERA_FOV` 之类只影响投影，不影响 `pos` / `vx vy vz vw`）。
 
 ---
 
@@ -1928,6 +2194,9 @@ Sub models:
 | `COPY_MODEL` | `src`, `dst` | — | 四面体数 |
 | `MERGE_MODEL` | `src1`, `src2`, `dst` | — | 四面体数 |
 | `APPLY_TRANSFORM_TO_VERTEX` | `name`, `dest` | — | 新路径、四面体数 |
+| `RENAME_MODEL` | `path`, `newName` | — | 新路径（子树一并改名） |
+| `MERGE_ALL_SUB_MODELS` | `src`, `dst` | — | 合并的源个数、四面体数 |
+| `SET_MODEL_VISIBLE` | `name`, `visible` | — | 新的可见性 |
 | `GET_MODEL_MATRIX` | `name` | — | 5 行矩阵 |
 | `TRANSFORM_MODEL` | `name`, `transforms` | `apply` | 变换后的模型矩阵（分组路径会注明作用了几个子模型） |
 | `CREATE_TETRAHEDRON` | `target`, `name`, `center`, `radius` | — | 新路径、胞数 |
@@ -1960,6 +2229,13 @@ Sub models:
 | `REMOVE_LIGHTS` | `names` | — | 删除结果、剩余光源 |
 | `SET_AMBIENT_LIGHT` | `color` | — | 新的环境光 |
 | `SET_DISPLAY_SIZE` | `edgeLength` | — | 新的视口边长 |
+| `SET_4D_CAMERA_MOVE_SPEED` | `speed` | — | 新的 4D 平移速度倍率 |
+| `SET_4D_CAMERA_ROTATE_SPEED` | `speed` | — | 新的 4D 旋转速度倍率 |
+| `SET_4D_CAMERA_FOV` | `fov` | — | 新的 4D fov |
+| `GET_4D_CAMERA_ORIENTATION` | 无 | — | 六个平面的姿态角 |
+| `SET_3D_CAMERA_MOVE_SPEED` | `speed` | — | 新的 3D 平移速度倍率 |
+| `SET_3D_CAMERA_ROTATE_SPEED` | `speed` | — | 新的 3D 旋转速度倍率 |
+| `SET_3D_CAMERA_FOV` | `fov` | — | 新的 3D fov |
 
 ### 附录 B：枚举与取值表
 
@@ -1984,8 +2260,12 @@ Sub models:
 | 形状颜色 | 形状接口没有颜色参数；颜色由 `cpu4dkt/generator/BasicShapes.kt` 的 `cellPalette` / `cellColors` 自动分配。要指定颜色只能用 §6.3 / §6.5 |
 | `GET_MODEL_INFO` | 返回的 markdown 由 `GeometryInterfaceImpl` 直接拼好，含 `Transform matrix` 的 `text` 代码块；`Sub models` 只列直接子节点 |
 | 索引 vs id | `Tetrahedron` 虽然带随机 `id`，但接口一律用**模型内下标**（`tetIndex`）寻址 |
-| 分组变换 | `TransformInterfaceImpl.targets()`：命中真实模型时只作用它；否则/同时作用于 `subTree`，两者都存在时**都作用** |
+| 分组变换 | 分组展开辅助 `SimpleScene4D.targets(name)`（现在在 `impl/ModelCheck.kt`）：命中真实模型时只作用它；否则/同时作用于 `subTree`，两者都存在时**都作用**。`TransformInterface` 与 `ModelInterfaceImpl.mergeAllSubModels` 共用它 |
 | `GET_MODEL_MATRIX` | 用 `requireContains`，**只接受精确路径**，不展开分组 |
+| `RENAME_MODEL` | 用 `requireContains` 精确命中；改自身名字并把 `path/` 前缀同步成 `newPath/`，**整棵子树一起改名**；目标路径或其子树前缀被占用时报 `already exists`（§4.1.7） |
+| `MERGE_ALL_SUB_MODELS` | 用 `scene.targets(src)`（自身 + 全部后代）逐个 `applyTransform()` 拼接；`params.sources` 是数组；`dst` 与 `mergeModel` 一样先做 `requireNotContains` 校验（§4.1.8） |
+| `SET_MODEL_VISIBLE` | 写自身 + **整棵子树**的 `Mesh4D.visible`，不改 `kind` / `params`；渲染前 `SimpleScene4D.filterVisible()` 据此过滤（§4.1.9） |
+| `MERGE_MODEL` 的 params | 由平铺改为嵌套：每个源是 `{"params": ..., "transform matrix": ...}`，矩阵取自烘焙那一刻 |
 | 删除语义 | `removeModel` 删掉 `name` 与所有 `name/...`；`copyModel` 只复制该节点本身 |
 | 角度单位 | JSON 与接口参数都是角度制；`Transform4D.rotate`、`CameraInterfaceImpl.rotate*` 内部 `toRadians` |
 | 旋转方向 | 左手系（§0.2）；模型/几何 `ROTATE` 是"a 转向 b"为正，摄像机 `ROTATE_CAMERA_VIEW` 转基向量、符号相反（§3.2.2） |
@@ -2002,11 +2282,11 @@ Sub models:
 | 接口 | 状态 |
 | --- | --- |
 | `CameraInterface` | ✅ 全部实现 |
-| `ModelInterface` | ✅ 全部实现（`createEmptyModel` / `removeModel` / `copyModel` / `mergeModel` / `applyTransformToVertex`） |
+| `ModelInterface` | ✅ 全部实现（`createEmptyModel` / `removeModel` / `renameModel` / `copyModel` / `mergeModel` / `applyTransformToVertex` / `setModelVisible` / `getModel` / `mergeAllSubModels`） |
 | `TransformInterface` | ✅ 全部实现（含 `getModelMatrix` / `setModelMatrix`） |
 | `GeometryInterface` | ✅ 全部实现（查询、顶点与胞编辑、精确超平面切割） |
 | `ShapeInterface` | ✅ 全部实现（七种形状，含超球 cubed-sphere 细分） |
-| `SceneInterface` | ✅ 全部实现（帧率、线框、背景色、光照、光源、环境光、视口尺寸） |
+| `SceneInterface` | ✅ 全部实现（帧率、线框、背景色、光照、光源、环境光、视口尺寸、3D/4D 相机速度与 fov、4D 相机姿态、输入模式切换） |
 | `IOInterface` | ❌ 未实现（`saveModel` / `loadModel` 仍是 `TODO`） |
 
 三维基本几何体（§5.3 的 JSON DSL）属于**接入层**职责：
