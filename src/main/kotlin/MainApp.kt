@@ -20,6 +20,7 @@ import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.*
 import mai_onsyn.renderer.ogl3d.generator.CubeFace
 import mai_onsyn.renderer.ogl3d.generator.createCube
+import mai_onsyn.renderer.ogl3d.generator.createSphere
 import mai_onsyn.renderer.utils.ColorARGB
 import mai_onsyn.renderer.utils.Direction
 import mai_onsyn.renderer.utils.fixedFrame
@@ -95,14 +96,16 @@ fun start4DTest2(stage: Stage) {
 
     i.model.createEmptyModel("TestModel")
     i.shape.createTesseract("TestModel", "Tesseract1", Vector4f(2f, 0f, 0f, 0f), 1f)
-    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 4f)
+//    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 12f)
+    i.shape.createPrism4("TestModel", "Cone4", Mesh(createSphere(density = 12f)), -2f, 2f)
     Thread.ofVirtual().start {
         var frame = 0
+//        i.transform.rotate("TestModel", Direction.Plane.ZW, 90f)
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
             i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
             if (frame++ % 200 == 0) {
                 val enable = (frame - 1) % 400 == 0
-                i.scene.enableTriangleLineRendering(enable)
+//                i.scene.enableTriangleLineRendering(enable)
 //                i.model.setModelVisible("TestModel/Ball1", enable)
 //                i.model.setModelVisible("TestModel", enable)
             }
@@ -114,7 +117,7 @@ fun start4DTest2(stage: Stage) {
 //    println(i.geometry.getModelInfos("TestModel"))
 //    println(i.geometry.getModelInfos("DestTest/TestModelMerged"))
 
-    i.io.saveModel("TestModel", "D:/Users/Desktop/test.4do")
+//    i.io.saveModel("TestModel", "D:/Users/Desktop/test.4do")
 
     stage.scene = Scene(box, 800.0, 600.0)
     stage.show()

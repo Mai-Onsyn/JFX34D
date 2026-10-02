@@ -44,3 +44,4 @@ src/main/java/weilantianhai/.workbuddy/
 src/main/java/weilantianhai/progress/
 #apikey
 .env
+.workbuddy/

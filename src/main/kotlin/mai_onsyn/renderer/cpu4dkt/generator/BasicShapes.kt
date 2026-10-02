@@ -8,9 +8,10 @@ import mai_onsyn.renderer.cpu4dkt.perpendicular4
 import mai_onsyn.renderer.ogl3d.data.Mesh
 import mai_onsyn.renderer.ogl3d.data.Vertex
 import mai_onsyn.renderer.utils.ColorARGB
+import mai_onsyn.renderer.utils.DEFAULT_MAX_SUBDIVISIONS
+import mai_onsyn.renderer.utils.densityToSubdivisions
 import org.joml.Vector4f
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
@@ -246,9 +247,14 @@ fun constructCone4(
     return result
 }
 
-/** density -> 超球每个胞每条边的细分段数 */
-fun ballSubdivisions(density: Float, max: Int = 12): Int =
-    density.roundToInt().coerceIn(1, max)
+/**
+ * density -> 超球每个胞每条边的细分段数 `k`。
+ *
+ * 已经改走公共的 [densityToSubdivisions]：`k = clamp(ceil(density), 1, max)`，
+ * 不再是原来的 `clamp(round(density), 1, 12)`。保留这个名字是为了兼容既有调用方。
+ */
+fun ballSubdivisions(density: Float, max: Int = DEFAULT_MAX_SUBDIVISIONS): Int =
+    densityToSubdivisions(density, max)
 
 /**
  * 超球（四维球的边界，即 3-球面）。
@@ -258,15 +264,19 @@ fun ballSubdivisions(density: Float, max: Int = 12): Int =
  * "吹"到 3-球面上（cubed sphere），结果是一个封闭的 3-流形。
  * 相邻胞共享边界，投影后仍然共享，所以没有缝。
  *
- * @param density 每条边的分段数，四舍五入后取 [1, 12]；density = 1 时胞数与超立方体一致（48）
+ * @param density         密度，唯一控制细分精细度的参数：`k = clamp(ceil(density), 1, maxSubdivisions)`。
+ *                        `density = 1` 时 `k = 1`，胞数与超立方体一致（48）；胞数（四面体数）= `8 · k³ · 6`
+ * @param maxSubdivisions 细分段数上限，默认 [DEFAULT_MAX_SUBDIVISIONS]；代价是 O(k³)，
+ *                        想更细就往大传，但要注意内存（`k = 64` 时已经约 1260 万四面体）
  */
 fun constructBall4(
     center: Vector4f = Vector4f(0f, 0f, 0f, 0f),
     radius: Float = 1f,
     density: Float = 1f,
-    cellColors: List<ColorARGB> = cellPalette(8)
+    cellColors: List<ColorARGB> = cellPalette(8),
+    maxSubdivisions: Int = DEFAULT_MAX_SUBDIVISIONS
 ): MutableList<Tetrahedron> {
-    val k = ballSubdivisions(density)
+    val k = ballSubdivisions(density, maxSubdivisions)
     val result = mutableListOf<Tetrahedron>()
     var cellIndex = 0
 
