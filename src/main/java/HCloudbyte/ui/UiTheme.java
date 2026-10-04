@@ -74,45 +74,70 @@ public final class UiTheme {
     /** 分段选择控件，选中时回调 [onChange]（参数为选中下标）。 */
     public static HBox buildSegmentedControl(String[] options, int defaultIndex,
                                              IntConsumer onChange) {
-        ToggleGroup group = new ToggleGroup();
-        HBox box = new HBox();
-        box.setAlignment(Pos.CENTER);
-        box.setStyle(SEGMENT_BG);
-        box.setPadding(new Insets(3));
+        return new Segmented(options, defaultIndex, onChange).box;
+    }
 
-        String normalStyle =
-                "-fx-background-color: transparent;" +
-                        "-fx-background-radius: 6;" +
-                        "-fx-padding: 6 18;" +
-                        "-fx-text-fill: #9aa0a6;";
+    /**
+     * 可程序化选中/读取的分段控件：用于渲染侧回调（如键盘 I 键切换输入模式）需要回同步 UI 的场景。
+     * 程序化 {@link #select(int)} 只切样式与选中态，不触发 onChange（避免回调循环）。
+     */
+    public static final class Segmented {
+        public final HBox box;
+        private final ToggleButton[] buttons;
 
-        String selectedStyle =
-                "-fx-background-color: rgba(255,138,26,0.92);" +   // Blender 橙
-                        "-fx-background-radius: 6;" +
-                        "-fx-padding: 6 18;" +
-                        "-fx-text-fill: #ffffff;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0.1, 0, 2);";
+        public Segmented(String[] options, int defaultIndex, IntConsumer onChange) {
+            ToggleGroup group = new ToggleGroup();
+            box = new HBox();
+            box.setAlignment(Pos.CENTER);
+            box.setStyle(SEGMENT_BG);
+            box.setPadding(new Insets(3));
 
-        ToggleButton[] buttons = new ToggleButton[options.length];
-        for (int i = 0; i < options.length; i++) {
-            ToggleButton btn = new ToggleButton(options[i]);
-            btn.setToggleGroup(group);
-            btn.setStyle(normalStyle);
-            final int idx = i;
-            btn.setOnAction(e -> {
-                if (onChange != null) onChange.accept(idx);
+            String normalStyle =
+                    "-fx-background-color: transparent;" +
+                            "-fx-background-radius: 6;" +
+                            "-fx-padding: 6 18;" +
+                            "-fx-text-fill: #9aa0a6;";
+
+            String selectedStyle =
+                    "-fx-background-color: rgba(255,138,26,0.92);" +   // Blender 橙
+                            "-fx-background-radius: 6;" +
+                            "-fx-padding: 6 18;" +
+                            "-fx-text-fill: #ffffff;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0.1, 0, 2);";
+
+            buttons = new ToggleButton[options.length];
+            for (int i = 0; i < options.length; i++) {
+                ToggleButton btn = new ToggleButton(options[i]);
+                btn.setToggleGroup(group);
+                btn.setStyle(normalStyle);
+                final int idx = i;
+                btn.setOnAction(e -> {
+                    if (onChange != null) onChange.accept(idx);
+                });
+                buttons[i] = btn;
+                box.getChildren().add(btn);
+            }
+
+            group.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+                if (oldT instanceof ToggleButton tb) tb.setStyle(normalStyle);
+                if (newT instanceof ToggleButton tb) tb.setStyle(selectedStyle);
             });
-            buttons[i] = btn;
-            box.getChildren().add(btn);
+
+            buttons[defaultIndex].setSelected(true);
+            buttons[defaultIndex].setStyle(selectedStyle);
         }
 
-        group.selectedToggleProperty().addListener((obs, oldT, newT) -> {
-            if (oldT instanceof ToggleButton tb) tb.setStyle(normalStyle);
-            if (newT instanceof ToggleButton tb) tb.setStyle(selectedStyle);
-        });
+        /** 当前选中下标。 */
+        public int getSelectedIndex() {
+            for (int i = 0; i < buttons.length; i++) {
+                if (buttons[i].isSelected()) return i;
+            }
+            return 0;
+        }
 
-        buttons[defaultIndex].setSelected(true);
-        buttons[defaultIndex].setStyle(selectedStyle);
-        return box;
+        /** 程序化选中（只切选中态与样式，不触发 onChange）。 */
+        public void select(int index) {
+            if (index >= 0 && index < buttons.length) buttons[index].setSelected(true);
+        }
     }
 }

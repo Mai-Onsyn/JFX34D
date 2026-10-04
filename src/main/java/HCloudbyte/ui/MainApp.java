@@ -102,18 +102,22 @@ public class MainApp extends Application {
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(16));
 
-        TopBar top = new TopBar(index -> switchRightPanel(index == 1));
+        TopBar top = new TopBar(renderer, region, index -> switchRightPanel(index == 1));
         // 接口调用：TopBar 增加保存/打开后 → IOInterface#saveModel / #loadModel（后端 TODO，暂不接）
         ViewportPanel center = new ViewportPanel(region);
         // 接口调用：视口 = GL4DRegion（渲染 + 内置键盘），RendererInterface 已绑定其摄像机（§3.1 ✅）
         StackPane right = buildRightPanel();
+        StatusBar status = new StatusBar(region, renderer);
+        // 接口调用：底部状态信息条 → 3D/4D 坐标、4D 视线、双 FPS、模式、四面体总数
 
         root.setTop(top);
         root.setCenter(center);
         root.setRight(right);
+        root.setBottom(status);
 
         BorderPane.setMargin(top, new Insets(0, 0, 14, 0));
         BorderPane.setMargin(right, new Insets(0, 0, 0, 14));
+        BorderPane.setMargin(status, new Insets(14, 0, 0, 0));
         return root;
     }
 
