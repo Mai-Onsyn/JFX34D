@@ -56,12 +56,12 @@ public class CommandExecutor {
             }
 
             // 操作之间延迟 3 秒，让渲染有过渡效果
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+//            try {
+//                Thread.sleep(3000);
+//            } catch (InterruptedException ie) {
+//                Thread.currentThread().interrupt();
+//                break;
+//            }
         }
         return sb.toString().trim();
     }
