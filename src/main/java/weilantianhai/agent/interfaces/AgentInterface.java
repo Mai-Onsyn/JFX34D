@@ -18,6 +18,15 @@ public interface AgentInterface {
     void setResponseListener(ResponseListener listener);
     void clearResponseListener();
 
+    //队列管理
+    int getPendingCount();
+    boolean isBusy();
+    int clearPending();
+    boolean cancelRequest(int requestId);
+
+    //状态查询
+    String getStatusSummary();
+
     static AgentInterface getInstance() {
         if (InterfaceValue._INSTANCE == null) {
             throw new ExceptionInInitializerError("AgentInterface instance is not initialized");

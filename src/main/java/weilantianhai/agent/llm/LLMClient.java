@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 public class LLMClient {
@@ -124,6 +125,42 @@ public class LLMClient {
                     + "\n" + response.body());
         }
 
+        JSONObject json = JSON.parseObject(response.body());
+        return json.getJSONArray("choices")
+                .getJSONObject(0)
+                .getJSONObject("message")
+                .getString("content");
+    }
+
+    public String chat(List<JSONObject> message) throws Exception{
+        JSONObject root = new JSONObject();
+        root.put("model",model);
+        root.put("temperature", AppConfig.TEMPERATURE);
+        root.put("max_tokens", maxTokens);
+        root.put("stream", false);
+
+        if(!enableThinking){
+            JSONObject kw = new JSONObject();
+            kw.put("enable_thinking",false);
+            root.put("chat_template_kwargs",kw);
+        }
+
+        JSONArray arr = new JSONArray();
+        arr.addAll(message);
+        root.put("messages", arr);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseURL + "/chat/completions"))
+                .timeout(Duration.ofSeconds(AppConfig.LLM_REQUEST_TIMEOUT))
+                .header("Content-Type","application/json")
+                .header("Authorization","Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(root.toJSONString()))
+                .build();
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("LLM 请求失败：" + response.statusCode() + "\n" + response.body());
+        }
         JSONObject json = JSON.parseObject(response.body());
         return json.getJSONArray("choices")
                 .getJSONObject(0)
