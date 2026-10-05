@@ -44,6 +44,9 @@ class GL4DRegion(
 
     var onEnable4DInputChanged: ((Boolean) -> Unit)? = null
 
+    @Volatile var move4DSpeed = 1f
+    @Volatile var mouse4DSpeed = 1f
+
     /** 4D 侧 (compute + 上传) 的帧率上限, <= 0 不限制 */
     var maxFPS: Int
         get() = engine.maxFPS
@@ -172,13 +175,13 @@ class GL4DRegion(
 
     private fun startKeyEventHandlerThread() {
         inputThread = Thread.ofVirtual().name("Direct 4D Region Key Event Handler").start {
-            val moveSpeed = 0.004f
-            val mouseSpeed = 0.0005f
             fixedFrame(1000, { !Thread.currentThread().isInterrupted }) {
                 if (!enable4DInput) {
                     Thread.sleep(500)
                     return@fixedFrame
                 }
+                val moveSpeed = 0.004f * move4DSpeed
+                val mouseSpeed = 0.0005f * mouse4DSpeed
 
                 val deltaX = moveSpeed * (movement.right - movement.left)
                 val deltaY = moveSpeed * (movement.up - movement.down)

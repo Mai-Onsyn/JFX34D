@@ -13,6 +13,9 @@ interface ModelInterface {
     /** 删除模型，必须存在 */
     fun removeModel(name: String)
 
+    /** 重命名模型，输入名称为模型名称而不是路径 */
+    fun renameModel(path: String, newName: String)
+
     /** 复制模型 */
     fun copyModel(srcName: String, dstName: String)
 
@@ -27,4 +30,7 @@ interface ModelInterface {
 
     /** 获取模型实例，AI不使用，其他地方使用 */
     fun getModel(name: String): Mesh4D
+
+    /** 合并当前节点下的所有模型 */
+    fun mergeAllSubModels(srcName: String, dstName: String)
 }

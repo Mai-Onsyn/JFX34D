@@ -77,7 +77,7 @@ class DirectGL4DEngine(
      * 和 [mai_onsyn.renderer.cpu4dkt.Renderer4D.maxFPS] 同一个含义: 到点了才重算一次变换,
      * 中间那些画布帧直接用上次算好的 VBO 画。
      */
-    var maxFPS: Int = 10000
+    var maxFPS: Int = 100
 
     /** 与 Renderer4D.viewPortLength 同一个含义: viewPort = scale(viewPortLength * 0.5) */
     var viewPortLength: Float = 8f

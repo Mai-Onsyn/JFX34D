@@ -10,7 +10,7 @@ import javafx.scene.paint.Color
 import javafx.scene.robot.Robot
 import mai_onsyn.renderer.ogl3d.data.Scene3D
 import mai_onsyn.renderer.utils.FrequencyCounter
-import kotlin.concurrent.Volatile
+import kotlin.jvm.Volatile
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -43,6 +43,8 @@ open class GL3DRegion(val scene: Scene3D) : GLCanvas(
     @Volatile private var mouseRight: Float = 0f
 
     @Volatile private var sprint: Float = 1f
+    @Volatile var move3DSpeed = 1f
+    @Volatile var mouse3DSpeed = 1f
 
     @Volatile private var mouseCatched: Boolean = false
 
@@ -168,9 +170,9 @@ open class GL3DRegion(val scene: Scene3D) : GLCanvas(
     private var handlerThread: Thread? = null
     private fun launchBackHandlerThread() {
         handlerThread = Thread.ofVirtual().name("3D Region Key Event Handler").start {
-            val moveSpeed = 0.004f
-            val mouseKeySpeed = 0.0015f
-            val mouseMoveSpeed = 0.001f
+            val moveSpeed = 0.004f * move3DSpeed
+            val mouseKeySpeed = 0.0015f * mouse3DSpeed
+            val mouseMoveSpeed = 0.001f * mouse3DSpeed
             val smoothTimeMs = 5f
             var lastTime = System.nanoTime()
 

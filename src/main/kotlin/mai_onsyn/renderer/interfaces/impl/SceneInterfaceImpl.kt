@@ -2,6 +2,7 @@ package mai_onsyn.renderer.interfaces.impl
 
 import javafx.scene.paint.Color
 import mai_onsyn.renderer.core.GL4DRegion
+import mai_onsyn.renderer.cpu4dkt.CameraOrientation
 import mai_onsyn.renderer.interfaces.SceneInterface
 import mai_onsyn.renderer.ogl3d.data.Light
 import mai_onsyn.renderer.utils.ColorARGB
@@ -64,4 +65,30 @@ class SceneInterfaceImpl(
     }
 
     override fun setEnable4DInput(enable: Boolean) = region.enable4DInput(enable)
+
+    override fun set4DCameraMoveSpeed(speed: Float) {
+        region.move4DSpeed = speed
+    }
+
+    override fun set4DCameraRotateSpeed(speed: Float) {
+        region.mouse4DSpeed = speed
+    }
+
+    override fun set4DCameraFov(fov: Float) {
+        region.scene4D.camera4D.fov = fov
+    }
+
+    override fun get4DCameraOrientation(): CameraOrientation = region.scene4D.getCamera().getCameraOrientation()
+
+    override fun set3DCameraMoveSpeed(speed: Float) {
+        region.move3DSpeed = speed
+    }
+
+    override fun set3DCameraRotateSpeed(speed: Float) {
+        region.mouse3DSpeed = speed
+    }
+
+    override fun set3DCameraFov(fov: Float) {
+        region.scene3D.getCamera().fov = fov
+    }
 }
