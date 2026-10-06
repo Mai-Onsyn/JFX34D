@@ -50,11 +50,14 @@ public class ChatPanel extends VBox {
     private final ScrollPane chatScroll;
     private final TextField input;
     private final Button sendBtn;
+    /** 场景树：AI 指令执行成功后重建，让新建/删除的模型立刻出现在树上。 */
+    private final SceneOutliner outliner;
     /** requestId → 反馈气泡，多请求并发时各气泡独立更新。 */
     private final Map<Integer, Label> pendingFeedback = new ConcurrentHashMap<>();
 
     public ChatPanel(SceneOutliner outliner) {
         super(12);
+        this.outliner = outliner;
         setPadding(new Insets(20));
         setStyle(UiTheme.GLASS);
 
@@ -105,6 +108,8 @@ public class ChatPanel extends VBox {
                         fb.setText("指令已执行，观察左侧视口变化。");
                         fb.setStyle(STYLE_SUCCESS);
                         scrollToBottom();
+                        // 指令执行成功 → 场景可能变了（建模/删除），重建场景树
+                        outliner.refresh();
                     });
                 }
 
