@@ -90,7 +90,6 @@ fun start4DTest2(stage: Stage) {
 
     val i = RendererInterface.INSTANCE
     i.scene.setBackgroundColor(Color.color(0.25, 0.25, 0.25))
-    i.camera.moveForward(-5f)
     i.scene.enableLightRendering(true)
     i.scene.enableTriangleLineRendering(true)
 
@@ -101,16 +100,18 @@ fun start4DTest2(stage: Stage) {
     Thread.ofVirtual().start {
         var frame = 0
 //        i.transform.rotate("TestModel", Direction.Plane.ZW, 90f)
+        val orin = i.camera.getView()   // 正视角
+        i.camera.rotateXY(45f)
+        val rotate45 = i.camera.getView()   // XY转45°视角
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
-            i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
-            if (frame++ % 200 == 0) {
-                val enable = (frame - 1) % 400 == 0
-//                i.scene.enableTriangleLineRendering(enable)
-//                i.model.setModelVisible("TestModel/Ball1", enable)
-//                i.model.setModelVisible("TestModel", enable)
+//            i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
+            if (frame++ % 400 == 0) {
+                val enable = (frame - 1) % 800 == 0
+                i.camera.setView(if (enable) orin else rotate45)
             }
         }
     }
+    i.camera.moveForward(-5f)
 
 //    i.model.mergeAllSubModels("TestModel", "DestTest/TestModelMerged")
 //    i.transform.move("DestTest/TestModelMerged", Vector4f(0f, 3f, 0f, 0f))

@@ -3,6 +3,7 @@ package mai_onsyn.renderer.core
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import mai_onsyn.renderer.cpu4dkt.SimpleScene4D
+import mai_onsyn.renderer.interfaces.impl.CameraInterfaceImpl
 import mai_onsyn.renderer.ogl3d.GL3DRegion
 import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.ogl4d.DirectGL4DEngine
@@ -35,6 +36,13 @@ class GL4DRegion(
 ) : GL3DRegion(scene3D) {
 
     private val engine = DirectGL4DEngine(scene4D, scene3D)
+
+    /**
+     * 摄像机接口实现，包装同一个 [scene4D.camera4D]，也是本画布的摄像机动画门面。
+     * Agent 走它的 [CameraInterface] 方法（平滑动画），键盘走 nudge* 方法（动画中被禁用，否则即时同步），
+     * 两边共用一个 [mai_onsyn.renderer.animation.AnimatedValue]。
+     */
+    val cameraInterface = CameraInterfaceImpl(scene4D.camera4D)
 
     private var enable4DInput = false
     private val movement = MovementState()
@@ -171,6 +179,7 @@ class GL4DRegion(
 
     private fun onDispose() {
         inputThread?.interrupt()
+        cameraInterface.dispose()
     }
 
     private fun startKeyEventHandlerThread() {
@@ -188,10 +197,10 @@ class GL4DRegion(
                 val deltaZ = moveSpeed * (movement.ana - movement.negAna)
                 val deltaW = moveSpeed * (movement.forward - movement.back)
 
-                if (deltaX != 0f) scene4D.camera4D.moveRight(deltaX)
-                if (deltaY != 0f) scene4D.camera4D.moveUp(deltaY)
-                if (deltaZ != 0f) scene4D.camera4D.moveAna(deltaZ)
-                if (deltaW != 0f) scene4D.camera4D.moveForward(deltaW)
+                if (deltaX != 0f) cameraInterface.nudgeRight(deltaX)
+                if (deltaY != 0f) cameraInterface.nudgeUp(deltaY)
+                if (deltaZ != 0f) cameraInterface.nudgeAna(deltaZ)
+                if (deltaW != 0f) cameraInterface.nudgeForward(deltaW)
 
                 val deltaXY = mouseSpeed * (movement.xy - movement.nxy)
                 val deltaXZ = mouseSpeed * (movement.xz - movement.nxz)
