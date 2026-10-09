@@ -50,6 +50,20 @@ final class SceneModelOperations {
                 });
     }
 
+    /** 保存：把当前模型（含整棵子树）导出为 .4do 文件。文件名可含目录，相对程序工作目录。 */
+    static void save(RendererInterface renderer, String path, Runnable onChanged) {
+        SceneDialogs.form("保存模型", "保存 " + display(path),
+                new String[]{"文件名（含 .4do 后缀）"}, new String[]{leafOf(path) + ".4do"},
+                values -> {
+                    String fileName = values[0].trim();
+                    if (fileName.isEmpty()) throw new IllegalArgumentException("文件名不能为空");
+                    renderer.getIo().saveModel(path, fileName);
+                    SceneDialogs.info("保存成功",
+                            "已保存 " + display(path) + "\n文件位置："
+                                    + new java.io.File(fileName).getAbsolutePath());
+                });
+    }
+
     /** 删除：接口侧删除该路径及其整棵子树。 */
     static void delete(RendererInterface renderer, String path, Runnable onChanged) {
         run(() -> renderer.getModel().removeModel(path), onChanged);

@@ -1,0 +1,23 @@
+/* 视口左上角悬浮窗（相机机位）右键菜单：白色半透明风格 */
+.overlay-menu {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.25);
+    -fx-border-radius: 8;
+    -fx-padding: 4;
+}
+
+.overlay-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+    -fx-padding: 4 14;
+}
+
+.overlay-menu .menu-item .label {
+    -fx-text-fill: #e8eaed;
+}
+
+.overlay-menu .menu-item:hover,
+.overlay-menu .menu-item:focused {
+    -fx-background-color: rgba(255, 255, 255, 0.20);
+}

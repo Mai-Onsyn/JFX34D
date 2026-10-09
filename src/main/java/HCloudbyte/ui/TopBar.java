@@ -44,14 +44,14 @@ public class TopBar extends StackPane {
     // 接口的 FOV/速度/FPS/视口大小等只有 set 无 get，弹窗每次打开无法从渲染器读回当前值，
     // 所以 UI 侧保存"上次应用/拖动的值"，重开弹窗时用缓存回显，避免每次重置成默认。
     private final javafx.scene.paint.Color[] cacheBgColor = {javafx.scene.paint.Color.color(0.25, 0.25, 0.25)};
-    private final double[] cacheDisplaySize = {1.0};
+    private final double[] cacheDisplaySize = {8.0};
     private final double[] cacheFps3d = {60.0};
     private final double[] cacheFps4d = {60.0};
-    private final double[] cacheFov3d = {60.0};
-    private final double[] cacheFov4d = {70.0};
+    private final double[] cacheFov3d = {70.0};
+    private final double[] cacheFov4d = {80.0};
     private final double[] cacheSpeed = {1.0, 1.0, 1.0, 1.0};
-    private final boolean[] cacheLight = {false};
-    private final boolean[] cacheWire = {true};
+    private final boolean[] cacheLight = {true};
+    private final boolean[] cacheWire = {false};
     private final javafx.scene.paint.Color[] cacheAmbient = {javafx.scene.paint.Color.color(0.3, 0.3, 0.3)};
 
     /**
@@ -137,6 +137,7 @@ public class TopBar extends StackPane {
         ColorPicker bg = new ColorPicker(cacheBgColor[0]);
         bg.setPrefWidth(140);
         Button bgBtn = new Button("应用背景色");
+        bgBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         bgBtn.setOnAction(e -> {
             cacheBgColor[0] = bg.getValue();
             renderer.getScene().setBackgroundColor(bg.getValue());
@@ -147,6 +148,7 @@ public class TopBar extends StackPane {
         TextField display = new TextField(String.valueOf(cacheDisplaySize[0]));
         display.setPrefWidth(60);
         Button dsBtn = new Button("应用视口大小");
+        dsBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         dsBtn.setOnAction(e -> {
             try {
                 cacheDisplaySize[0] = Double.parseDouble(display.getText().trim());
@@ -161,31 +163,38 @@ public class TopBar extends StackPane {
         lights.setPrefWidth(280);
         lights.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
         Button refreshL = new Button("刷新光源");
+        refreshL.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         refreshL.setOnAction(e -> lights.setText(lightNames(renderer.getScene().listLights())));
         Button listBtn = new Button("清单");
+        listBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         listBtn.setOnAction(e -> lights.setText(renderer.getScene().listLight()));
         Button addBtn = new Button("添加光源");
+        addBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         addBtn.setOnAction(e -> showAddLightDialog(renderer, lights));
         TextField delLight = new TextField();
         delLight.setPromptText("光源名（逗号分隔）");
         delLight.setPrefWidth(130);
         Button delBtn = new Button("删除");
+        delBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         delBtn.setOnAction(e -> {
             String t = delLight.getText().trim();
             if (t.isEmpty()) return;
             renderer.getScene().removeLights(List.of(t.split("[,，]")));
             lights.setText(lightNames(renderer.getScene().listLights()));
         });
-        grid.addRow(3, new Label("光源"), new HBox(6, refreshL, listBtn));
-        grid.addRow(4, new HBox(6, addBtn, delLight, delBtn));
+        grid.addRow(3, new Label("光源"), new HBox(6, addBtn, refreshL, listBtn));
+        grid.addRow(4, new HBox(6, delLight, delBtn));
         grid.addRow(5, lights);
 
         // FPS 上限（值缓存回显）
-        TextField fps3d = new TextField(String.valueOf(cacheFps3d[0]));
+        TextField fps3d = new TextField();
         fps3d.setPrefWidth(60);
-        TextField fps4d = new TextField(String.valueOf(cacheFps4d[0]));
+        fps3d.setPromptText("如 120");
+        TextField fps4d = new TextField();
         fps4d.setPrefWidth(60);
+        fps4d.setPromptText("如 120");
         Button fpsBtn = new Button("应用FPS上限");
+        fpsBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         fpsBtn.setOnAction(e -> {
             try {
                 cacheFps3d[0] = Double.parseDouble(fps3d.getText().trim());
@@ -258,6 +267,7 @@ public class TopBar extends StackPane {
         ColorPicker ambient = new ColorPicker(cacheAmbient[0]);
         ambient.setPrefWidth(140);
         Button ambientBtn = new Button("应用环境光");
+        ambientBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         ambientBtn.setOnAction(e -> {
             try {
                 cacheAmbient[0] = ambient.getValue();
@@ -283,6 +293,7 @@ public class TopBar extends StackPane {
                     o.getXy(), o.getXz(), o.getYz(), o.getXw(), o.getYw(), o.getZw()));
         };
         Button orientBtn = new Button("刷新姿态");
+        orientBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         orientBtn.setOnAction(e -> refreshOrient.run());
         refreshOrient.run();
         grid.addRow(15, new Label("4D姿态角"), new HBox(6, orientBtn));
@@ -295,6 +306,7 @@ public class TopBar extends StackPane {
         Runnable refreshLow = () -> lowFps.setText(String.format("3D 1%%Low %.1f  |  4D 1%%Low %.1f",
                 renderer.getScene().get3D1PercentLowFPS(), renderer.getScene().get4D1PercentLowFPS()));
         Button lowBtn = new Button("刷新1%Low");
+        lowBtn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         lowBtn.setOnAction(e -> refreshLow.run());
         refreshLow.run();
         grid.addRow(17, new Label("1%Low FPS"), new HBox(6, lowBtn));

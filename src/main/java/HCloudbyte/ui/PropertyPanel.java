@@ -40,6 +40,7 @@ public class PropertyPanel extends VBox {
     private final RendererInterface renderer;
     /** 当前选中的模型名（SceneOutliner 点击联动）。 */
     private String selectedModel;
+    private final SceneOutliner sceneOutliner;
 
     public PropertyPanel(RendererInterface renderer) {
         super(10);
@@ -51,7 +52,7 @@ public class PropertyPanel extends VBox {
         List<String> models = renderer.getModel().listModel();
         selectedModel = models.isEmpty() ? null : models.getFirst();
 
-        VBox sceneOutliner = new SceneOutliner(renderer, name -> {
+        sceneOutliner = new SceneOutliner(renderer, name -> {
             selectedModel = name;
             updateData(name);
         });
@@ -239,38 +240,6 @@ public class PropertyPanel extends VBox {
         rotFoot.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         box.getChildren().add(rotFoot);
 
-        // 相机旋转（CameraInterface.rotateXY..rotateZW ✅）：按精确角度转视角（方向与模型旋转相反）
-        Label camRotTitle = new Label("相机旋转");
-        camRotTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
-        box.getChildren().add(camRotTitle);
-        ComboBox<String> camPlaneBox = new ComboBox<>();
-        camPlaneBox.getItems().addAll("XY", "XZ", "XW", "YZ", "YW", "ZW");
-        camPlaneBox.getSelectionModel().select(0);
-        TextField camRotAngle = new TextField("15");
-        camRotAngle.setPrefWidth(56);
-        camRotAngle.setStyle("-fx-padding: 2 6;");
-        Button camRotBtn = new Button("应用");
-        camRotBtn.getStyleClass().add("accent");
-        camRotBtn.setStyle("-fx-padding: 2 10;");
-        camRotBtn.setOnAction(e -> {
-            try {
-                float a = Float.parseFloat(camRotAngle.getText().trim());
-                switch (camPlaneBox.getValue()) {
-                    case "XY" -> renderer.getCamera().rotateXY(a);
-                    case "XZ" -> renderer.getCamera().rotateXZ(a);
-                    case "XW" -> renderer.getCamera().rotateXW(a);
-                    case "YZ" -> renderer.getCamera().rotateYZ(a);
-                    case "YW" -> renderer.getCamera().rotateYW(a);
-                    case "ZW" -> renderer.getCamera().rotateZW(a);
-                }
-            } catch (NumberFormatException ignored) {
-                // 角度非法时忽略
-            }
-        });
-        HBox camRotFoot = new HBox(8, camPlaneBox, camRotAngle, camRotBtn);
-        camRotFoot.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        box.getChildren().add(camRotFoot);
-
         // 相机旋转角度（只读显示；相机在黑色视口里用键盘旋转，这里每秒回显 6 平面姿态）
         box.getChildren().add(new Separator());
         Label camTitle = new Label("相机旋转角度（键盘视口）");
@@ -438,46 +407,57 @@ public class PropertyPanel extends VBox {
         HBox anaBox = new HBox(8, za, zp);
         box.getChildren().add(anaBox);
 
-        // 机位预设（CameraInterface.getView/setView ✅）：3 个槽位，存当前姿态 / 一键切回
+        // 相机旋转（CameraInterface.rotateXY..rotateZW ✅）：与模型旋转同格式 —— 6 平面 ToggleButton + 角度应用
         box.getChildren().add(new Separator());
-        Label presetTitle = new Label("机位预设");
-        presetTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
-        box.getChildren().add(presetTitle);
-        ComboBox<String> presetBox = new ComboBox<>();
-        presetBox.getItems().addAll("预设 1", "预设 2", "预设 3");
-        presetBox.getSelectionModel().select(0);
-        Coordinate4D[] presets = new Coordinate4D[3];
-        Label presetState = new Label("未保存");
-        presetState.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
-        Button savePreset = new Button("存当前机位");
-        savePreset.getStyleClass().add("accent");
-        savePreset.setStyle("-fx-padding: 2 10;");
-        savePreset.setOnAction(e -> {
+        Label camRotTitle = new Label("相机旋转");
+        camRotTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+        box.getChildren().add(camRotTitle);
+        ToggleGroup camRotGroup = new ToggleGroup();
+        String[] camPlanes = {"XY", "XZ", "XW", "YZ", "YW", "ZW"};
+        String[] camPlaneSel = {camPlanes[0]};
+        GridPane camPlanePane = new GridPane();
+        camPlanePane.setHgap(8);
+        camPlanePane.setVgap(8);
+        for (int i = 0; i < camPlanes.length; i++) {
+            ToggleButton camPlaneBtn = new ToggleButton(camPlanes[i]);
+            camPlaneBtn.setToggleGroup(camRotGroup);
+            camPlaneBtn.getStyleClass().add("accent");
+            camPlaneBtn.setStyle("-fx-padding: 2 10;");
+            camPlaneBtn.setOnAction(e -> camPlaneSel[0] = camPlaneBtn.getText());
+            camPlanePane.add(camPlaneBtn, i % 3, i / 3);
+        }
+        ((ToggleButton) camPlanePane.getChildren().get(0)).setSelected(true);
+        box.getChildren().add(camPlanePane);
+        TextField camRotAngle = new TextField("15");
+        camRotAngle.setPrefWidth(56);
+        camRotAngle.setStyle("-fx-padding: 2 6;");
+        Button camRotBtn = new Button("应用");
+        camRotBtn.getStyleClass().add("accent");
+        camRotBtn.setStyle("-fx-padding: 2 10;");
+        camRotBtn.setOnAction(e -> {
             try {
-                presets[presetBox.getSelectionModel().getSelectedIndex()] =
-                        renderer.getCamera().getView();
-                presetState.setText("已存入 " + presetBox.getValue());
-            } catch (Exception ex) {
-                presetState.setText("保存失败：" + ex.getMessage());
+                float a = Float.parseFloat(camRotAngle.getText().trim());
+                switch (camPlaneSel[0]) {
+                    case "XY" -> renderer.getCamera().rotateXY(a);
+                    case "XZ" -> renderer.getCamera().rotateXZ(a);
+                    case "XW" -> renderer.getCamera().rotateXW(a);
+                    case "YZ" -> renderer.getCamera().rotateYZ(a);
+                    case "YW" -> renderer.getCamera().rotateYW(a);
+                    case "ZW" -> renderer.getCamera().rotateZW(a);
+                }
+            } catch (NumberFormatException ignored) {
+                // 角度非法时忽略
             }
         });
-        Button loadPreset = new Button("切到预设");
-        loadPreset.getStyleClass().add("accent");
-        loadPreset.setStyle("-fx-padding: 2 10;");
-        loadPreset.setOnAction(e -> {
-            Coordinate4D p = presets[presetBox.getSelectionModel().getSelectedIndex()];
-            if (p == null) {
-                presetState.setText(presetBox.getValue() + " 为空，先保存");
-                return;
-            }
-            renderer.getCamera().setView(p);
-            presetState.setText("已切换至 " + presetBox.getValue());
-        });
-        box.getChildren().add(presetBox);
-        HBox presetBtns = new HBox(8, savePreset, loadPreset);
-        presetBtns.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        box.getChildren().addAll(presetBtns, presetState);
+        HBox camRotFoot = new HBox(8, camRotAngle, camRotBtn);
+        camRotFoot.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        box.getChildren().add(camRotFoot);
         return box;
+    }
+
+    /** 供 UIInterface 初始化读取选中路径的场景集合树引用。 */
+    public SceneOutliner getOutliner() {
+        return sceneOutliner;
     }
 
     /** 变换-裁剪区块：沿轴压缩/拉伸（TransformInterface.clip ✅：源轴→目标轴，量可正可负）。 */

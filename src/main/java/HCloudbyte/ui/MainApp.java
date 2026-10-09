@@ -63,9 +63,12 @@ public class MainApp extends Application {
         region.setOutlineRendering(true);
         RendererInterface.Companion.init(region);
         renderer = RendererInterface.Companion.getINSTANCE();
+        // 渲染默认值：光照渲染开、线框渲染关（与设置弹窗默认一致）
+        renderer.getScene().enableLightRendering(true);
+        renderer.getScene().enableTriangleLineRendering(false);
         renderer.getScene().setBackgroundColor(Color.color(0.25,0.25,0.25));
         renderer.getShape().createTesseract("", "Tesseract", new Vector4f(0, 0, 0, 0), 1);
-
+        renderer.getCamera().moveForward(-10);
         // 初始化 Agent（agent 侧已实现，UI 只负责调用）：
         // submitUserInput = 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer → 黑色视口响应
         try {
@@ -82,6 +85,9 @@ public class MainApp extends Application {
 
         Scene scene = new Scene(layoutRoot, 1280, 800);
         scene.setFill(Color.web("#232527"));   // 深色窗口底色（Blender 背景灰蓝），背景画布（彩色圆）已删
+        // 右键菜单（ContextMenu）是 Popup，不继承节点级样式表，必须挂到 Scene 级：悬浮窗菜单白色透明风格
+        java.net.URL overlayCss = getClass().getResource("/css/viewport-overlay.css");
+        if (overlayCss != null) scene.getStylesheets().add(overlayCss.toExternalForm());
         stage.setTitle("JFX 34D");
         stage.setScene(scene);
         stage.show();
@@ -106,10 +112,12 @@ public class MainApp extends Application {
 
         TopBar top = new TopBar(renderer, region, index -> switchRightPanel(index == 1));
         // 接口调用：TopBar 增加保存/打开后 → IOInterface#saveModel / #loadModel（后端 TODO，暂不接）
-        ViewportPanel center = new ViewportPanel(region);
+        ViewportPanel center = new ViewportPanel(region, renderer);
         // 接口调用：视口 = GL4DRegion（渲染 + 内置键盘），RendererInterface 已绑定其摄像机（§3.1 ✅）
         StackPane right = buildRightPanel();
         StatusBar status = new StatusBar(region, renderer);
+        // 接口初始化：UIInterface 绑定场景集合树（选中路径）+ 视口悬浮窗（相机机位）
+        HCloudbyte.ui.interfaces.UIInterface.initialize(propertyView.getOutliner(), center.getOverlay());
         // 接口调用：底部状态信息条 → 3D/4D 坐标、4D 视线、双 FPS、模式、四面体总数
 
         root.setTop(top);

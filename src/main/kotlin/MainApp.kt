@@ -91,7 +91,7 @@ fun start4DTest2(stage: Stage) {
     val i = RendererInterface.INSTANCE
     i.scene.setBackgroundColor(Color.color(0.25, 0.25, 0.25))
     i.scene.enableLightRendering(true)
-    i.scene.enableTriangleLineRendering(true)
+    i.scene.enableTriangleLineRendering(false)
 
     i.model.createEmptyModel("TestModel")
     i.shape.createTesseract("TestModel", "Tesseract1", Vector4f(2f, 0f, 0f, 0f), 1f)

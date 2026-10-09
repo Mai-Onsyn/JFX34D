@@ -27,6 +27,15 @@ final class SceneDialogs {
         alert.showAndWait();
     }
 
+    /** 统一成功提示弹窗。 */
+    static void info(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message == null ? "" : message);
+        alert.showAndWait();
+    }
+
     /**
      * 多字段表单弹窗：确定时执行 {@code onConfirm}，抛异常则错误内联显示且窗口不关。
      * 校验/业务逻辑全在 {@code onConfirm} 里，调用方保持简短。

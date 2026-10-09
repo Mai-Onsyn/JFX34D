@@ -1,5 +1,7 @@
 package HCloudbyte.ui.interfaces;
 
+import HCloudbyte.ui.SceneOutliner;
+import HCloudbyte.ui.ViewportOverlay;
 import kotlin.Pair;
 import mai_onsyn.renderer.utils.Coordinate4D;
 import org.joml.Vector4f;
@@ -34,10 +36,12 @@ public interface UIInterface {
      */
     void removeCameraRecord(int index) throws IndexOutOfBoundsException;
 
-    static void initialize(
-            // ...
-    ) {
-        _UIInterface.INSTANCE = new UIInterfaceImpl();
+    /**
+     * 初始化：把接口实现绑定到场景集合树（读选中路径）与视口左上角悬浮窗（机位列表）。
+     * 必须在 UI 构建完成后调用一次。
+     */
+    static void initialize(SceneOutliner outliner, ViewportOverlay overlay) {
+        _UIInterface.INSTANCE = new UIInterfaceImpl(outliner, overlay);
     }
 
     static UIInterface getInstance() {

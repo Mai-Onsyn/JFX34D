@@ -19,6 +19,7 @@ final class SceneItemMenu {
     static ContextMenu build(RendererInterface renderer, SceneModelAccess access, String path, Runnable onChanged) {
         MenuItem rename = item("重命名", () -> SceneModelOperations.rename(renderer, path, onChanged));
         MenuItem copy = item("复制", () -> SceneModelOperations.copy(renderer, path, onChanged));
+        MenuItem save = item("保存模型", () -> SceneModelOperations.save(renderer, path, onChanged));
         MenuItem addShape = item("添加形状", () -> ShapeCreateDialog.show(renderer, path, onChanged));
         MenuItem delete = item("删除", () -> SceneModelOperations.delete(renderer, path, onChanged));
         MenuItem merge = item("合并", () -> SceneModelOperations.merge(renderer, path, onChanged));
@@ -31,7 +32,7 @@ final class SceneItemMenu {
         bake.setDisable(!real);
 
         ContextMenu menu = new ContextMenu();
-        menu.getItems().addAll(rename, copy, addShape, delete, merge, bake, mergeAll,
+        menu.getItems().addAll(rename, copy, save, addShape, delete, merge, bake, mergeAll,
                 new SeparatorMenuItem(), createGroup);
         return menu;
     }

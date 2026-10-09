@@ -100,7 +100,7 @@ class GL4DRegion(
             if (it.code == KeyCode.I) {
                 this.enableInput = !this.enableInput
                 enable4DInput = !this.enableInput
-                onEnable4DInputChanged?.invoke(this.enableInput)
+                onEnable4DInputChanged?.invoke(!this.enableInput)
             }
 
             if (!enable4DInput) return@addEventHandler
