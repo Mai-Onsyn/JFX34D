@@ -16,9 +16,11 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -29,8 +31,10 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,7 +43,7 @@ import java.util.regex.Pattern;
  * 场景集合树（TreeView，IDE 风格）：按模型路径（'/' 分段）递归构建。
  * - 折叠：TreeView 自带箭头（像 IDE 项目树）
  * - 右键：浮动 ContextMenu 出现在鼠标位置
- * - 添加：新建模型挂到当前选中项下面（target = 选中路径）
+ * - 添加：弹窗内可选【同级】（挂到选中项父级下）或【下一级】（挂到选中项下）
  * - 选中实体节点 → 回调 {@code Consumer<String>}（传完整路径）
  *
  * <p>对外接口：
@@ -60,6 +64,18 @@ public class SceneOutliner extends VBox {
     private final TreeView<String> tree;
 
     private String selectedPath;
+    /** 树是否已构建过一次：首次全展开；之后 refresh 按用户手动折叠状态恢复。 */
+    private boolean treeEverBuilt = false;
+
+    // ==================== 实例组同步（手写/语音两侧场景集合保持一致） ====================
+    /** 全部存活实例（手写面板与语音面板各一个），刷新/选中时互相广播。 */
+    private static final List<SceneOutliner> ALL = new ArrayList<>();
+    /** 全局最新选中路径：任何一侧刷新后都回到同一个选中。 */
+    private static String GLOBAL_SELECTED = null;
+    /** 选中广播重入锁：避免 A→B→A 死循环。 */
+    private static boolean SELECT_LOCK = false;
+    /** 本实例是否已完成构造（构造期的 refresh 只重建自己，不广播）。 */
+    private boolean ready = false;
 
     public SceneOutliner(RendererInterface renderer) {
         this(renderer, null);
@@ -84,14 +100,23 @@ public class SceneOutliner extends VBox {
                 + "-fx-border-color: transparent; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
         tree.setCellFactory(tv -> new ModelTreeCell());
 
-        // 选中 → 记录路径 + 联动 PropertyPanel
+
+        // 选中 → 记录路径 + 联动 PropertyPanel + 广播到其他实例（两侧场景集合选中保持一致）
         tree.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
-            if (newV == null) {
-                selectedPath = null;
-                return;
+            String p = (newV == null) ? null : newV.getValue();
+            selectedPath = p;
+            if (p != null && onSelect != null) onSelect.accept(p);
+            if (!SELECT_LOCK) {
+                SELECT_LOCK = true;
+                try {
+                    GLOBAL_SELECTED = p;
+                    for (SceneOutliner o : ALL) {
+                        if (o != this && o.ready) o.selectSilently(p);
+                    }
+                } finally {
+                    SELECT_LOCK = false;
+                }
             }
-            selectedPath = newV.getValue();
-            if (onSelect != null) onSelect.accept(selectedPath);
         });
 
         // 单击左键选中 → 单独显示该模型（隐藏其余），点不同节点即可在模型间切换显示
@@ -108,7 +133,9 @@ public class SceneOutliner extends VBox {
         // 已迁移到 ModelTreeCell.setOnContextMenuRequested。
 
         getChildren().addAll(title, tree);
-        refresh();
+        ALL.add(this);          // 注册进实例组：任一实例刷新/选中都广播给全部实例
+        refresh();              // 构造期：ready=false，只重建自己，不广播
+        ready = true;
     }
 
     /** 外部接口：当前选中的模型完整路径（未选中返回 null）。 */
@@ -116,15 +143,38 @@ public class SceneOutliner extends VBox {
         return selectedPath;
     }
 
-    /** 重建整棵树（场景模型变化后调用，如 AI 创建/删除模型后）。根默认展开，其余默认折叠；尽量保留原选中。 */
+    /** 重建整棵树（场景模型变化后调用，如 AI 创建/删除模型后）。根默认展开；保留折叠状态与全局选中。
+     *  一侧刷新会同步刷新全部存活实例，保证手写/语音两侧场景集合一致。 */
     public void refresh() {
-        String keep = selectedPath;
+        rebuild();
+        if (!ready) {           // 构造期：只重建自己，不广播
+            ready = true;
+            return;
+        }
+        for (SceneOutliner o : ALL) {
+            if (o != this && o.ready) o.rebuild();
+        }
+    }
+
+    /** 真正重建本实例的树：keep 取全局选中，保证两侧刷新后回到同一个选中节点。 */
+    private void rebuild() {
+        String keep = GLOBAL_SELECTED != null ? GLOBAL_SELECTED : selectedPath;
+        boolean firstBuild = !treeEverBuilt;
+        treeEverBuilt = true;
+
+        Set<String> expanded = new HashSet<>();
+        if (!firstBuild) collectExpanded(tree.getRoot(), expanded);   // 首次不记录折叠快照：默认全展开
+
         TreeItem<String> root = new TreeItem<>("");
         root.setExpanded(true);
 
         List<String> roots = renderer.getModel().listModel();
-        for (String r : roots) root.getChildren().add(buildItem(r));
+        for (String r : roots) root.getChildren().add(buildItem(r, expanded, firstBuild));
+
+        // setRoot 会瞬间清空选择并触发监听，用锁屏蔽这中间的广播（避免把 null 广播给其他实例）
+        SELECT_LOCK = true;
         tree.setRoot(root);
+        SELECT_LOCK = false;
 
         selectedPath = null;
         if (keep != null) {
@@ -143,6 +193,25 @@ public class SceneOutliner extends VBox {
         }
     }
 
+    /** 被其他实例广播选中：静默选中同路径节点（本实例监听会被 SELECT_LOCK 拦住，不再回广播）。 */
+    private void selectSilently(String path) {
+        if (path == null) {
+            tree.getSelectionModel().clearSelection();
+            return;
+        }
+        TreeItem<String> item = findItem(tree.getRoot(), path);
+        if (item != null) tree.getSelectionModel().select(item);
+    }
+
+    /** 收集当前树中处于展开状态的节点路径（供 refresh 后恢复折叠状态）。 */
+    private void collectExpanded(TreeItem<String> node, Set<String> out) {
+        if (node == null) return;   // TreeView 首次 setRoot 前 getRoot() 为 null
+        if (node.getValue() != null && !node.getValue().isEmpty() && node.isExpanded()) {
+            out.add(node.getValue());
+        }
+        for (TreeItem<String> c : node.getChildren()) collectExpanded(c, out);
+    }
+
     /** 深度优先查找完整路径对应的 TreeItem（找不到返回 null）。 */
     private TreeItem<String> findItem(TreeItem<String> node, String path) {
         if (path.equals(node.getValue())) return node;
@@ -153,13 +222,13 @@ public class SceneOutliner extends VBox {
         return null;
     }
 
-    /** 递归构建一个 TreeItem；value = 完整路径，cell 显示叶名。 */
-    private TreeItem<String> buildItem(String path) {
+    /** 递归构建一个 TreeItem；value = 完整路径，cell 显示叶名。首次全展开；之后折叠状态按 refresh 前快照恢复。 */
+    private TreeItem<String> buildItem(String path, Set<String> expanded, boolean firstBuild) {
         String info = safeInfos(path);
         String kind = parseKind(info);
         TreeItem<String> item = new TreeItem<>(path);
-        item.setExpanded(true);
-        for (String c : parseChildren(info)) item.getChildren().add(buildItem(c));
+        item.setExpanded(firstBuild || expanded.contains(path));
+        for (String c : parseChildren(info)) item.getChildren().add(buildItem(c, expanded, firstBuild));
         return item;
     }
 
@@ -197,7 +266,6 @@ public class SceneOutliner extends VBox {
                 refresh();
             });
             setGraphic(rowBox);
-            setStyle("-fx-background-color: transparent; -fx-padding: 3 6 3 10;");
             selectedProperty().addListener((o, a, b) -> applyCellStyle());
             hoverProperty().addListener((o, a, b) -> applyCellStyle());
             // 行自身响应右键：先选中该行，再在鼠标位置弹菜单（保证"右键哪行=对哪行操作"）
@@ -248,7 +316,9 @@ public class SceneOutliner extends VBox {
                     + "-fx-padding: 3 6 3 10;"
                     + "-fx-border-color: transparent;");
         }
+
     }
+
 
     private String safeInfos(String path) {
         try {
@@ -560,16 +630,33 @@ public class SceneOutliner extends VBox {
     }
 
     /**
-     * 添加形状：创建到场景根（顶层独立模型）。
-     * 注意：不走"挂到右键行下"——渲染侧 filterVisible 语义是"父隐藏 ⇒ 子树连带隐藏"，
-     * 若创建为子级再隐藏父，新模型也会被过滤掉（视口空）。创建到根后自动 solo 新模型，
-     * 隐藏其余所有模型，实现"视口只显示新模型"。
+     * 添加形状：可创建到选中项的【下一级】（target = 选中路径）或【同级】（target = 选中路径的父级）。
+     * 创建成功后自动 solo 新模型（隐藏其余模型，视口只显示新模型 + 其祖先链）。
      */
-    private void doAdd(String parentPath) {
+    private void doAdd(String path) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("添加形状");
-        dialog.setHeaderText("创建形状（到场景根）");
+        dialog.setHeaderText("创建形状（" + path + "）");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        // 目标选择：同级 / 下一级（默认同级——最符合"新建独立模型"直觉）
+        RadioButton toSibling = new RadioButton("同级（与所选并列）");
+        RadioButton toChild = new RadioButton("下一级（挂到所选下面）");
+        ToggleGroup targetGroup = new ToggleGroup();
+        toSibling.setToggleGroup(targetGroup);
+        toChild.setToggleGroup(targetGroup);
+        toSibling.setSelected(true);
+
+        Label targetHint = new Label();
+        targetHint.setStyle("-fx-text-fill: #8ab4f8; -fx-font-size: 12px;");
+        targetHint.setWrapText(true);
+        Runnable updateHint = () -> {
+            String t = toChild.isSelected() ? path : parentOf(path);
+            targetHint.setText("将创建到：" + (t == null || t.isEmpty() ? "场景根" : t));
+        };
+        updateHint.run();
+        toSibling.selectedProperty().addListener((o, a, b) -> updateHint.run());
+        toChild.selectedProperty().addListener((o, a, b) -> updateHint.run());
 
         ComboBox<String> shapeBox = new ComboBox<>();
         shapeBox.getItems().addAll("正四面体", "5Cell", "16Cell", "超立方体", "超球");
@@ -612,17 +699,19 @@ public class SceneOutliner extends VBox {
         grid.setHgap(8);
         grid.setVgap(8);
         grid.setPadding(new Insets(12));
-        grid.addRow(0, new Label("形状"), shapeBox);
-        grid.addRow(1, new Label("名称"), nameField);
-        grid.addRow(2, new Label("中心"), centerRow);
-        grid.addRow(3, new Label("参数"), paramRow);
-        grid.addRow(4, error);
+        grid.addRow(0, new Label("位置"), new HBox(8, toSibling, toChild));
+        grid.addRow(1, new Label("目标"), targetHint);
+        grid.addRow(2, new Label("形状"), shapeBox);
+        grid.addRow(3, new Label("名称"), nameField);
+        grid.addRow(4, new Label("中心"), centerRow);
+        grid.addRow(5, new Label("参数"), paramRow);
+        grid.addRow(6, error);
         dialog.getDialogPane().setContent(grid);
 
         // 确定时校验并执行；失败不关窗，错误显示在窗内
         Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
-        String target = "";   // 创建到场景根（顶层），见 doAdd 注释
         okBtn.addEventFilter(ActionEvent.ACTION, e -> {
+            String target = toChild.isSelected() ? path : parentOf(path);   // 同级 = 父级，子级 = 自身
             String name = null;
             try {
                 name = nameField.getText().trim();
@@ -645,8 +734,8 @@ public class SceneOutliner extends VBox {
                 e.consume();   // 阻止对话框关闭
                 return;
             }
-            // 创建成功后再刷新列表，并选中新模型；随后 solo（隐藏其余模型，视口只显示新模型）
-            String createdPath = (target.isEmpty() ? "" : target + "/") + name;
+            // 创建成功后再刷新列表，并选中新模型；随后 solo（隐藏其余模型，视口只显示新模型 + 祖先链）
+            String createdPath = (target == null || target.isEmpty() ? "" : target + "/") + name;
             try {
                 refresh();
                 selectPath(createdPath);
@@ -659,6 +748,13 @@ public class SceneOutliner extends VBox {
         });
 
         dialog.showAndWait();
+    }
+
+    /** 路径的父级：去掉最后一段；根级路径返回 ""。 */
+    private static String parentOf(String path) {
+        if (path == null || path.isEmpty()) return "";
+        int i = path.lastIndexOf('/');
+        return i < 0 ? "" : path.substring(0, i);
     }
 
     /** 按完整路径选中树节点：展开父链、选中、滚动到可见（找不到则忽略）。 */
@@ -674,12 +770,17 @@ public class SceneOutliner extends VBox {
         tree.scrollTo(tree.getSelectionModel().getSelectedIndex());
     }
 
-    /** 单独显示指定模型（含其全部子级），隐藏场景中其余模型；点树节点即在模型间切换显示。 */
+    /**
+     * 单独显示指定模型：自身 + 其全部子级 + 其全部祖先链，隐藏其余模型；点树节点即在模型间切换显示。
+     * 祖先必须保留：渲染侧 filterVisible 语义是"父隐藏 ⇒ 子树连带隐藏"，隐藏祖先会导致选中模型也被过滤掉。
+     */
     private void solo(String path) {
         List<String> all = new ArrayList<>();
         collectPaths(tree.getRoot(), all);
         for (String p : all) {
-            boolean show = p.equals(path) || p.startsWith(path + "/");
+            boolean show = p.equals(path)          // 自身
+                    || p.startsWith(path + "/")    // 后代
+                    || path.startsWith(p + "/");   // 祖先链（父隐藏 ⇒ 子连带隐藏）
             try {
                 if (renderer.getModel().getModel(p).getVisible() != show) {
                     renderer.getModel().setModelVisible(p, show);

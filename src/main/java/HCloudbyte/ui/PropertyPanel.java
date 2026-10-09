@@ -14,6 +14,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
@@ -74,10 +76,7 @@ public class PropertyPanel extends VBox {
         updateData(selectedModel);
     }
 
-    /** 可折叠区块：背景隐身 + 横向悬停/展开高亮效果。 */
-    /** 可折叠区块：背景与面板底色统一为深灰色。 */
-    /** 可折叠区块：强制覆盖黑色背景，与面板底色统一为灰色。 */
-    /** 可折叠区块：强制覆盖黑色背景，与面板底色统一为灰色。 */
+    /** 可折叠区块：背景与面板底色统一（透明透出面板背景），悬停微亮、展开保持透明。 */
     private TitledPane fold(String title, Node content) {
         TitledPane tp = new TitledPane(title, content);
         tp.setAnimated(false);
@@ -627,7 +626,18 @@ public class PropertyPanel extends VBox {
 
     private VBox buildDataBox() {
         VBox box = new VBox(6);
-        box.getChildren().add(new Label("数据"));
+        Button refresh = new Button("刷新");
+        refresh.setOnAction(e -> updateData(selectedModel));
+        Button copyJson = new Button("复制JSON");
+        copyJson.setOnAction(e -> {
+            String s = paramsLabel.getText();
+            if (s != null && !s.startsWith("（未选中）") && !s.startsWith("读取失败") && !s.startsWith("params: （无）")) {
+                ClipboardContent cc = new ClipboardContent();
+                cc.putString(s);
+                Clipboard.getSystemClipboard().setContent(cc);
+            }
+        });
+        box.getChildren().add(new HBox(8, new Label("数据"), refresh, copyJson));
         box.getChildren().add(row("类型", kindLabel));
         box.getChildren().add(row("四面体", tetsLabel));
         box.getChildren().add(row("顶点", vertexLabel));
@@ -710,7 +720,7 @@ public class PropertyPanel extends VBox {
             case "XW": d[0]=c; d[3]=-s; d[15]=s; d[18]=c; break;
             case "YZ": d[6]=c; d[7]=-s; d[11]=s; d[12]=c; break;
             case "YW": d[6]=c; d[8]=-s; d[16]=s; d[18]=c; break;
-            case "ZW": d[11]=c; d[13]=-s; d[16]=s; d[18]=c; break;
+            case "ZW": d[12]=c; d[13]=-s; d[17]=s; d[18]=c; break;
         }
         return new Matrix5f(d);
     }
