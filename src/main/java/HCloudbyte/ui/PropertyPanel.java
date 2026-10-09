@@ -49,7 +49,7 @@ public class PropertyPanel extends VBox {
 
         // 默认选中第一个模型（后续由 SceneOutliner 点击切换）
         List<String> models = renderer.getModel().listModel();
-        selectedModel = models.isEmpty() ? null : models.get(0);
+        selectedModel = models.isEmpty() ? null : models.getFirst();
 
         VBox sceneOutliner = new SceneOutliner(renderer, name -> {
             selectedModel = name;
@@ -658,21 +658,24 @@ public class PropertyPanel extends VBox {
             paramsLabel.setText("（未选中）");
             return;
         }
+        Mesh4D m;
         try {
-            Mesh4D m = renderer.getModel().getModel(name);
-            int tets = m.getTetrahedrons().size();
-            kindLabel.setText(m.getKind().name());
-            tetsLabel.setText(String.valueOf(tets));
-            vertexLabel.setText(String.valueOf(tets * 4));
-            visibleLabel.setText(m.getVisible() ? "是" : "否（已隐藏）");
-            paramsLabel.setText(m.getParams() == null ? "params: （无）" : m.getParams().toJSONString());
+            m = renderer.getModel().getModel(name);
         } catch (Exception ex) {
-            kindLabel.setText("?");
+            // 中间/结构节点没有实体模型（SceneOutliner 的选中回调可能给出这类路径）
+            kindLabel.setText("结构节点");
             tetsLabel.setText("-");
             vertexLabel.setText("-");
             visibleLabel.setText("-");
-            paramsLabel.setText("读取失败：" + ex.getMessage());
+            paramsLabel.setText("（该路径不是实体模型）");
+            return;
         }
+        int tets = m.getTetrahedrons().size();
+        kindLabel.setText(m.getKind().name());
+        tetsLabel.setText(String.valueOf(tets));
+        vertexLabel.setText(String.valueOf(tets * 4));
+        visibleLabel.setText(m.getVisible() ? "是" : "否（已隐藏）");
+        paramsLabel.setText(m.getParams() == null ? "params: （无）" : m.getParams().toJSONString());
     }
 
     private static HBox row(String label, Label value) {

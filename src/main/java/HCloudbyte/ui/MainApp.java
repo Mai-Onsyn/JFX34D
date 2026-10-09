@@ -5,12 +5,14 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import mai_onsyn.renderer.core.GL4DRegion;
 import mai_onsyn.renderer.cpu4dkt.Mesh4D;
+import mai_onsyn.renderer.cpu4dkt.Tetrahedron;
 import mai_onsyn.renderer.cpu4dkt.generator.HypercubeKt;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 import mai_onsyn.renderer.utils.ColorARGB;
@@ -58,11 +60,11 @@ public class MainApp extends Application {
         // 把 RendererInterface 绑定到该视口的摄像机（与 RendererInterfaceInitializer.initialize(region) 完全等价）
         GL4DRegion region = new GL4DRegion();
         // 超立方体演示模型（8 胞调色板与 Hypercube.kt 默认一致，48 个四面体）
-        region.getScene4D().getMeshList().add(new Mesh4D(buildHypercubeTets()));
         region.setOutlineRendering(true);
         RendererInterface.Companion.init(region);
         renderer = RendererInterface.Companion.getINSTANCE();
-        RendererInterface.Companion.getINSTANCE().getScene().setBackgroundColor(Color.color(0.25,0.25,0.25));
+        renderer.getScene().setBackgroundColor(Color.color(0.25,0.25,0.25));
+        renderer.getShape().createTesseract("", "Tesseract", new Vector4f(0, 0, 0, 0), 1);
 
         // 初始化 Agent（agent 侧已实现，UI 只负责调用）：
         // submitUserInput = 自然语言 → LLM → IR JSON → CommandExecutor 执行到 renderer → 黑色视口响应
@@ -134,11 +136,11 @@ public class MainApp extends Application {
         chatView.setVisible(false);
 
         // 右侧内容超高时滚动 + 压平 minHeight，防止把顶栏/状态栏挤出窗口（上传版布局溢出 bug 的修复）
-        javafx.scene.control.ScrollPane scroll = new javafx.scene.control.ScrollPane(propertyView);
+        ScrollPane scroll = new ScrollPane(propertyView);
         scroll.setFitToWidth(true);
         scroll.setFitToHeight(true);   // 内容矮于视口时也撑满高度，右侧面板与左侧视口等高
         scroll.setMinHeight(0);
-        scroll.setHbarPolicy(javafx.scene.control.ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
 
         StackPane stack = new StackPane(scroll, chatView);
@@ -155,17 +157,13 @@ public class MainApp extends Application {
         chatView.setVisible(voiceMode);
     }
 
-    public static void main(String[] args) {
-        launch(args);
-    }
-
     /**
      * 构造超立方体的四面体列表（8 胞调色板与 Hypercube.kt 默认值一致，共 48 个四面体）。
      * ColorARGB 是 {@code @JvmInline value class}：Java 源码无法直接构造
      * （构造器 private，companion invoke 被 Kotlin 改为带 '-' 的 mangled 名），
      * 故反射调用其装箱工厂 box-impl(int hex) 构造 8 胞颜色，再调普通 3 参 constructHypercubeWithCellColors。
      */
-    private static List<mai_onsyn.renderer.cpu4dkt.Tetrahedron> buildHypercubeTets() {
+    private static List<Tetrahedron> buildHypercubeTets() {
         try {
             Method box = ColorARGB.class.getMethod("box-impl", int.class);
             List<ColorARGB> colors = new ArrayList<>();

@@ -10,6 +10,7 @@ import mai_onsyn.renderer.utils.fixedFrame
 import mai_onsyn.renderer.utils.toRowMajorFloatArray
 import org.joml.Matrix4f
 import java.util.*
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.thread
 
 class Renderer4D(

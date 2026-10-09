@@ -12,6 +12,8 @@ class ModelInterfaceImpl(
 ): ModelInterface {
     override fun listModel(): List<String> = scene.getMeshes().map { it.rootPath }.toSet().toList()
 
+    override fun listAllModels(): List<String> = scene.getMeshes().map { it.name }
+
     override fun createEmptyModel(name: String) {
         scene.requireNotContains(name)
         scene.meshList.add(Mesh4D(name = name).apply { this.kind = MeshKind.GROUP })
@@ -23,25 +25,35 @@ class ModelInterfaceImpl(
         if (!removed) throw NoSuchElementException(scene.noSuchMeshMessage(name))
     }
 
-    /** 重命名模型（连整棵子树一起改名，保持父子关系）；newName 是叶名，不是路径 */
+    /** 重命名模型（连整棵子树一起改名，保持父子关系）；newName 是叶名，不是路径。
+     *  path 可以是真实模型，也可以是中间/分组路径（按前缀改名整段）。 */
     override fun renameModel(path: String, newName: String) {
-        val srcMesh = scene.requireContains(path)
-        val newPath = srcMesh.parentPath?.let { "$it/$newName" } ?: newName
+        val exact = scene.findMesh(path)
+        if (exact == null && scene.subTree(path).isEmpty()) throw NoSuchElementException(scene.noSuchMeshMessage(path))
+        val parent = path.substringBeforeLast('/', "")
+        val newPath = if (parent.isEmpty()) newName else "$parent/$newName"
         if (newPath == path) return
         scene.requireNotContains(newPath)                                  // 同名节点已存在
         if (scene.subTree(newPath).isNotEmpty()) {                         // 已有子树占用该路径
             throw IllegalArgumentException("Model \"$newPath\" already exists")
         }
+        exact?.name = newPath
         val oldPrefix = "$path/"
-        srcMesh.name = newPath
         scene.meshList.filter { it.name.startsWith(oldPrefix) }.forEach {
             it.name = "$newPath/" + it.name.removePrefix(oldPrefix)
         }
     }
 
+    /** 复制模型：连同其整棵子树一起复制（src/... → dst/...）；src 可真实也可为中间路径，dst 必须不存在 */
     override fun copyModel(srcName: String, dstName: String) {
         scene.requireNotContains(dstName)
-        scene.meshList.add(scene.requireContains(srcName).copy(newName = dstName))
+        val src = scene.findMesh(srcName)
+        val oldPrefix = "$srcName/"
+        val descendants = scene.meshList.filter { it.name.startsWith(oldPrefix) }
+            .map { it to (dstName + "/" + it.name.removePrefix(oldPrefix)) }
+        if (src == null && descendants.isEmpty()) throw NoSuchElementException(scene.noSuchMeshMessage(srcName))
+        src?.let { scene.meshList.add(it.copy(newName = dstName)) }
+        descendants.forEach { (mesh, newPath) -> scene.meshList.add(mesh.copy(newName = newPath)) }
     }
 
     override fun mergeModel(src1Name: String, src2Name: String, dstName: String) {
@@ -83,10 +95,9 @@ class ModelInterfaceImpl(
         scene.meshList.add(applied)
     }
 
+    /** 隐藏/显示模型及其子模型；name 可以是分组/中间路径（作用于自身 + 全部后代） */
     override fun setModelVisible(name: String, visible: Boolean) {
-        scene.requireContains(name).visible = visible
-        // 可见性只在渲染时向直接子节点传递，这里显式覆盖整棵子树，做到"隐藏该模型及其子模型"
-        scene.subTree(name).forEach { it.visible = visible }
+        scene.targets(name).forEach { it.visible = visible }
     }
 
     override fun getModel(name: String): Mesh4D = scene.requireContains(name)

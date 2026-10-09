@@ -1,0 +1,25 @@
+/* ── 场景集合树（SceneOutliner）样式 ─────────────────────────────
+   这里只做一件内联样式做不到的事：把 TreeView 内部虚拟流压成透明。
+   （TreeView 的"节点行"背景/hover/选中高亮由 SceneTreeCell 用内联样式控制，
+    因为带 :-pseudo 的选择器在部分主题/JavaFX 版本下不可靠。） */
+
+.scene-tree {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* 压平内部容器底色（透明 → 透出面板玻璃底），否则节点行会呈现为"黑条" */
+.scene-tree > .virtual-flow,
+.scene-tree > .virtual-flow > .clipped-container,
+.scene-tree > .virtual-flow > .clipped-container > .sheet {
+    -fx-background-color: transparent;
+}
+
+/* 展开/折叠箭头配色 */
+.scene-tree .tree-disclosure-node .arrow {
+    -fx-background-color: #c7ccd1;
+}
