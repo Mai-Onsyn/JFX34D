@@ -3,12 +3,10 @@ package weilantianhai.agent.ir.operations;
 import com.alibaba.fastjson2.JSONObject;
 import mai_onsyn.renderer.interfaces.CameraInterface;
 import mai_onsyn.renderer.interfaces.RendererInterface;
-import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
-import weilantianhai.agent.util.JsonParamUtil;
 
 /**
- * MOVE_CAMERA_POS：按单轴移动摄像机（v2 文档 §3.1.2）。
+ * MOVE_CAMERA_POS：按单轴移动摄像机（文档 §3.1.2）。
  *
  * <p>参数：
  * <ul>
@@ -18,7 +16,10 @@ import weilantianhai.agent.util.JsonParamUtil;
  *
  * <p>移动只相对于当前摄像机坐标系，即 {@code pos += v_axis * distance}，不改变视角。
  */
-public class MoveCameraPosOperation implements IOperation {
+public class MoveCameraPosOperation extends GuardedOperation {
+
+    /** 单次移动距离上限，纯粹防呆，避免 LLM 给一个夸张值把模型甩出视野 */
+    private static final float MAX_DISTANCE = 10000f;
 
     private String axis;
     private float distance;
@@ -29,24 +30,25 @@ public class MoveCameraPosOperation implements IOperation {
     }
 
     @Override
-    public void load(JSONObject data) throws IRException {
-        this.axis = JsonParamUtil.getRequiredEnum(data, "axis", "AXIS", OperationParams.AXES);
-        this.distance = JsonParamUtil.getRequiredFloatInRange(
-                data, "distance", "DISTANCE", -1000f, 1000f
-        );
+    protected void parse(JSONObject data) throws IRException {
+        this.axis = OperationParams.getRequiredEnum(data, "axis", "AXIS", OperationParams.AXES);
+        this.distance = OperationParams.getRequiredFloat(data, "distance", "DISTANCE");
+        if (Math.abs(distance) > MAX_DISTANCE) {
+            throw new IRException("DISTANCE_OUT_OF_RANGE",
+                    "distance 超出范围 ±" + OperationParams.fmt(MAX_DISTANCE) + "：" + distance);
+        }
     }
 
     @Override
-    public String execute(RendererInterface renderer) throws IRException {
+    protected String run(RendererInterface renderer) {
         CameraInterface camera = renderer.getCamera();
         switch (axis) {
             case "x" -> camera.moveRight(distance);
             case "y" -> camera.moveUp(distance);
             case "z" -> camera.moveAna(distance);
             case "w" -> camera.moveForward(distance);
-            default -> throw new IRException("INVALID_AXIS", "非法轴：" + axis);
+            default -> throw new IllegalArgumentException("Invalid axis: " + axis);
         }
-        Vector4f pos = camera.getPosition();
-        return "Success\nNow Pos=" + OperationParams.formatVector4(pos);
+        return "Success\nNow Pos=" + OperationParams.formatVector4(camera.getPosition());
     }
 }

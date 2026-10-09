@@ -31,7 +31,7 @@ public class AgentInterfaceImpl implements AgentInterface {
     private final Object queueLock =new Object();
 
     private final IRParser parser = new IRParser();
-    private static final int MAX_ROUNDS = 10;
+    private static final int MAX_ROUNDS = 30;
 
     public AgentInterfaceImpl(LLMClient client, CommandExecutor executor) {
         this.client = client;
@@ -126,6 +126,12 @@ public class AgentInterfaceImpl implements AgentInterface {
                 collected.append(md).append("\n\n");
 
                 messages.add(JSONObject.of("role", "assistant", "content", json));
+
+                String toolResult = (md == null || md.isBlank())
+                        ? "[Tool Results]\n\n(no output)"
+                        : "[Tool Results]\n\n" + md;
+                messages.add(JSONObject.of("role", "user", "content", toolResult));
+
                 messages.add(JSONObject.of("role", "user", "content", md));
             }
 

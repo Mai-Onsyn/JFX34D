@@ -4,10 +4,9 @@ import com.alibaba.fastjson2.JSONObject;
 import mai_onsyn.renderer.interfaces.CameraInterface;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 import weilantianhai.agent.ir.IRException;
-import weilantianhai.agent.util.JsonParamUtil;
 
 /**
- * ROTATE_CAMERA_VIEW：旋转摄像机视角（v2 文档 §3.2.2）。
+ * ROTATE_CAMERA_VIEW：旋转摄像机视角（文档 §3.2.2）。
  *
  * <p>参数：
  * <ul>
@@ -16,9 +15,9 @@ import weilantianhai.agent.util.JsonParamUtil;
  * </ul>
  *
  * <p>旋转的是摄像机的四个基向量（不是模型）。接口层 {@code CameraInterfaceImpl}
- * 内部会用 {@code toRadians} 转换，所以这里保持文档约定的角度制传入，不要自行转弧度。
+ * 内部会用 {@code toRadians} 转换，所以这里保持文档约定的角度制传入，**不要自行转弧度**。
  */
-public class RotateCameraViewOperation implements IOperation {
+public class RotateCameraViewOperation extends GuardedOperation {
 
     private String axis;
     private float angleDeg;
@@ -29,13 +28,13 @@ public class RotateCameraViewOperation implements IOperation {
     }
 
     @Override
-    public void load(JSONObject data) throws IRException {
-        this.axis = JsonParamUtil.getRequiredEnum(data, "axis", "PLANE", OperationParams.PLANES);
-        this.angleDeg = JsonParamUtil.getRequiredFloat(data, "angle", "ANGLE");
+    protected void parse(JSONObject data) throws IRException {
+        this.axis = OperationParams.getRequiredEnum(data, "axis", "PLANE", OperationParams.PLANES);
+        this.angleDeg = OperationParams.getRequiredFloat(data, "angle", "ANGLE");
     }
 
     @Override
-    public String execute(RendererInterface renderer) throws IRException {
+    protected String run(RendererInterface renderer) {
         CameraInterface camera = renderer.getCamera();
         switch (axis) {
             case "xy" -> camera.rotateXY(angleDeg);
@@ -44,7 +43,7 @@ public class RotateCameraViewOperation implements IOperation {
             case "yz" -> camera.rotateYZ(angleDeg);
             case "yw" -> camera.rotateYW(angleDeg);
             case "zw" -> camera.rotateZW(angleDeg);
-            default -> throw new IRException("INVALID_PLANE", "非法旋转面：" + axis);
+            default -> throw new IllegalArgumentException("Invalid rotation plane: " + axis);
         }
         return "Success\nCurrent is:\n" + CameraViewFormatter.format(camera.getView());
     }
