@@ -1,5 +1,6 @@
-package HCloudbyte.ui;
+package HCloudbyte.ui.dialog;
 
+import HCloudbyte.ui.scenetree.SceneModelOperations;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
@@ -16,14 +17,20 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 
 /**
- * 「添加形状」弹窗：在当前节点下（下一级）或其父级下（同级）创建一个参数化形状。
+ * 「添加形状」弹窗：在所选节点的「下一级」或「同级(父级)」下创建一个参数化形状。
+ * 形状类型 → renderer.getShape().createXxx(...)。
  */
-final class ShapeCreateDialog {
+public final class ShapeCreateDialog {
 
     private ShapeCreateDialog() {
     }
 
-    static void show(RendererInterface renderer, String path, Runnable onChanged) {
+    /**
+     * @param renderer  渲染接口
+     * @param path      当前选中节点路径（空串表示场景根）
+     * @param onChanged 创建成功后回调（通常用于重建场景树）
+     */
+    public static void show(RendererInterface renderer, String path, Runnable onChanged) {
         boolean atRoot = path == null || path.isEmpty();
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("添加形状");
@@ -67,6 +74,7 @@ final class ShapeCreateDialog {
         TextField density = new TextField("3.00");
         HBox paramRow = new HBox(4, paramLabel, compact(param), densityLabel, compact(density));
 
+        // 只有「超球」才需要密度参数
         shapeBox.valueProperty().addListener((o, oldV, newV) -> {
             paramLabel.setText(paramLabelFor(newV));
             boolean ball = "超球".equals(newV);
@@ -117,6 +125,7 @@ final class ShapeCreateDialog {
                     case "超立方体" -> renderer.getShape().createTesseract(target, name, center, p);
                     case "超球" -> renderer.getShape().createBall4(target, name, center, p,
                             parseF(density.getText(), 0.5f));
+                    default -> throw new IllegalArgumentException("未知形状：" + shapeBox.getValue());
                 }
             } catch (Exception ex) {
                 error.setText("添加失败：" + ex.getMessage());
@@ -136,11 +145,11 @@ final class ShapeCreateDialog {
     }
 
     private static String paramLabelFor(String shape) {
-        switch (shape) {
-            case "5Cell": return "大小";
-            case "超立方体": return "边长";
-            default: return "半径";
-        }
+        return switch (shape) {
+            case "5Cell" -> "大小";
+            case "超立方体" -> "边长";
+            default -> "半径";
+        };
     }
 
     private static float parseF(String text, float fallback) {
@@ -152,14 +161,13 @@ final class ShapeCreateDialog {
     }
 
     private static String autoName(String shape) {
-        String prefix;
-        switch (shape) {
-            case "正四面体": prefix = "Tet"; break;
-            case "5Cell": prefix = "FiveCell"; break;
-            case "16Cell": prefix = "SixteenCell"; break;
-            case "超立方体": prefix = "Tesseract"; break;
-            default: prefix = "Ball";
-        }
+        String prefix = switch (shape) {
+            case "正四面体" -> "Tet";
+            case "5Cell" -> "FiveCell";
+            case "16Cell" -> "SixteenCell";
+            case "超立方体" -> "Tesseract";
+            default -> "Ball";
+        };
         return prefix + "_" + (System.currentTimeMillis() % 100000);
     }
 }

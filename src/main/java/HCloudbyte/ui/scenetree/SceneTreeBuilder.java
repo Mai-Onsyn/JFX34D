@@ -1,4 +1,4 @@
-package HCloudbyte.ui;
+package HCloudbyte.ui.scenetree;
 
 import javafx.scene.control.TreeItem;
 
@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 纯路径建树：只吃「完整路径集合」，不依赖任何渲染/模型对象。
+ * 纯路径建树：只吃「完整路径集合」，不依赖任何渲染 / 模型对象。
  *
  * <p>规则：路径按 {@code /} 分段，每段拼出一个完整路径作为节点值。
  * 中间段即使不是真实模型（如 {@code Tower/Upper}）也会自动建出结构节点。
@@ -38,7 +38,7 @@ final class SceneTreeBuilder {
         return root;
     }
 
-    /** 为一条完整路径逐段建节点（已存在的复用），返回其最深节点。 */
+    /** 为一条完整路径逐段建节点（已存在的复用）。 */
     private static void buildChain(TreeItem<String> root, Map<String, TreeItem<String>> byPath,
                                    String path, Collection<String> expandedPaths, boolean expandAll) {
         TreeItem<String> parent = root;

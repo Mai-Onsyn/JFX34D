@@ -1,8 +1,8 @@
-/* 视口左上角悬浮窗（相机机位）右键菜单：白色半透明风格 */
+/* 视口左上角悬浮窗（相机机位）右键菜单：深色半透明风格，与面板配色统一 */
 .overlay-menu {
-    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-background-color: rgba(28, 31, 35, 0.95);
     -fx-background-radius: 8;
-    -fx-border-color: rgba(255, 255, 255, 0.25);
+    -fx-border-color: rgba(255, 255, 255, 0.12);
     -fx-border-radius: 8;
     -fx-padding: 4;
 }
@@ -10,7 +10,7 @@
 .overlay-menu .menu-item {
     -fx-background-color: transparent;
     -fx-background-radius: 6;
-    -fx-padding: 4 14;
+    -fx-padding: 5 16;
 }
 
 .overlay-menu .menu-item .label {
@@ -19,5 +19,10 @@
 
 .overlay-menu .menu-item:hover,
 .overlay-menu .menu-item:focused {
-    -fx-background-color: rgba(255, 255, 255, 0.20);
+    -fx-background-color: rgba(255, 138, 26, 0.22);
+}
+
+/* 分隔线也调暗一点 */
+.overlay-menu .separator .line {
+    -fx-border-color: rgba(255, 255, 255, 0.12);
 }

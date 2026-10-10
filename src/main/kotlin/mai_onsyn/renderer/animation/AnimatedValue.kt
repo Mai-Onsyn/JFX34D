@@ -77,10 +77,10 @@ class AnimatedValue<T>(
     companion object {
         /** 全局默认动画时长（毫秒） */
         @Volatile
-        var DEFAULT_DURATION_MS: Long = 2500L
+        var DEFAULT_DURATION_MS: Long = 1000L
 
         /** 全局默认缓动曲线 */
         @Volatile
-        var DEFAULT_EASING: Easing = Easing.DampedSpring
+        var DEFAULT_EASING: Easing = Easing.FastOutSlowIn
     }
 }

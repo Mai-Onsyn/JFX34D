@@ -1,5 +1,6 @@
-package HCloudbyte.ui;
+package HCloudbyte.ui.scenetree;
 
+import HCloudbyte.ui.theme.Theme;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.SelectionMode;
@@ -26,9 +27,9 @@ import java.util.function.Consumer;
  * </ol>
  *
  * <p>重建来源有两处：UI 自身操作后立即重建；以及一个每秒轮询的虚拟线程（因为 AI 也会改场景）。
- * 本类是**可复用组件**，各面板各自 new 一个，彼此独立、无静态共享状态。
+ * 本类是<b>可复用组件</b>，各面板各自 new 一个，彼此独立、无静态共享状态。
  */
-public class SceneOutliner extends VBox {
+public class SceneTree extends VBox {
 
     private static final long POLL_INTERVAL_MILLIS = 1000;
 
@@ -38,7 +39,7 @@ public class SceneOutliner extends VBox {
     private final Consumer<String> onSelect;
 
     private final TreeView<String> tree = new TreeView<>();
-    /** 处于展开状态的节点路径（含即展开）；重建时据实际状态回填，自动剔除失效项。 */
+    /** 处于展开状态的节点路径；重建时据实际状态回填，顺带剔除失效项。 */
     private final Set<String> expandedPaths = new HashSet<>();
 
     private final SceneTreePoller poller;
@@ -46,15 +47,15 @@ public class SceneOutliner extends VBox {
     private boolean suppressSelectionCallback;
     private boolean everBuilt;
 
-    public SceneOutliner(RendererInterface renderer) {
+    public SceneTree(RendererInterface renderer) {
         this(renderer, null);
     }
 
     /**
      * @param renderer 渲染接口（取模型列表与模型对象）
-     * @param onSelect 选中回调，参数为节点完整路径（不以 / 结尾）；结构节点同样回调，由调用方自行判空
+     * @param onSelect 选中回调，参数为节点完整路径（不以 / 结尾）；结构节点同样回调，由调用方判空
      */
-    public SceneOutliner(RendererInterface renderer, Consumer<String> onSelect) {
+    public SceneTree(RendererInterface renderer, Consumer<String> onSelect) {
         super(6);
         this.renderer = renderer;
         this.model = renderer.getModel();
@@ -83,9 +84,7 @@ public class SceneOutliner extends VBox {
     /* ==================== 界面搭建 ==================== */
 
     private Label buildTitle() {
-        Label title = new Label("场景集合");
-        title.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e8eaed;");
-        return title;
+        return Theme.titleLabel("场景集合");
     }
 
     private TreeView<String> buildTree() {
@@ -107,9 +106,9 @@ public class SceneOutliner extends VBox {
         return tree;
     }
 
-    /** 加载组件样式表（压平 TreeView 内部底色、定义 hover/selected 高亮）。 */
+    /** 加载组件样式表（压平 TreeView 内部底色，定义 hover/selected 高亮）。 */
     private void applyStylesheet() {
-        java.net.URL css = SceneOutliner.class.getResource("/css/scene-tree.css");
+        java.net.URL css = SceneTree.class.getResource("/css/scene-tree.css");
         if (css != null) tree.getStylesheets().add(css.toExternalForm());
     }
 

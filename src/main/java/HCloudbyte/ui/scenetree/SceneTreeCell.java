@@ -1,5 +1,6 @@
-package HCloudbyte.ui;
+package HCloudbyte.ui.scenetree;
 
+import HCloudbyte.ui.dialog.Dialogs;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.ContentDisplay;
@@ -19,7 +20,7 @@ import java.util.function.Function;
  *   <li>文字用单元格自身的 text（叶名 + 类型配色），行尾小眼睛用 graphic + {@link ContentDisplay#RIGHT} 靠右。</li>
  *   <li><b>不要给 graphic 设 {@code prefWidth = Double.MAX_VALUE}</b>：会把单元格宽度撑成
  *       {@code Double.MAX_VALUE}，导致背景几何退化、背景完全画不出来（踩过）。</li>
- *   <li>行背景 / hover / 选中高亮一律由本类用内联 {@code setStyle} 控制（靠 addListener 触发）。</li>
+ *   <li>行背景 / hover / 选中高亮一律用内联 {@code setStyle} 控制（靠监听 selected/hover 触发）。</li>
  *   <li>右键：先选中本行，再在鼠标位置弹出菜单（菜单由外部工厂构造）。</li>
  * </ul>
  *
@@ -53,7 +54,8 @@ final class SceneTreeCell extends TreeCell<String> {
     private boolean boldText;
     private boolean italicText;
 
-    SceneTreeCell(SceneModelAccess access, Runnable onSceneChanged, Function<String, ContextMenu> contextMenuFactory) {
+    SceneTreeCell(SceneModelAccess access, Runnable onSceneChanged,
+                  Function<String, ContextMenu> contextMenuFactory) {
         this.access = access;
         this.onSceneChanged = onSceneChanged;
         this.contextMenuFactory = contextMenuFactory;
@@ -136,7 +138,7 @@ final class SceneTreeCell extends TreeCell<String> {
             access.setVisible(path, !access.visibleOf(path));
             onSceneChanged.run();
         } catch (Exception e) {
-            SceneDialogs.error("操作失败", e.getMessage());
+            Dialogs.error("操作失败", e.getMessage());
         }
     }
 
@@ -151,12 +153,12 @@ final class SceneTreeCell extends TreeCell<String> {
     /** 节点类型配色：SHAPE 蓝 / CARVED 橙 / MERGED 紫 / GROUP 灰。 */
     private static String colorFor(MeshKind kind) {
         if (kind == null) return "#9aa0a6";
-        switch (kind) {
-            case SHAPE: return "#8ab4f8";
-            case CARVED: return "#ffa116";
-            case MERGED: return "#c792ea";
-            default: return "#9aa0a6";
-        }
+        return switch (kind) {
+            case SHAPE -> "#8ab4f8";
+            case CARVED -> "#ffa116";
+            case MERGED -> "#c792ea";
+            default -> "#9aa0a6";
+        };
     }
 
     private static String leafOf(String path) {

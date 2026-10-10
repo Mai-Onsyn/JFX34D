@@ -1,4 +1,4 @@
-package HCloudbyte.ui;
+package HCloudbyte.ui.dialog;
 
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
@@ -12,14 +12,17 @@ import javafx.scene.layout.GridPane;
 
 import java.util.function.Consumer;
 
-/** 对话框中转：统一的错误提示与「多字段表单」弹窗。 */
-final class SceneDialogs {
+/**
+ * 对话框中转：统一的错误 / 成功提示，以及「多字段表单」弹窗。
+ * 所有需要弹窗的地方都走这里，避免各处重复拼 Alert / Dialog。
+ */
+public final class Dialogs {
 
-    private SceneDialogs() {
+    private Dialogs() {
     }
 
     /** 统一错误弹窗。 */
-    static void error(String title, String message) {
+    public static void error(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(null);
@@ -28,7 +31,7 @@ final class SceneDialogs {
     }
 
     /** 统一成功提示弹窗。 */
-    static void info(String title, String message) {
+    public static void info(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
@@ -37,13 +40,14 @@ final class SceneDialogs {
     }
 
     /**
-     * 多字段表单弹窗：确定时执行 {@code onConfirm}，抛异常则错误内联显示且窗口不关。
-     * 校验/业务逻辑全在 {@code onConfirm} 里，调用方保持简短。
+     * 多字段表单弹窗：点确定时执行 {@code onConfirm}；若它抛异常，则错误内联显示且窗口不关。
+     * 校验与业务逻辑全写在 {@code onConfirm} 里，调用方保持简短。
      *
      * @param labels   字段标签
-     * @param initials 字段初值（可 null）
+     * @param initials 字段初值（可为 null / 元素可 null）
      */
-    static void form(String title, String header, String[] labels, String[] initials, Consumer<String[]> onConfirm) {
+    public static void form(String title, String header, String[] labels, String[] initials,
+                            Consumer<String[]> onConfirm) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle(title);
         dialog.setHeaderText(header);

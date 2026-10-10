@@ -2,6 +2,7 @@ package mai_onsyn.renderer.animation
 
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.pow
 
 abstract class Easing {
     abstract fun ease(f: Float) : Float
@@ -29,5 +30,6 @@ abstract class Easing {
         val Linear: Easing = easeBy { it }
         val Smooth: Easing = easeBy { t -> t * t * (3f - 2f * t) }
         val DampedSpring: Easing = easeBy(dampedSpring())
+        val FastOutSlowIn: Easing = easeBy { t -> 1f - (1f - t).pow(3) }
     }
 }

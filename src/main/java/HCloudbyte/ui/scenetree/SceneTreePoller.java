@@ -1,4 +1,4 @@
-package HCloudbyte.ui;
+package HCloudbyte.ui.scenetree;
 
 import javafx.application.Platform;
 
@@ -11,10 +11,10 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * 模型路径集合轮询器：在**虚拟线程**里每秒取一次 keySet，与上次比对，
- * 有变化时把新 keySet 回抛到 **FX 线程**（{@link Platform#runLater}）触发 UI 重建。
+ * 模型路径集合轮询器：在<b>虚拟线程</b>里每隔一段时间取一次 keySet，与上次比对，
+ * 有变化时把新 keySet 回抛到 <b>FX 线程</b>（{@link Platform#runLater}）触发 UI 重建。
  *
- * <p>之所以要轮询：AI 也可能直接改场景，UI 侧没有变更回调可依赖，先用轮询验证可行性。
+ * <p>之所以要轮询：AI 也可能直接改场景，UI 侧没有变更回调可依赖，先用轮询保证能同步。
  */
 final class SceneTreePoller {
 
@@ -27,7 +27,7 @@ final class SceneTreePoller {
         this.onKeysChanged = onKeysChanged;
     }
 
-    /** 启动轮询虚拟线程（不管理生命周期：随进程退出而终止）。 */
+    /** 启动轮询线程（不管理生命周期：随进程退出而终止）。 */
     void start(long intervalMillis) {
         lastKeys.set(snapshot());
         Thread.ofVirtual().name("scene-tree-poller").start(() -> loop(intervalMillis));
