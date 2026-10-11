@@ -1,5 +1,6 @@
 package HCloudbyte.ui.viewport;
 
+import mai_onsyn.renderer.cpu4dkt.Camera4DUtilsKt;
 import mai_onsyn.renderer.cpu4dkt.CameraOrientation;
 import mai_onsyn.renderer.utils.Coordinate4D;
 import org.joml.Vector4f;
@@ -65,5 +66,10 @@ public final class CameraRecord {
         return new Coordinate4D(
                 new Vector4f(v.getVx()), new Vector4f(v.getVy()),
                 new Vector4f(v.getVz()), new Vector4f(v.getVw()));
+    }
+
+    public static CameraRecord lookAt(String name, Vector4f eye, Vector4f target) {
+        Coordinate4D orientation = Camera4DUtilsKt.lookAt4D(eye, target);
+        return new CameraRecord(name, eye, orientation, null);
     }
 }

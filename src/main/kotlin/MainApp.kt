@@ -98,20 +98,23 @@ fun start4DTest2(stage: Stage) {
 //    i.shape.createBall4("TestModel", "Ball1", Vector4f(0f, 0f, 0f, 0f), 1f, 12f)
     i.shape.createPrism4("TestModel", "Cone4", Mesh(createSphere(density = 12f)), -2f, 2f)
     Thread.ofVirtual().start {
+        Thread.sleep(5000)
+        i.camera.moveRight(5f)
+        Thread.sleep(5000)
+        i.camera.setView(lookAt4D(i.camera.getPosition(), Vector4f(0f, 0f, 0f, 0f)))
         var frame = 0
 //        i.transform.rotate("TestModel", Direction.Plane.ZW, 90f)
-        val orin = i.camera.getView()   // 正视角
-        i.camera.rotateXY(45f)
-        val rotate45 = i.camera.getView()   // XY转45°视角
+//        val orin = i.camera.getView()   // 正视角
+//        i.camera.rotateXY(45f)
+//        val rotate45 = i.camera.getView()   // XY转45°视角
         fixedFrame(100, { !Thread.currentThread().isInterrupted }) {
 //            i.transform.rotate("TestModel", Direction.Plane.ZW, 0.25f)
             if (frame++ % 400 == 0) {
                 val enable = (frame - 1) % 800 == 0
-                i.camera.setView(if (enable) orin else rotate45)
+//                i.camera.setView(if (enable) orin else rotate45)
             }
         }
     }
-    i.camera.moveForward(-5f)
 
 //    i.model.mergeAllSubModels("TestModel", "DestTest/TestModelMerged")
 //    i.transform.move("DestTest/TestModelMerged", Vector4f(0f, 3f, 0f, 0f))
