@@ -5,6 +5,8 @@ import java.util.List;
 public class IRBundle {
     private int version;
     private boolean done;
+    /** done=true 时给用户看的一句话总结；缺失时为 null。 */
+    private String content;
     private List<IRCommand> operations;
 
     public int getVersion() {
@@ -13,6 +15,14 @@ public class IRBundle {
 
     public void setVersion(int version) {
         this.version = version;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public List<IRCommand> getOperations() {

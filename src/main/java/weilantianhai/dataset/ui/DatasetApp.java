@@ -1,0 +1,825 @@
+package weilantianhai.dataset.ui;
+
+import HCloudbyte.ui.bootstrap.AgentBootstrap;
+import HCloudbyte.ui.bootstrap.RenderBootstrap;
+import HCloudbyte.ui.interfaces.UIInterface;
+import HCloudbyte.ui.viewport.CameraBookmarksView;
+import atlantafx.base.theme.PrimerDark;
+import com.alibaba.fastjson2.JSONObject;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+import mai_onsyn.renderer.core.GL4DRegion;
+import mai_onsyn.renderer.interfaces.RendererInterface;
+import weilantianhai.agent.interfaces.AgentInterface;
+import weilantianhai.agent.llm.LLMClient;
+import weilantianhai.agent.llm.PromptLoader;
+import weilantianhai.dataset.DatasetPaths;
+import weilantianhai.dataset.core.AgentTaskRunner;
+import weilantianhai.dataset.core.CheckEvaluator;
+import weilantianhai.dataset.core.SceneSnapshot;
+import weilantianhai.dataset.core.SceneSnapshotter;
+import weilantianhai.dataset.core.TaskRunRecord;
+import weilantianhai.dataset.store.DatasetStore;
+import weilantianhai.dataset.summary.MetricsAggregator;
+import weilantianhai.dataset.tasks.TaskBanks;
+import weilantianhai.dataset.tasks.TaskGenerator;
+import weilantianhai.dataset.tasks.TaskGoal;
+import weilantianhai.dataset.tasks.TaskLoader;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * 数据集生成脚本的主窗口。
+ *
+ * <h3>为什么是独立的 {@code Application}</h3>
+ *
+ * <p>它复用 {@link RenderBootstrap} 与 {@link AgentBootstrap} 建渲染器与 Agent，
+ * 但**不建 {@code RootLayout}**（那套 UI 里的 {@code ChatPanel} 会抢
+ * {@code setResponseListener}，与数据集采集冲突）。窗口只放：
+ * 4D 视口 + 左上角机位悬浮窗 + 右上角打分组件 + 顶部进度条。
+ *
+ * <h3>两阶段启动（重要）</h3>
+ *
+ * <p>窗口起来后**先停在开始页**（{@link StartPanel}），让用户选好模型与题库 ——
+ * 只有点了「开始」才进入执行页跑循环。理由是"选模型/选题库"属于**实验配置**，
+ * 应该发生在实验开始前，而不是跑起来之后手忙脚乱地补。
+ *
+ * <pre>
+ *   启动 → 开始页（选模型 / 选题库 / 选数据集目录）→ [开始] → 执行页（跑题 + 打分）
+ * </pre>
+ *
+ * <p>执行页顶栏仍有**模型**与**题库**两个下拉框：题目之间可以随便换。
+ * 换题库会在**下一题**生效（当前题不中断）。
+ *
+ * <h3>启动方式</h3>
+ *
+ * <p>在 IDE 里直接 Run {@link DatasetLauncher}（不能用 javac 手搓 classpath —— 渲染侧是 Kotlin，
+ * 且 {@code target/classes} 的 UI 部分是旧布局）。命令行参数见 {@link #main}。
+ */
+public class DatasetApp extends Application {
+
+    /** 模型下拉框的两个取值（同时也是落盘用的模型标识）。 */
+    public static final String MODEL_DEEPSEEK = "deepseek";
+    public static final String MODEL_QWEN = "qwen";
+
+    /** 任务来源：题库名（见 {@link TaskBanks}）。 */
+    private static String bankName = TaskBanks.BUILTIN;
+    /** 数据集根目录；null 表示用默认的 {@link DatasetPaths#DATASET_ROOT}。 */
+    private static Path datasetRoot;
+    /** 全自动模式：不弹打分框，直接按判据落盘。 */
+    private static boolean autoScoreOnly = false;
+    /** 起始被测试模型（可由 --model= 覆盖）。 */
+    private static String modelKey = MODEL_DEEPSEEK;
+    /**
+     * 出题模式参数：{@code --generate} 时**只出题不跑循环**，
+     * 生成结果写 JSONL 后退出。用 {@code --count/--difficulty/--category} 控制。
+     */
+    private static boolean generateMode = false;
+    private static int genCount = 20;
+    private static String genDifficulty = "mixed";
+    private static String genCategory = "mixed";
+    /** {@code --no-start-page}：跳过开始页直接跑（给自动/批量场景用）。 */
+    private static boolean skipStartPage = false;
+
+    private GL4DRegion region;
+    private RendererInterface renderer;
+    private SceneSnapshotter snapshotter;
+    private DatasetStore store;
+
+    private ScorePanel scorePanel;
+    private StartPanel startPanel;
+    private Label progressLabel;
+    private TextArea logArea;
+    private ComboBox<String> modelBox;
+    private ComboBox<String> bankBox;
+
+    /** 已完成的记录，供「完整 trace」弹窗用。 */
+    private final Map<Integer, TaskRunRecord> recordsByTask = new ConcurrentHashMap<>();
+
+    /** 当前被测试模型的客户端（切换模型时整体替换）。 */
+    private volatile LLMClient activeClient;
+
+    /** 主循环线程；只在「开始」时创建一次。 */
+    private volatile Thread runnerThread;
+    /** Agent 是否可用（开始页据此禁用按钮）。 */
+    private volatile boolean agentReady = false;
+
+    @Override
+    public void start(Stage stage) {
+        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+
+        // ---- 引导渲染 ----
+        RenderBootstrap.Result render = RenderBootstrap.create();
+        this.region = render.region();
+        this.renderer = render.renderer();
+
+        // ---- 引导 Agent ----
+        AgentBootstrap.Result agent = AgentBootstrap.init(render.renderer());
+        // AgentBootstrap 目前固定用 DeepSeek；从接口回读，便于后续切换
+        if (agent.ready()) {
+            this.activeClient = AgentInterface.getInstance().getClient();
+            this.agentReady = true;
+        }
+
+        // ---- 出题模式：不建窗口，直接出题后退出 ----
+        if (generateMode) {
+            stage.close();
+            runGenerateOnly();
+            return;
+        }
+
+        // ---- 机位悬浮窗：游离实例，只当机位存储用（不放进可视树也能工作） ----
+        CameraBookmarksView overlay = new CameraBookmarksView(render.renderer());
+        UIInterface.initialize(null, overlay);
+
+        this.snapshotter = new SceneSnapshotter(region, renderer, "Tesseract");
+
+        // ---- 装配窗口 ----
+        StackPane viewportStack = new StackPane(region);
+        // 机位悬浮窗放在左上角，方便肉眼确认 AI 是否真的建了机位
+        StackPane.setAlignment(overlay, Pos.TOP_LEFT);
+        StackPane.setMargin(overlay, new Insets(8));
+        viewportStack.getChildren().add(overlay);
+
+        scorePanel = new ScorePanel(this::showTraceDialog);
+        StackPane.setAlignment(scorePanel, Pos.TOP_RIGHT);
+        StackPane.setMargin(scorePanel, new Insets(8));
+        viewportStack.getChildren().add(scorePanel);
+
+        // ---- 开始页：盖在整个窗口之上，点「开始」才消失 ----
+        startPanel = new StartPanel(modelKey, this::onStartClicked);
+
+        BorderPane root = new BorderPane();
+        root.setCenter(viewportStack);
+        root.setTop(buildHeader());
+        root.setBottom(buildLogPane());
+
+        Scene scene = new Scene(root, 1280, 860);
+        scene.setFill(Color.web("#232527"));
+        stage.setTitle("JFX34D 数据集生成器");
+        stage.setScene(scene);
+        stage.show();
+
+        // 开始页放进 root 之上（用 scene 的 root 包一层，保证它盖住顶栏和日志）
+        StackPane overlayRoot = new StackPane(root, startPanel);
+        scene.setRoot(overlayRoot);
+
+        // 题库目录先建好，并把内置题导出成可编辑的模板文件
+        try {
+            TaskBanks.ensureBuiltinExport();
+            refreshBankBox(null);
+        } catch (Exception e) {
+            log("[warn] 题库目录初始化失败: " + e.getMessage());
+        }
+
+        if (!agent.ready()) {
+            log("[fatal] Agent 初始化失败：无法连接 LLM");
+            alert("Agent 初始化失败", "无法连接 LLM\n\n"
+                    + (agent.error() == null ? "未知错误" : agent.error().getMessage()));
+            startPanel.setStartDisabled(true, "Agent 未就绪");
+            return;
+        }
+
+        log("就绪。请在开始页选好配置后点「开始」。");
+        log("题库目录 = " + DatasetPaths.resolve(DatasetPaths.TASKS_DIR));
+        log("数据集目录 = " + DatasetPaths.resolve(DatasetPaths.DATASET_ROOT));
+
+        // --no-start-page：给批量/自动场景用，直接开跑
+        if (skipStartPage) {
+            startPanel.setVisible(false);
+            startPanel.setManaged(false);
+            onStartClicked(new StartPanel.Config(modelKey, bankName, storePath()));
+        }
+    }
+
+    /* ==================== 开始页回调 ==================== */
+
+    /**
+     * 点「开始」：应用开始页里的配置，然后启动主循环。
+     *
+     * <p>只跑一次 —— 用 {@code runnerThread} 做闸门（重复点开始不会起两个循环）。
+     */
+    private void onStartClicked(StartPanel.Config cfg) {
+        if (runnerThread != null && runnerThread.isAlive()) {
+            log("[start] 已在运行中，忽略重复的开始请求");
+            return;
+        }
+        if (!agentReady) {
+            log("[start] Agent 未就绪，无法开始");
+            return;
+        }
+
+        modelKey = cfg.modelKey() == null ? MODEL_DEEPSEEK : cfg.modelKey();
+        datasetRoot = cfg.datasetRoot();
+        store = new DatasetStore(datasetRoot);
+
+        log("[start] 模型=" + modelKey + "  题库=" + cfg.bankName()
+                + "  数据集=" + DatasetPaths.resolve(datasetRoot));
+
+        // 切到选中的模型（可能和启动默认值不同）
+        switchModel(modelKey, true);
+        setBank(cfg.bankName(), true);
+
+        Thread t = new Thread(this::runLoop, "dataset-runner");
+        t.setDaemon(true);
+        runnerThread = t;
+        t.start();
+    }
+
+    private Path storePath() {
+        return datasetRoot == null ? DatasetPaths.DATASET_ROOT : datasetRoot;
+    }
+
+    private HBox buildHeader() {
+        progressLabel = new Label("准备中…");
+        progressLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e8eaed;");
+        Label hint = new Label("窗口观察 AI 结果 → 右上角打分 → 提交");
+        hint.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+        VBox box = new VBox(2, progressLabel, hint);
+        HBox.setHgrow(box, Priority.ALWAYS);
+
+        // ---- 模型选择器：任务之间切换被测试模型 ----
+        Label modelLabel = new Label("被测试模型");
+        modelLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+        modelBox = new ComboBox<>();
+        modelBox.getItems().addAll(MODEL_DEEPSEEK, MODEL_QWEN);
+        modelBox.setValue(modelKey);
+        modelBox.setPrefWidth(150);
+        modelBox.valueProperty().addListener((obs, oldV, newV) -> switchModel(newV, false));
+        VBox modelCol = new VBox(2, modelLabel, modelBox);
+        modelCol.setAlignment(Pos.CENTER_LEFT);
+
+        // ---- 题库选择器：任务之间切换题集 ----
+        Label bankLabel = new Label("题库");
+        bankLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+        bankBox = new ComboBox<>();
+        bankBox.setPrefWidth(220);
+        bankBox.valueProperty().addListener((obs, oldV, newV) -> setBank(newV, false));
+        VBox bankCol = new VBox(2, bankLabel, bankBox);
+        bankCol.setAlignment(Pos.CENTER_LEFT);
+
+        // ---- 出题按钮 ----
+        Button genBtn = new Button("出题…");
+        genBtn.setStyle("-fx-font-size: 12px;");
+        genBtn.setOnAction(e -> showGeneratorDialog());
+        VBox genCol = new VBox(2, new Label(" "), genBtn);
+        genCol.setAlignment(Pos.CENTER_LEFT);
+
+        HBox bar = new HBox(14, box, modelCol, bankCol, genCol);
+        bar.setPadding(new Insets(10, 14, 10, 14));
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setStyle("-fx-background-color: rgba(38,42,47,0.95);");
+        return bar;
+    }
+
+    /* ==================== 模型切换 ==================== */
+
+    /** 刷新题库下拉框（保留当前选择，除非被删了）。 */
+    private void refreshBankBox(String preferred) {
+        if (bankBox == null) return;
+        String want = preferred != null ? preferred : bankBox.getValue();
+        List<String> banks = TaskBanks.list();
+        bankBox.getItems().setAll(banks);
+        bankBox.setValue(want != null && banks.contains(want) ? want : TaskBanks.BUILTIN);
+        bankName = bankBox.getValue();
+    }
+
+    /**
+     * 切换题库。**下一题生效**：主循环每道题开始前都重新读一次 {@link #bankName}，
+     * 所以这里不用中断正在跑的题。
+     *
+     * @param quiet 开始页初始化时传 true，不打印"已切换"
+     */
+    private void setBank(String name, boolean quiet) {
+        if (name == null || name.isBlank()) return;
+        bankName = name;
+        if (bankBox != null && !name.equals(bankBox.getValue())) {
+            bankBox.setValue(name);
+        }
+        int n = TaskBanks.countTasks(name);
+        if (!quiet) log("[bank] 已切换到题库「" + name + "」（" + n + " 题，下一题生效）");
+        if (progressLabel != null) {
+            setProgress("题库=" + name + "（" + n + " 题） ｜ " + modelKey);
+        }
+    }
+
+    /**
+     * 切换被测试模型。在**任务之间**调用才安全：{@code AgentInterfaceImpl} 每轮开头会快照
+     * 一次 client，所以正在跑的轮次仍用旧模型，不会半路换签证。
+     *
+     * @param force 开始页点开始时传 true（即便 key 相同也重建一次，确保 client 就绪）
+     */
+    private void switchModel(String key, boolean force) {
+        if (key == null) return;
+        key = key.strip().toLowerCase();
+        // 受控词表：只允许这两个，避免把 API 模型名当分组标识写进记录
+        if (!MODEL_DEEPSEEK.equals(key) && !MODEL_QWEN.equals(key)) {
+            log("[model] 忽略未知模型标识: " + key + "（只认 "
+                    + MODEL_DEEPSEEK + " / " + MODEL_QWEN + "）");
+            return;
+        }
+        if (!force && key.equals(modelKey) && activeClient != null) return;   // 同值且已就绪 → 无需重建
+        try {
+            LLMClient next = createClient(key);
+            activeClient = next;
+            modelKey = key;
+            AgentInterface.getInstance().setClient(next);
+            log("[model] 已切换到 " + next.getModel() + " @ " + next.getBaseURL()
+                    + "（分组标识 " + key + "）");
+            if (progressLabel != null) {
+                setProgress("模型=" + key + " (" + next.getModel() + ") ｜ 就绪");
+            }
+            if (modelBox != null && !key.equals(modelBox.getValue())) {
+                modelBox.setValue(key);
+            }
+        } catch (Exception e) {
+            log("[model] 切换失败: " + e.getMessage());
+            alert("模型切换失败", "无法创建 " + key + " 客户端：\n" + e.getMessage());
+        }
+    }
+
+    /** 按 key 造客户端。 */
+    private static LLMClient createClient(String key) throws Exception {
+        if (MODEL_QWEN.equals(key)) {
+            return LLMClient.local();
+        }
+        return LLMClient.deepSeek();
+    }
+
+    /* ==================== 出题（LLM 自动出题器） ==================== */
+
+    /** 出题对话框：选数量 / 难度 / 类别，生成后**存成一份新题库**。 */
+    private void showGeneratorDialog() {
+        if (activeClient == null) {
+            alert("无法出题", "被测试模型未就绪，请先选好模型。");
+            return;
+        }
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("LLM 自动出题");
+        dialog.setHeaderText("用当前模型（" + describeActiveModel() + "）基于真实操作清单出题，"
+                + "结果存为新的题库");
+
+        ComboBox<String> diffBox = new ComboBox<>();
+        diffBox.getItems().addAll("mixed", "simple", "medium", "complex", "trap");
+        diffBox.setValue("mixed");
+
+        ComboBox<String> catBox = new ComboBox<>();
+        catBox.getItems().addAll("mixed", "camera", "camera_bookmark", "model_tree",
+                "transform", "shape", "carve", "composite");
+        catBox.setValue("mixed");
+
+        Spinner<Integer> countSpin = new Spinner<>(1, 200, 20);
+        countSpin.setEditable(true);
+
+        CheckBox selfFilter = new CheckBox("可完成性自检（多花一轮调用，过滤离谱题）");
+        selfFilter.setSelected(true);
+
+        TextField nameField = new TextField("generated");
+        nameField.setPrefColumnCount(24);
+        Label nameHint = new Label("将保存为 " + DatasetPaths.TASKS_DIR + "/<名字>-<时间戳>.jsonl");
+        nameHint.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(16));
+        grid.addRow(0, new Label("数量"), countSpin);
+        grid.addRow(1, new Label("难度"), diffBox);
+        grid.addRow(2, new Label("类别"), catBox);
+        grid.addRow(3, new Label("题库名"), nameField);
+        grid.add(nameHint, 1, 4);
+        grid.add(selfFilter, 1, 5);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(
+                new ButtonType("开始生成", ButtonBar.ButtonData.OK_DONE),
+                ButtonType.CANCEL);
+
+        var result = dialog.showAndWait();
+        if (result.isEmpty() || result.get() != dialog.getDialogPane().getButtonTypes().get(0)) {
+            return;
+        }
+
+        TaskGenerator.Options opt = new TaskGenerator.Options();
+        opt.count = countSpin.getValue();
+        opt.difficulty = diffBox.getValue();
+        opt.category = catBox.getValue();
+        opt.selfFilter = selfFilter.isSelected();
+
+        Path out = TaskBanks.newBankFile(nameField.getText());
+        Thread t = new Thread(() -> {
+            try {
+                log("[gen] 开始出题：count=" + opt.count + " difficulty=" + opt.difficulty
+                        + " category=" + opt.category);
+                TaskGenerator gen = new TaskGenerator(activeClient, opt);
+                List<TaskGoal> tasks = gen.generate(nextFreeId());
+                String saved = TaskBanks.saveAsBank(tasks, out);
+                log("[gen] 完成 " + tasks.size() + " 条 → " + DatasetPaths.resolve(out));
+                // 新题库立刻出现在两个下拉框里
+                Platform.runLater(() -> {
+                    refreshBankBox(saved);
+                    startPanel.selectBank(saved);
+                    alert2("出题完成",
+                            "已保存 " + tasks.size() + " 题的题库：\n" + saved
+                                    + "\n\n已在题库下拉框里选中，直接点开始（或在跑的过程中切换）即可测试。");
+                });
+            } catch (Exception e) {
+                log("[gen] 出题失败: " + e);
+                e.printStackTrace();
+                Platform.runLater(() -> alert("出题失败", String.valueOf(e)));
+            }
+        }, "task-generator");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** 纯出题模式（{@code --generate}）：不建窗口、不跑循环，生成完退出。 */
+    private void runGenerateOnly() {
+        try {
+            TaskGenerator.Options opt = new TaskGenerator.Options();
+            opt.count = genCount;
+            opt.difficulty = genDifficulty;
+            opt.category = genCategory;
+            opt.selfFilter = true;
+
+            // 默认写进题库目录；显式给了 --tasks= 就按那个路径写
+            Path out = explicitTaskFile != null ? explicitTaskFile
+                    : TaskBanks.newBankFile("generated");
+
+            System.out.println("[gen] 出题中 count=" + opt.count
+                    + " difficulty=" + opt.difficulty + " category=" + opt.category);
+            TaskGenerator gen = new TaskGenerator(activeClient, opt);
+            List<TaskGoal> tasks = gen.generate(1);
+            TaskLoader.save(tasks, out);
+            System.out.println("[gen] 完成 " + tasks.size() + " 条 → " + DatasetPaths.resolve(out));
+        } catch (Exception e) {
+            System.err.println("[gen] 失败: " + e);
+            e.printStackTrace();
+        }
+        Platform.exit();
+        System.exit(0);
+    }
+
+    /** {@code --generate} 模式下显式指定的输出文件（{@code --tasks=}）。 */
+    private static Path explicitTaskFile;
+
+    /** 已有题库里的最大 id + 1，避免新题 id 撞车。 */
+    private int nextFreeId() {
+        int max = 0;
+        try {
+            List<TaskGoal> existing = TaskBanks.load(bankName);
+            for (TaskGoal g : existing) max = Math.max(max, g.id());
+        } catch (Exception ignored) {
+        }
+        return max + 1;
+    }
+
+    /** 当前被测试模型的展示文本。 */
+    private String describeActiveModel() {
+        if (activeClient == null) return "未初始化";
+        return activeClient.getModel() + " @ " + activeClient.getBaseURL();
+    }
+
+    private VBox buildLogPane() {
+        logArea = new TextArea();
+        logArea.setEditable(false);
+        logArea.setPrefRowCount(6);
+        logArea.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;"
+                + "-fx-control-inner-background: rgba(26,28,32,0.98); -fx-text-fill: #9aa0a6;");
+        VBox.setVgrow(logArea, Priority.ALWAYS);
+        VBox box = new VBox(logArea);
+        box.setPrefHeight(140);
+        return box;
+    }
+
+    /* ==================== 主循环（后台线程） ==================== */
+
+    /**
+     * 跑题主循环。
+     *
+     * <p>每道题开始前都会**重新读一次题库与模型** —— 这就是"页面内换题库/换模型在下一题生效"
+     * 的实现方式：换题库不中断正在跑的题，也不产生半新半旧的混合批次。
+     */
+    private void runLoop() {
+        List<TaskGoal> tasks;
+        try {
+            tasks = TaskBanks.load(bankName);
+        } catch (Exception e) {
+            log("[fatal] 任务加载失败: " + e.getMessage());
+            return;
+        }
+        if (tasks.isEmpty()) {
+            log("[fatal] 题库「" + bankName + "」里没有任务");
+            return;
+        }
+
+        String model = currentModelName();
+        String apiModel = currentApiModelName();
+        String promptHash = hashSystemPrompt();
+        log("任务数=" + tasks.size() + "  题库=" + bankName + "  模型=" + model + " (" + apiModel + ")"
+                + "  数据集根=" + DatasetPaths.resolve(store.root()));
+
+        AgentInterface agent = AgentInterface.getInstance();
+        AgentTaskRunner runner = new AgentTaskRunner(agent, () -> snapshotter.snapshot());
+
+        // 已跑过的 task id：换题库后 id 可能重复，重跑同 id 不覆盖已有记录
+        java.util.Set<Integer> doneIds = new java.util.HashSet<>();
+        // 当前 tasks 列表对应的题库名（与 bankName 不同 → 说明用户在跑的过程中换了题库）
+        String loadedBank = bankName;
+
+        int index = 0;
+        for (TaskGoal task : tasks) {
+            if (scorePanel.isAbortRequested()) {
+                log("[abort] 用户终止，停止循环");
+                break;
+            }
+
+            // ---- 每题开始前重新读题库/模型：页面内切换在下一题生效 ----
+            if (!bankName.equals(loadedBank)) {
+                try {
+                    List<TaskGoal> reloaded = TaskBanks.load(bankName);
+                    if (!reloaded.isEmpty()) {
+                        tasks = reloaded;
+                        loadedBank = bankName;
+                        index = 0;   // 新题库重新计数，进度条才有意义
+                        log("[bank] 已切换到题库「" + bankName + "」（" + tasks.size() + " 题）");
+                    } else {
+                        log("[bank] 题库「" + bankName + "」为空，忽略切换");
+                        bankName = loadedBank;
+                    }
+                } catch (Exception e) {
+                    log("[bank] 题库「" + bankName + "」加载失败，继续用旧的: " + e.getMessage());
+                    bankName = loadedBank;
+                }
+            }
+
+            index++;
+            final int i = index;
+            setProgress(String.format("任务 %d/%d ｜ %s ｜ %s ｜ 正在执行…",
+                    i, tasks.size(), loadedBank, task.category()));
+
+            // 模型可能在任务之间被切换 —— 每条记录都重新取一次，保证「记录里写的模型」=「实际跑的模型」
+            String taskModel = currentModelName();
+            String taskApiModel = currentApiModelName();
+            TaskRunRecord record = new TaskRunRecord(task, taskModel, promptHash,
+                    OffsetDateTime.now() + "__" + taskModel + "__" + task.category() + "__" + task.id());
+            record.setApiModel(taskApiModel);
+
+            try {
+                // 1. 复位场景（内部会自检：复位不干净就抛异常，不会静默污染后续结论）
+                snapshotter.reset();
+                record.setSnapshotBefore(new SceneSnapshot(snapshotter.snapshot()));
+
+                // 2. 执行
+                agent.setTraceListener(null); // 由 runner 内部接管
+                AgentTaskRunner.RunOutcome outcome = runner.run(task, record);
+
+                // 3. 等相机动画落定（机位跳转约 1 秒），再采末态
+                Thread.sleep(1500);
+                record.setSnapshotAfter(new SceneSnapshot(snapshotter.snapshot()));
+
+                // 4. 自动判据
+                CheckEvaluator.Report autoReport = evaluateAuto(task, record);
+                record.setAutoCheck(
+                        autoReport == null ? null : autoReport.allPassed(),
+                        autoReport == null ? null : autoReport.describe());
+
+                // 5. 打分
+                if (autoScoreOnly) {
+                    if (autoReport == null) {
+                        record.setVerdict(TaskRunRecord.Verdict.SKIP, "自动模式下无判据", "auto");
+                    } else {
+                        record.setVerdict(autoReport.allPassed()
+                                        ? TaskRunRecord.Verdict.CORRECT
+                                        : TaskRunRecord.Verdict.INCORRECT,
+                                autoReport.describe(), "auto");
+                    }
+                } else {
+                    if (outcome.timedOut()) {
+                        record.setVerdict(TaskRunRecord.Verdict.TIMEOUT, "任务超时", "system");
+                    } else if (record.isAgentError()) {
+                        record.setVerdict(TaskRunRecord.Verdict.ERROR,
+                                "Agent 错误：" + record.getAgentErrorMessage(), "system");
+                    } else {
+                        ScorePanel.Score score = scorePanel.awaitScore(task, record, autoReport);
+                        record.setVerdict(score.verdict(), score.comment(), "human");
+                    }
+                }
+
+                // 6. 落盘
+                store.append(record);
+                recordsByTask.put(task.id(), record);
+                doneIds.add(task.id());
+                log(String.format("[save] task=%d verdict=%s rounds=%d %.1fs",
+                        task.id(), record.getVerdict(), record.roundCount(), record.getElapsedMs() / 1000.0));
+
+            } catch (Throwable t) {
+                log("[error] task=" + task.id() + " -> " + t);
+                t.printStackTrace();
+                try {
+                    record.setVerdict(TaskRunRecord.Verdict.ERROR, String.valueOf(t), "system");
+                    store.append(record);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        // 7. 汇总
+        try {
+            List<JSONObject> all = store.loadAllRaw();
+            MetricsAggregator.Report report = MetricsAggregator.aggregate(all);
+            String md = MetricsAggregator.toMarkdown(report);
+            String day = java.time.LocalDate.now().toString();
+            store.writeSummary("compare__" + day + ".md", md);
+            store.writeSummary(day + "__" + model + ".json",
+                    MetricsAggregator.toJson(report).toJSONString(
+                            com.alibaba.fastjson2.JSONWriter.Feature.PrettyFormat));
+            log("=== 汇总 ===\n" + MetricsAggregator.toConsole(report));
+            log("[done] 汇总已写入 " + DatasetPaths.resolve(store.summaryDir()));
+        } catch (Exception e) {
+            log("[error] 汇总失败: " + e.getMessage());
+        }
+
+        setProgress("全部完成（题库 " + loadedBank + "）");
+        log("[done] 数据集写入 " + DatasetPaths.resolve(store.root()));
+        Platform.runLater(this::showSummaryDialog);
+    }
+
+    /**
+     * 自动判据求值（无判据返回 null）。
+     *
+     * <p>带上 {@link CheckEvaluator.Context}：除了末态快照，还提供 AI 的**回复文本**
+     * 与**操作回执**，让纯查询题（{@code reply contains ...}）与
+     * 陷阱题（{@code reject with ...}）也能自动判定。
+     */
+    private CheckEvaluator.Report evaluateAuto(TaskGoal task, TaskRunRecord record) {
+        if (!task.hasCheck()) return null;
+        var snap = record.getSnapshotAfter();
+        if (snap == null) return null;
+        CheckEvaluator.Context ctx = new CheckEvaluator.Context(
+                snap, record.finalAnswer(), record.allReceipts());
+        return CheckEvaluator.evaluate(task.assertions(), ctx);
+    }
+
+    private void showTraceDialog(int taskId) {
+        TaskRunRecord r = recordsByTask.get(taskId);
+        if (r == null) return;
+        TextArea ta = new TextArea(r.toJson().toJSONString(
+                com.alibaba.fastjson2.JSONWriter.Feature.PrettyFormat));
+        ta.setEditable(false);
+        ta.setPrefRowCount(30);
+        ta.setPrefColumnCount(100);
+        ta.setStyle("-fx-font-family: 'Consolas', monospace; -fx-font-size: 11px;");
+
+        ScrollPane sp = new ScrollPane(ta);
+        sp.setFitToWidth(true);
+        sp.setPrefSize(980, 640);
+
+        Stage dialog = new Stage();
+        dialog.setTitle("任务 " + taskId + " 完整轨迹");
+        dialog.setScene(new Scene(new StackPane(sp), 1000, 700));
+        dialog.show();
+    }
+
+    private void showSummaryDialog() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("数据集生成完成");
+        alert.setHeaderText("汇总已写入 " + DatasetPaths.resolve(store.summaryDir()));
+        alert.setContentText("查看 compare__<date>.md 获取模型量化评估总表。");
+        alert.show();
+    }
+
+    private void setProgress(String text) {
+        Platform.runLater(() -> progressLabel.setText(text));
+    }
+
+    private void log(String text) {
+        System.out.println("[dataset] " + text);
+        Platform.runLater(() -> {
+            if (logArea != null) logArea.appendText(text + System.lineSeparator());
+        });
+    }
+
+    private void alert(String title, String content) {
+        Platform.runLater(() -> {
+            Alert a = new Alert(Alert.AlertType.ERROR);
+            a.setTitle(title);
+            a.setHeaderText(title);
+            a.setContentText(content);
+            a.show();
+        });
+    }
+
+    /** 非错误的提示弹窗（出题完成等）。 */
+    private void alert2(String title, String content) {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle(title);
+        a.setHeaderText(title);
+        a.setContentText(content);
+        a.show();
+    }
+
+    /**
+     * 当前被测试模型的**分组标识**（落盘文件名与汇总表分组都用它）。
+     *
+     * <p>它一定是 {@link #MODEL_DEEPSEEK} / {@link #MODEL_QWEN} 之一 —— 是**受控词表**，
+     * 不是 API 模型名。历史教训：早期版本这里返回 {@code deepseek.properties} 里的
+     * {@code model=}（值是 {@code deepseek-flash}），后来改成 {@code modelKey}（{@code deepseek}），
+     * 于是汇总表里同一个模型裂成了 {@code deepseek} / {@code deepseek-flash} 两行。
+     * 具体 API 名走 {@link #currentApiModelName()}，两者**永远不要混用**。
+     */
+    private String currentModelName() {
+        return modelKey;
+    }
+
+    /** 具体 API 模型名（写进 {@code env.api_model}，仅用于追溯，不参与分组）。 */
+    private String currentApiModelName() {
+        LLMClient c = activeClient;
+        if (c != null) return c.getModel();
+        return "unknown";
+    }
+
+    private static String hashSystemPrompt() {
+        try {
+            String p = PromptLoader.loadSystemPrompt();
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            byte[] d = md.digest(p.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("sha1:");
+            for (byte b : d) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Throwable t) {
+            return "sha1:unknown";
+        }
+    }
+
+    /**
+     * 入口。**建议从 {@link DatasetLauncher} 启动**（见那里的说明：主类继承 Application
+     * 会在 classpath 模式下触发"缺少 JavaFX 运行时组件"报错）。
+     *
+     * <pre>
+     * 参数（可选，任意顺序）：
+     *   --bank=&lt;name&gt;          题库名（data/tasks/ 下的文件名，或"(内置 14 题)"）；缺省内置
+     *   --tasks=&lt;path&gt;         直接指定题库文件（等价于 --bank，优先级更高）
+     *   --data=&lt;dir&gt;            数据集根目录；缺省 data/dataset
+     *   --auto                   全自动模式（不做人工打分，直接按判据落盘）
+     *   --model=deepseek|qwen    起始被测试模型（缺省 deepseek）
+     *   --no-start-page          跳过开始页，直接开跑
+     *
+     *   --generate               只出题不跑循环；生成 JSONL 后退出
+     *   --count=&lt;n&gt;              --generate 的题目数量（缺省 20）
+     *   --difficulty=&lt;d&gt;         simple|medium|complex|trap|mixed（缺省 mixed）
+     *   --category=&lt;c&gt;           camera|camera_bookmark|model_tree|transform|shape|carve|composite|mixed
+     * </pre>
+     */
+    public static void main(String[] args) {
+        for (String a : args) {
+            if (a.startsWith("--tasks=")) {
+                // 直接给文件路径：当作题库文件用
+                explicitTaskFile = Path.of(a.substring("--tasks=".length()));
+                bankName = explicitTaskFile.getFileName().toString();
+            } else if (a.startsWith("--bank=")) {
+                bankName = a.substring("--bank=".length()).strip();
+            } else if (a.startsWith("--data=")) {
+                datasetRoot = Path.of(a.substring("--data=".length()));
+            } else if (a.equals("--auto")) autoScoreOnly = true;
+            else if (a.equals("--no-start-page")) skipStartPage = true;
+            else if (a.startsWith("--model=")) {
+                modelKey = a.substring("--model=".length()).strip().toLowerCase();
+            } else if (a.equals("--generate")) generateMode = true;
+            else if (a.startsWith("--count=")) genCount = Integer.parseInt(a.substring("--count=".length()).strip());
+            else if (a.startsWith("--difficulty=")) genDifficulty = a.substring("--difficulty=".length()).strip();
+            else if (a.startsWith("--category=")) genCategory = a.substring("--category=".length()).strip();
+        }
+        // 传具体类而不是 args：避免 JavaFX 再去推断主类
+        launch(DatasetApp.class, args);
+    }
+}

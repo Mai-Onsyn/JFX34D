@@ -40,6 +40,11 @@ public class IRParser {
         }
 
         boolean done = root.getBooleanValue("done",false);
+        // 给用户看的一句话总结；可选字段，缺失/空白时为 null。
+        String content = root.getString("content");
+        if(content != null && content.isBlank()){
+            content = null;
+        }
         JSONArray opsJson = root.getJSONArray("operations");
         boolean hasOps =opsJson != null && !opsJson.isEmpty();
 
@@ -50,6 +55,7 @@ public class IRParser {
             IRBundle bundle = new IRBundle();
             bundle.setVersion(version);
             bundle.setDone(true);
+            bundle.setContent(content);
             bundle.setOperations(new ArrayList<>());
             return bundle;
         }
@@ -69,6 +75,7 @@ public class IRParser {
 
         IRBundle bundle = new IRBundle();
         bundle.setVersion(version);
+        bundle.setContent(content);
         bundle.setOperations(commands);
         return bundle;
     }

@@ -112,8 +112,56 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 `SET_CAMERA_VIEW` 要求四个向量都是**单位向量**且**两两正交**，不满足会报错。
 没有把握凑出合法值时，改用 `ROTATE_CAMERA_VIEW` 逐步旋转。
+（若目的是保存一个机位，优先用 `SET_CAMERA_BOOKMARK` 的 `look_at`，见下一节——那比手写基向量简单得多。）
 
-### 三、模型树操作
+### 三、摄像机 — 机位（书签）
+
+机位 = 保存下来的"相机位置 + 视角"快照，可在 UI 左上角悬浮窗看到，也可由你增删查跳。
+
+**造机位有三种方式，按优先级从高到低——这是本节最容易出错的地方：**
+
+| 优先级 | 方式 | 你要给的 | 适用场景 |
+| --- | --- | --- | --- |
+| 🥇 **首选** | `SET_CAMERA_BOOKMARK` + **`look_at`** | 位置 `pos` + **看向的点 `look_at`** | **绝大多数情况**。只需给两个点，朝向自动算 |
+| 🥈 次选 | `SET_CAMERA_BOOKMARK` + `view` | 位置 `pos` + 四个基向量 | 确实要精确控制朝向时 |
+| 🥉 兜底 | `SAVE_CAMERA_BOOKMARK` | 无（拍当前相机） | 只有"把**现在**看到的存下来"才用 |
+| — | `SET_CAMERA_BOOKMARK` 什么都不给 | 只有 `pos` | 单位基（正对） |
+
+> ✅ **首选 `look_at`**：写法是"相机放在 `pos`，朝着 `look_at` 看"。例如"从正前方看原点"
+> 就是 `pos=[0,0,6,0]`、`look_at=[0,0,0,0]`。**不要**自己去凑四个基向量——很容易算错。
+
+> ⛔ **禁止**用「`SET_CAMERA_POS` + `SAVE_CAMERA_BOOKMARK`」的组合去批量造机位。
+> `SET_CAMERA_POS` 是**动画**（约 1 秒才到位），紧接着 `SAVE` 读到的是动画**起点**，
+> 结果是所有机位的位置全都一样、全是错的。
+
+| 操作 | data | 返回 |
+| --- | --- | --- |
+| `LIST_CAMERA_BOOKMARKS` | 无 | 机位清单（`[下标] 名称 pos=(x,y,z,w)`） |
+| `SET_CAMERA_BOOKMARK` | `name`、`pos`、`look_at`／`view`（二选一，见上表） | `Success` + 新机位下标 + view |
+| `SAVE_CAMERA_BOOKMARK` | `name`（可选，缺省"机位N"） | `Success` + 新机位下标 |
+| `GO_CAMERA_BOOKMARK` | `name` 或 `index` | `Success` + 目标机位 |
+| `RENAME_CAMERA_BOOKMARK` | `name`/`index` + `new_name` | `Success` |
+| `DELETE_CAMERA_BOOKMARK` | `name` 或 `index` | `Success` |
+
+`look_at` 与 `view` **不能同时给**；`look_at` 也不能等于 `pos`（那样视线方向为零，朝向无法确定）。
+优先级：`look_at` > `view` > 都不给（单位基）。
+
+**机位名必须唯一**。`SET_CAMERA_BOOKMARK` 和 `SAVE_CAMERA_BOOKMARK` 在重名时都会报错，
+不要靠"再存一个同名机位"来覆盖——要改就 `RENAME`，要换就 `DELETE` 后重建。
+
+**寻址规则**：除造机位外的操作都要指定目标机位，`name` 和 `index` 二选一，
+**`name` 优先**。用 `index` 前务必先 `LIST_CAMERA_BOOKMARKS` 拿准确下标；名字有重名时会报错，
+这时改用 `index`。名字不存在时错误信息里会列出当前所有机位名，照着改。
+
+**三个必须知道的坑**：
+
+1. **`GO_CAMERA_BOOKMARK` 会触发约 1 秒的平滑过渡动画**。返回的 `pos` 是动画**起点**，不是终点。
+   **跳转后不要立刻 `GET_CAMERA_POS` 去验证**——拿到的是中间帧，会误判。需要新位置就直接读目标机位。
+2. **删除会让后续下标前移**。连续删多个机位时，用 `name` 定位，或每删一个都重新 `LIST_CAMERA_BOOKMARKS`。
+3. **别反复重存同一个机位**。造机位成功后返回值里就有下标，**不要**因为"看起来没生效"再存一遍——
+   那会攒出一堆机位。同名会被拒绝并报错。
+
+### 四、模型树操作
 
 | 操作 | data | 说明 |
 | --- | --- | --- |
@@ -133,7 +181,7 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 - `MERGE_MODEL` 与 `MERGE_ALL_SUB_MODELS` 的**源模型都不会被删除**，仍保持独立节点。
 - `SET_MODEL_VISIBLE` 只改可见性，不动几何、也不改 `kind`/参数。
 
-### 四、模型变换
+### 五、模型变换
 
 **`TRANSFORM_MODEL`** 对模型的 5×5 变换矩阵做操作（**不改顶点**）。
 
@@ -160,7 +208,7 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 **`GET_MODEL_MATRIX`**：`name`（必须精确存在），返回 5 行矩阵。
 
-### 五、基础形状（7 种）
+### 六、基础形状（7 种）
 
 每个形状操作都要给两个路径参数：`target`（挂到哪个路径下，**不必已存在**，空字符串表示根路径）
 和 `name`（新部件名，可带子路径）。结果路径 = `target/name`，**必须尚不存在**。
@@ -217,7 +265,7 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 `ROTATE`（`axis` 只接受 3D 的 `xy`/`xz`/`yz`，`angle` 角度制）、`MATRIX`（`row0`~`row3`）。
 按数组顺序依次应用，旋转/缩放都以原点为中心。
 
-### 六、模型几何编辑（雕刻）
+### 七、模型几何编辑（雕刻）
 
 > ⚠️ 这组操作会**直接改顶点/四面体**，并把目标节点从 `SHAPE` 降级为 `CARVED`（参数不再能描述它）。
 > 主路径应该是上面的形状操作，只有在需要精细修改时才用这组。
@@ -308,7 +356,56 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
   {"type":"LIST_MODEL","id":1,"no_result":false}]}
 ```
 
-**示例 4：移动部件并隐藏**
+**示例 4：机位 —— 批量造多个机位（正解：一条消息搞定，首选 look_at）**
+
+用户：选几个不同的机位来展示这个骰子
+
+```json
+{"version":1,"done":false,"operations":[
+  {"type":"SET_CAMERA_BOOKMARK","id":1,"no_result":false,"data":{"name":"正面","pos":[0,0,6,0],"look_at":[0,0,0,0]}},
+  {"type":"SET_CAMERA_BOOKMARK","id":2,"no_result":false,"data":{"name":"右侧","pos":[6,0,0,0],"look_at":[0,0,0,0]}},
+  {"type":"SET_CAMERA_BOOKMARK","id":3,"no_result":false,"data":{"name":"俯视","pos":[0,6,0,0],"look_at":[0,0,0,0]}},
+  {"type":"SET_CAMERA_BOOKMARK","id":4,"no_result":false,"data":{"name":"第四维","pos":[0,0,0,6],"look_at":[0,0,0,0]}},
+  {"type":"SET_CAMERA_BOOKMARK","id":5,"no_result":false,"data":{"name":"斜视","pos":[4,3,4,3],"look_at":[0,0,0,0]}}]}
+```
+
+> 只要给「相机在哪 `pos`」+「看向哪 `look_at`」两个点，朝向自动算——**不要手写 `view`**。
+
+> ⛔ **错误写法**（千万不要这样）：先 `SET_CAMERA_POS` 再 `SAVE_CAMERA_BOOKMARK`。
+> 那样存下的全是动画起点，5 个机位位置会完全相同。
+
+**示例 5：机位 —— 拍下当前视角**
+
+用户：把现在这个视角记下来，叫"俯视"
+
+```json
+{"version":1,"done":false,"operations":[
+  {"type":"SAVE_CAMERA_BOOKMARK","id":1,"no_result":false,"data":{"name":"俯视"}}]}
+```
+
+> 只有"记录我当前看到的画面"才用 `SAVE_CAMERA_BOOKMARK`。要指定位置就用 `SET_CAMERA_BOOKMARK` + `look_at`。
+
+**示例 6：机位 —— 跳到已保存的机位**
+
+用户：切到"俯视"
+
+```json
+{"version":1,"done":false,"operations":[
+  {"type":"GO_CAMERA_BOOKMARK","id":1,"no_result":false,"data":{"name":"俯视"}}]}
+```
+
+> 注意：**不要**在这条后面紧接着发 `GET_CAMERA_POS` 验证——跳转有约 1 秒动画，会读到中间帧。
+
+**示例 7：机位 —— 先列出再删（下标会变，务必先查）**
+
+用户：把第二个机位删掉
+
+```json
+{"version":1,"done":false,"operations":[
+  {"type":"LIST_CAMERA_BOOKMARKS","id":1,"no_result":false}]}
+```
+
+**示例 8：移动部件并隐藏**
 
 用户：把 Tower/Base 沿第四维移 0.5，然后把它隐藏起来
 
@@ -320,7 +417,7 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
       "name":"Tower/Base","visible":false}}]}
 ```
 
-**示例 5：用户输入不需要操作**
+**示例 9：用户输入不需要操作**
 
 用户：你好
 
@@ -332,9 +429,11 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 **⚠️ 实现状态说明（供维护者参考，不要复述给用户）**
 
-已接入并注册 **31 个** agent 可调用操作（`OperationRegistry` 中实测 31/31 通过）：
+已接入并注册 **37 个** agent 可调用操作（`OperationRegistry` 中注册）：
 
 - **摄像机 6**：`GET/SET_CAMERA_POS`、`MOVE_CAMERA_POS`、`GET/SET_CAMERA_VIEW`、`ROTATE_CAMERA_VIEW`
+- **摄像机机位 6**：`LIST_CAMERA_BOOKMARKS`、`SET_CAMERA_BOOKMARK`、`SAVE_CAMERA_BOOKMARK`、
+  `GO_CAMERA_BOOKMARK`、`RENAME_CAMERA_BOOKMARK`、`DELETE_CAMERA_BOOKMARK`（走 UI 侧 `UIInterface`，非渲染接口）
 - **模型树 9**：`LIST_MODEL`、`CREATE_MODEL`、`DELETE_MODEL`、`COPY_MODEL`、`MERGE_MODEL`、
   `APPLY_TRANSFORM_TO_VERTEX`、`RENAME_MODEL`、`MERGE_ALL_SUB_MODELS`、`SET_MODEL_VISIBLE`
 - **模型变换 2**：`GET_MODEL_MATRIX`、`TRANSFORM_MODEL`

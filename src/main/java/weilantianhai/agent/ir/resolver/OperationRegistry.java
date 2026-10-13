@@ -13,19 +13,25 @@ import weilantianhai.agent.ir.operations.CreateModelOperation;
 import weilantianhai.agent.ir.operations.CreatePrism4Operation;
 import weilantianhai.agent.ir.operations.CreateTesseractOperation;
 import weilantianhai.agent.ir.operations.CreateTetrahedronOperation;
+import weilantianhai.agent.ir.operations.DeleteCameraBookmarkOperation;
 import weilantianhai.agent.ir.operations.DeleteModelOperation;
 import weilantianhai.agent.ir.operations.GetCameraPosOperation;
 import weilantianhai.agent.ir.operations.GetCameraViewOperation;
 import weilantianhai.agent.ir.operations.GetModelInfoOperation;
 import weilantianhai.agent.ir.operations.GetModelMatrixOperation;
 import weilantianhai.agent.ir.operations.GetTetrahedronOperation;
+import weilantianhai.agent.ir.operations.GoCameraBookmarkOperation;
+import weilantianhai.agent.ir.operations.ListCameraBookmarksOperation;
 import weilantianhai.agent.ir.operations.ListModelOperation;
 import weilantianhai.agent.ir.operations.MergeAllSubModelsOperation;
 import weilantianhai.agent.ir.operations.MergeModelOperation;
 import weilantianhai.agent.ir.operations.MoveCameraPosOperation;
 import weilantianhai.agent.ir.operations.RemoveTetrahedronOperation;
+import weilantianhai.agent.ir.operations.RenameCameraBookmarkOperation;
 import weilantianhai.agent.ir.operations.RenameModelOperation;
 import weilantianhai.agent.ir.operations.RotateCameraViewOperation;
+import weilantianhai.agent.ir.operations.SaveCameraBookmarkOperation;
+import weilantianhai.agent.ir.operations.SetCameraBookmarkOperation;
 import weilantianhai.agent.ir.operations.SetCameraPosOperation;
 import weilantianhai.agent.ir.operations.SetCameraViewOperation;
 import weilantianhai.agent.ir.operations.SetModelVisibleOperation;
@@ -44,8 +50,12 @@ import java.util.function.Supplier;
  * <p>注册的 {@code type} 必须与对应操作类 {@code name()} 的返回值完全一致，
  * 否则 {@link #creat(String)} 会抛 {@code UNKNOWN_OP}。
  *
- * <p>当前共 **31 个** agent 可调用的操作，分五类：
- * 摄像机 6、模型树 9、模型变换 2、基础形状 7、几何雕刻 7。
+ * <p>当前共 **37 个** agent 可调用的操作，分六类：
+ * 摄像机 6、摄像机机位 6、模型树 9、模型变换 2、基础形状 7、几何雕刻 7。
+ *
+ * <p>其中「摄像机机位」不走 {@code RendererInterface}，而是走 UI 侧的
+ * {@code HCloudbyte.ui.interfaces.UIInterface}（机位数据由 UI 的
+ * {@code CameraBookmarksView} 持有），因此对应操作类里需要做一次 FX 线程切换。
  *
  * <p><b>不在这里注册的</b>：{@code IOInterface}（{@code saveModel} / {@code loadModel}）与
  * {@code SceneInterface} 全部方法属于 **UI / 内部调用**，文档明确写了"agent 不应生成"，
@@ -65,6 +75,14 @@ public class OperationRegistry {
         register("GET_CAMERA_VIEW", GetCameraViewOperation::new);
         register("ROTATE_CAMERA_VIEW", RotateCameraViewOperation::new);
         register("SET_CAMERA_VIEW", SetCameraViewOperation::new);
+
+        // ---------- 摄像机：机位（书签，走 UIInterface） ----------
+        register("LIST_CAMERA_BOOKMARKS", ListCameraBookmarksOperation::new);
+        register("SAVE_CAMERA_BOOKMARK", SaveCameraBookmarkOperation::new);
+        register("SET_CAMERA_BOOKMARK", SetCameraBookmarkOperation::new);
+        register("GO_CAMERA_BOOKMARK", GoCameraBookmarkOperation::new);
+        register("RENAME_CAMERA_BOOKMARK", RenameCameraBookmarkOperation::new);
+        register("DELETE_CAMERA_BOOKMARK", DeleteCameraBookmarkOperation::new);
 
         // ---------- 模型树 ----------
         register("LIST_MODEL", ListModelOperation::new);

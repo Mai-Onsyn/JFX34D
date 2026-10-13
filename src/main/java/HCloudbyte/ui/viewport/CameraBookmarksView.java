@@ -324,9 +324,20 @@ public class CameraBookmarksView extends VBox {
     }
 
     /** 应用机位：设置相机位置与视线。 */
-    private void applyRecord(CameraRecord record) {
+    public void applyRecord(CameraRecord record) {
+        if (record == null) return;
         renderer.getCamera().setPosition(record.getPosition());
         renderer.getCamera().setView(record.getView());
+    }
+
+    /**
+     * 应用第 {@code index} 个机位；越界抛 {@link IndexOutOfBoundsException}。
+     *
+     * <p>供 {@link HCloudbyte.ui.interfaces.UIInterface} 的 AI 调用入口使用：
+     * 内部先 {@link #checkIndex(int)} 校验，再走与左键点击行完全相同的 {@link #applyRecord(CameraRecord)}。
+     */
+    public void applyRecord(int index) {
+        applyRecord(records.get(checkIndex(index)));
     }
 
     private static String formatPosition(Vector4f p) {

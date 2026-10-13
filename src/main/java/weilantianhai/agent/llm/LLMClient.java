@@ -26,18 +26,66 @@ public class LLMClient {
     private final int maxTokens;
     private final boolean enableThinking;
     private final String reasoningEffort;
+    /** 采样温度。仅非思考模式下生效（思考模式不支持 temperature）。 */
+    private final double temperature;
+
+    /** 当前使用的模型名（数据集记录 / UI 展示用）。 */
+    public String getModel() {
+        return model;
+    }
+
+    /** 当前 baseURL（数据集记录用）。 */
+    public String getBaseURL() {
+        return baseURL;
+    }
+
+    /** 是否开启思考模式。 */
+    public boolean isThinkingEnabled() {
+        return enableThinking;
+    }
+
+    /** 当前温度。 */
+    public double getTemperature() {
+        return temperature;
+    }
+
+    /**
+     * 返回一个除温度外全部配置相同的副本。
+     *
+     * <p>给「出题器需要高温度、判题需要零温度」这类场景用，避免调用方反射改私有字段。
+     * 若 {@code enableThinking} 为真则温度无意义（API 会忽略），但这里不做拦截，
+     * 由 {@link #applyThinking} 决定是否真的发出该字段。
+     */
+    public LLMClient withTemperature(double temperature) {
+        return new LLMClient(baseURL, model, apiKey, maxTokens, enableThinking,
+                reasoningEffort, temperature);
+    }
 
     public LLMClient(String baseURL, String model, String apiKey,
                      int maxTokens, boolean enableThinking , String reasoningEffort) {
+        this(baseURL, model, apiKey, maxTokens, enableThinking, reasoningEffort,
+                AppConfig.TEMPERATURE);
+    }
+
+    public LLMClient(String baseURL, String model, String apiKey,
+                     int maxTokens, boolean enableThinking, String reasoningEffort,
+                     double temperature) {
         this.baseURL = baseURL;
         this.model = model;
         this.apiKey = apiKey;
         this.maxTokens = maxTokens;
         this.enableThinking = enableThinking;
         this.reasoningEffort = reasoningEffort;
+        this.temperature = temperature;
         this.http = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(AppConfig.LLM_CONNECT_TIMEOUT))
                 .build();
+    }
+
+    /** 用同样配置换一个模型名（模型切换用）。 */
+    public LLMClient withModel(String newModel) {
+        return new LLMClient(baseURL, newModel, apiKey, maxTokens, enableThinking,
+                reasoningEffort, temperature);
     }
 
     /** 本地 LM Studio，默认关思考 */
@@ -55,6 +103,16 @@ public class LLMClient {
                 enableThinking,
                 ""
         );
+    }
+
+    /** 本地 LM Studio 的显示名（给 UI 模型下拉框用）。 */
+    public static String localDisplayName() {
+        return "qwen（本地 LM Studio）";
+    }
+
+    /** DeepSeek 的显示名（给 UI 模型下拉框用）。 */
+    public static String deepSeekDisplayName() {
+        return "DeepSeek";
     }
 
     /** DeepSeek，默认关思考 */
@@ -131,7 +189,7 @@ public class LLMClient {
         } else {
             thinking.put("type", "disabled");
             root.put("thinking", thinking);
-            root.put("temperature", AppConfig.TEMPERATURE);
+            root.put("temperature", temperature);
         }
     }
 

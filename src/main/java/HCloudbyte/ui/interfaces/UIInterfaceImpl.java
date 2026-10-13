@@ -31,21 +31,45 @@ public class UIInterfaceImpl implements UIInterface {
 
     @Override
     public void addCameraRecord(CameraRecord record) {
-        overlay.addRecord(record);
+        overlay().addRecord(record);
+    }
+
+    @Override
+    public int captureCameraRecord(String name) {
+        CameraBookmarksView view = overlay();
+        String finalName = (name == null || name.isBlank())
+                ? "机位" + (view.getRecords().size() + 1)
+                : name.trim();
+        int index = view.getRecords().size();
+        view.addRecord(view.capture(finalName));
+        return index;
     }
 
     @Override
     public List<CameraRecord> getCameraRecords() {
-        return overlay.getRecords();
+        return overlay().getRecords();
+    }
+
+    @Override
+    public void applyCameraRecord(int index) throws IndexOutOfBoundsException {
+        overlay().applyRecord(index);
     }
 
     @Override
     public void renameCameraRecord(int index, String name) throws IndexOutOfBoundsException {
-        overlay.renameRecord(index, name);
+        overlay().renameRecord(index, name);
     }
 
     @Override
     public void removeCameraRecord(int index) throws IndexOutOfBoundsException {
-        overlay.removeRecord(index);
+        overlay().removeRecord(index);
+    }
+
+    /** 机位悬浮窗；未绑定时给出明确错误，而不是让调用方吃 NPE。 */
+    private CameraBookmarksView overlay() {
+        if (overlay == null) {
+            throw new IllegalStateException("机位悬浮窗尚未初始化（overlay == null）");
+        }
+        return overlay;
     }
 }

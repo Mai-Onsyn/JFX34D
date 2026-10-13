@@ -35,7 +35,22 @@ public class CommandExecutor {
         }catch(IRException e){
             return ResultFormatter.error(jsonText,e.getCode()+":"+e.getMessage());
         }
+        return execute(bundle, jsonText);
+    }
 
+    /**
+     * 用**已解析**的 bundle 执行操作，避免上层再解析一次。
+     *
+     * <p>调用方（AgentInterfaceImpl）需要在执行前看到 {@code done} / {@code content}，
+     * 所以它自己解析一遍后把结果交给这里；{@code rawJson} 仅用于失败时的 Error Markdown 回显。
+     *
+     * @param bundle  已解析的 IRBundle（调用方负责非 null）
+     * @param rawJson LLM 返回的原始 JSON 文本，仅用于错误回显
+     * @return 成功：拼接好的 Markdown（可能为空）
+     *         done：返回 "# Done"
+     *         失败：Error Markdown
+     */
+    public String execute(IRBundle bundle, String rawJson) throws IRException {
         if(bundle.isDone()){
             return DONE_MARKER;
         }
@@ -46,7 +61,7 @@ public class CommandExecutor {
             try{
                 body = cmd.getImpl().execute(renderer);
             }catch(IRException e){
-                return ResultFormatter.error(jsonText,
+                return ResultFormatter.error(rawJson,
                         "executing"+cmd.getType()+"(id="+cmd.getId()+"):"
                         +e.getCode()+":"+e.getMessage()
                 );

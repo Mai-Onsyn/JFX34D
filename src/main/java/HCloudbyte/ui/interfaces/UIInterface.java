@@ -35,6 +35,24 @@ public interface UIInterface {
     List<CameraRecord> getCameraRecords();
 
     /**
+     * 记录当前相机状态为一个机位（等价于 UI 上的「记录」按钮，但可自定义名称）。
+     *
+     * @param name 机位名称；为 null / 空白时自动生成 "机位N"
+     * @return 新机位在列表中的下标
+     */
+    int captureCameraRecord(String name);
+
+    /**
+     * 应用（跳转）一个摄像机机位：把相机切到该机位的位置与视线。
+     *
+     * <p>与鼠标左键点击机位行等价。底层会触发摄像机的平滑过渡动画（约 1 秒）。
+     *
+     * @param index 在机位列表的位置
+     * @throws IndexOutOfBoundsException 如果超出列表范围
+     */
+    void applyCameraRecord(int index) throws IndexOutOfBoundsException;
+
+    /**
      * 重命名一个摄像机机位。
      *
      * @param index 在机位列表的位置

@@ -45,3 +45,9 @@ src/main/java/weilantianhai/progress/
 #apikey
 .env
 .workbuddy/
+
+# 数据集与题库是实验产物：要提交、要归档、要拿出来对比，
+# 所以**不**放在被忽略的 .workbuddy/ 里，而是独立在 data/ 下。
+# 只忽略其中可再生的临时件：
+#   模型标识归一化迁移时产生的备份目录
+data/dataset/.migrated-backup-*/
