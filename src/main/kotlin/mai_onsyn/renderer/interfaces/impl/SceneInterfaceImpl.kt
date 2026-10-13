@@ -60,6 +60,10 @@ class SceneInterfaceImpl(
 
     override fun setDisplaySize(edgeLength: Float) = region.setViewPortLength(edgeLength)
 
+    override fun setPerspectiveProjection(enable: Boolean) {
+        region.scene4D.camera4D.perspective = enable
+    }
+
     override fun setOnEnable4DInputChanged(eventHandler: (Boolean) -> Unit) {
         region.onEnable4DInputChanged = eventHandler
     }

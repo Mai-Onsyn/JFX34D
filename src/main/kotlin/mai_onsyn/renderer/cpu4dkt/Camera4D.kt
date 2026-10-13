@@ -13,6 +13,7 @@ import kotlin.math.acos
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.tan
 
@@ -61,6 +62,20 @@ class Camera4D(
     fun moveAna(d: Float)    { pos.add(vz * d) }
     fun moveForward(d: Float){ pos.add(vw * d) }
 
+    /**
+     * 是否启用透视投影。
+     * `true`（默认）= 透视：投影后除以深度（第 5 分量），近大远小；
+     * `false` = 正交：不除深度，可见范围由 [orthoHalfExtent] 决定。
+     * 由 `SceneInterface.setPerspectiveProjection` 设置。
+     */
+    var perspective: Boolean = true
+
+    /**
+     * 正交投影的可见半幅（世界单位）。渲染侧按「视口显示边长的一半」设置（`viewPortLength * 0.5`），
+     * 于是正交模式下：视口立方体内的内容刚好铺满视口，两块概念天然对齐。
+     */
+    var orthoHalfExtent: Float = 4f
+
     val viewMatrix: Matrix5f
         get() = Matrix5f(
             vx.x, vx.y, vx.z, vx.w, -(vx.dot(pos)),
@@ -70,7 +85,11 @@ class Camera4D(
             0f, 0f, 0f, 0f, 1f
         )
 
-    fun projectionMatrix(aspectX: Float = 1f, aspectZ: Float = 1f): Matrix5f {
+    fun projectionMatrix(aspectX: Float = 1f, aspectZ: Float = 1f): Matrix5f =
+        if (perspective) perspectiveProjectionMatrix(aspectX, aspectZ)
+        else orthographicProjectionMatrix(aspectX, aspectZ)
+
+    fun perspectiveProjectionMatrix(aspectX: Float = 1f, aspectZ: Float = 1f): Matrix5f {
         val sy = -1f / tan(fov / 2)
         return Matrix5f(
             sy / aspectX, 0f, 0f, 0f, 0f,
@@ -78,6 +97,27 @@ class Camera4D(
             0f, 0f, sy / aspectZ, 0f, 0f,
             0f, 0f, 0f, far / (far - near), near * far / (near - far),
             0f, 0f, 0f, 1f, 0f
+        )
+    }
+
+    /**
+     * 正交投影矩阵：把 4D 顶点平行投影到 3D 视口，没有近大远小。
+     *
+     * 与透视版唯一的**结构**差别是最后一行是 `[0,0,0,0,1]` —— 投影后第 5 分量恒为 1，
+     * 于是 compute shader 里的 `ndc = (c0,c1,c2)/c4` 不再带深度除法，远近不再缩放。
+     *
+     * 可见半幅固定取 [orthoHalfExtent]（与 fov 无关），所以缩放不随距离变化，符合正交投影直觉。
+     * 缩放的实现与透视版一致：`ndc_i = view_i / (orthoHalfExtent * aspect_i)`，
+     * 再乘 `viewPortLength * 0.5` 落到视口立方体上。
+     */
+    fun orthographicProjectionMatrix(aspectX: Float = 1f, aspectZ: Float = 1f): Matrix5f {
+        val sy = 1f / max(1e-6f, orthoHalfExtent)
+        return Matrix5f(
+            sy / aspectX, 0f, 0f, 0f, 0f,
+            0f, sy, 0f, 0f, 0f,
+            0f, 0f, sy / aspectZ, 0f, 0f,
+            0f, 0f, 0f, 0f, 0f,
+            0f, 0f, 0f, 0f, 1f
         )
     }
 

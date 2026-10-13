@@ -51,6 +51,12 @@ interface SceneInterface {
     /** 设置视口矩阵的边长，也就是四维超平面屏幕的尺寸 */
     fun setDisplaySize(edgeLength: Float)
 
+    /**
+     * 设置 4D 投影方式。
+     * @param enable true = 透视投影（默认，近大远小）；false = 正交投影（平行投影，远近不缩放）
+     */
+    fun setPerspectiveProjection(enable: Boolean)
+
     /** 当键盘切换输入键按下时或手动调用[setEnable4DInput]时触发 */
     fun setOnEnable4DInputChanged(eventHandler: (Boolean) -> Unit)
 

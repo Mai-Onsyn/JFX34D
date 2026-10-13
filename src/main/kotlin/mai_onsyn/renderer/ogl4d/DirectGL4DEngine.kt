@@ -225,6 +225,8 @@ class DirectGL4DEngine(
 
     private fun computePass(visible: List<Mesh4D>) {
         val camera = scene4D.getCamera()
+        // 正交投影的可见半幅 = 视口显示边长的一半（与视口区域方块同一尺寸）
+        camera.orthoHalfExtent = viewPortLength * 0.5f
         // 与 C++ 侧一致: viewProj = projection * view, 再乘 model
         val viewProj = camera.projectionMatrix() * camera.viewMatrix
         System.arraycopy(viewProj.data, 0, viewProjArray, 0, 25)
