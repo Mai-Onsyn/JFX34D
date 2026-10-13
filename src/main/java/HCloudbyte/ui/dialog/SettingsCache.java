@@ -25,10 +25,10 @@ public final class SettingsCache {
     public double fov4d = 80.0;
     /** 相机速度倍率：[3D移动, 3D旋转, 4D移动, 4D旋转]。 */
     public final double[] speed = {1.0, 1.0, 1.0, 1.0};
-    /** 是否启用光照渲染。 */
-    public boolean light = true;
-    /** 是否启用线框渲染。 */
-    public boolean wire = false;
+    /** 是否启用光照渲染（默认关闭）。 */
+    public boolean light = false;
+    /** 是否启用线框渲染（默认开启）。 */
+    public boolean wire = true;
     /** 环境光颜色。 */
     public Color ambient = Color.color(0.3, 0.3, 0.3);
 }

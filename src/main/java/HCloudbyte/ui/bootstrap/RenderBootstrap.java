@@ -28,9 +28,9 @@ public final class RenderBootstrap {
         RendererInterface.Companion.init(region);
         RendererInterface renderer = RendererInterface.Companion.getINSTANCE();
 
-        // 渲染默认值：光照开、线框关、深灰背景
-        renderer.getScene().enableLightRendering(true);
-        renderer.getScene().enableTriangleLineRendering(false);
+        // 渲染默认值：光照关、线框开、深灰背景（与设置弹窗里的默认勾选一致）
+        renderer.getScene().enableLightRendering(false);
+        renderer.getScene().enableTriangleLineRendering(true);
         renderer.getScene().setBackgroundColor(Color.color(0.25, 0.25, 0.25));
 
         // 视口区域指示方块：半透明正方体，边长跟「视口大小」走，默认开启

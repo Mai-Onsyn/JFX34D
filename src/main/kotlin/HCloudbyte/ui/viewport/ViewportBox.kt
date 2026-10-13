@@ -55,7 +55,13 @@ class ViewportBox @JvmOverloads constructor(
     fun setVisible(visible: Boolean) {
         val list = region.scene3D.meshList
         if (visible) {
-            if (!list.contains(mesh)) list.add(mesh)
+            if (!list.contains(mesh)) {
+                // 重新显示时必须重传：mesh 一离开场景，GL3DEngine 就会 dispose 掉它的 VAO/VBO，
+                // 而 dispose 不会把 dirty 置回 true —— 不置 dirty 的话，下一帧 upload() 会被
+                // dirty=false 提前跳过、draw() 又因为 groups 为空直接返回，方块就再也画不出来。
+                mesh.dirty = true
+                list.add(mesh)
+            }
         } else {
             list.remove(mesh)
         }
