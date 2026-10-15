@@ -74,7 +74,7 @@ public class TopBar extends StackPane {
         });
 
         SegmentedControl inputMode = new SegmentedControl(
-                new String[]{"手写模式", "语音模式"}, 0, onInputModeChange);
+                new String[]{"手动模式", "Agent模式"}, 0, onInputModeChange);
 
         Button renderSettings = Theme.buildLiquidButton("设置");
         renderSettings.setOnAction(e -> SettingsDialog.show(renderer, cache, viewportBox));

@@ -112,7 +112,7 @@ class GeometryInterfaceImpl(
         val hyperplane = TetrahedronSlicer.planeOf(
             plane.v0.pos, plane.v1.pos, plane.v2.pos, plane.v3.pos
         )
-        val (sideA, sideB) = TetrahedronSlicer.split(source.tetrahedrons, hyperplane)
+        val (sideA, sideB) = TetrahedronSlicer.split(source.applyTransform().tetrahedrons, hyperplane)
 
         scene.meshList.add(sliced(pathA, sideA, "A", source.name, plane, hyperplane.normal))
         scene.meshList.add(sliced(pathB, sideB, "B", source.name, plane, hyperplane.normal))
