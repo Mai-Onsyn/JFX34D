@@ -53,7 +53,7 @@ public class RefactoredApp extends Application {
             layout.getChatPanel().setInputEnabled(false);
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Agent 初始化失败");
-            alert.setHeaderText("语音建模不可用，输入框与发送按钮已禁用");
+            alert.setHeaderText("AI建模不可用，输入框与发送按钮已禁用");
             alert.setContentText("原因：" + (agent.error() != null ? agent.error().getMessage() : "未知错误")
                     + "\n\n请检查 LLM 服务配置（deepSeek 连接）后重启应用。");
             alert.show();

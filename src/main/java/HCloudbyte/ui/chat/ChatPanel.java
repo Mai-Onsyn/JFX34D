@@ -10,7 +10,9 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
@@ -48,6 +50,9 @@ public class ChatPanel extends VBox {
 
     private static final String[] SPINNER = {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
 
+    /** 右键菜单样式类：定义在 css/viewport-overlay.css，已挂到 Scene 级，Popup 也能吃到。 */
+    private static final String MENU_STYLE_CLASS = "overlay-menu";
+
     private final VBox chatMessages;
     private final ScrollPane chatScroll;
     private final TextArea input;
@@ -65,7 +70,7 @@ public class ChatPanel extends VBox {
         setPadding(new Insets(20));
         setStyle(Theme.GLASS);
 
-        Label title = Theme.titleLabel("语音建模");
+        Label title = Theme.titleLabel("AI建模");
 
         chatMessages = new VBox(10);
         chatMessages.setPadding(new Insets(4, 2, 4, 2));
@@ -76,13 +81,13 @@ public class ChatPanel extends VBox {
         chatScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         VBox.setVgrow(chatScroll, Priority.ALWAYS);
 
-        // 多行输入框：内容超一行自动增高（最多 4 行），Enter 发送 / Shift+Enter 换行
+        // 多行输入框：内容超一行自动增高（3~8 行），Enter 发送 / Shift+Enter 换行
         input = new TextArea();
-        input.setPromptText("帮我用…建模");
+        input.setPromptText("在此输入要求");
         input.setWrapText(true);
-        input.setPrefRowCount(1);
+        input.setPrefRowCount(3);
         input.setStyle("-fx-background-radius: 18; -fx-background-insets: 0; -fx-border-color: transparent;"
-                + " -fx-padding: 6 14; -fx-control-inner-background: #ffffff;");
+                + " -fx-padding: 8 14; -fx-font-size: 11px; -fx-control-inner-background: #ffffff;");
         HBox.setHgrow(input, Priority.ALWAYS);
 
         sendBtn = new Button("↑");
@@ -98,13 +103,13 @@ public class ChatPanel extends VBox {
         };
         sendBtn.setOnAction(e -> sendAction.run());
 
-        // 自动增高：按换行数调整行数（1~4 行）
+        // 自动增高：按换行数调整行数（3~8 行）
         input.textProperty().addListener((o, a, b) -> {
             int lines = 1;
             for (int i = 0; i < b.length(); i++) {
                 if (b.charAt(i) == '\n') lines++;
             }
-            input.setPrefRowCount(Math.max(1, Math.min(4, lines)));
+            input.setPrefRowCount(Math.max(3, Math.min(8, lines)));
         });
         // Enter 发送（Shift+Enter 换行）
         input.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
@@ -205,7 +210,7 @@ public class ChatPanel extends VBox {
 
     /** 发送一条用户消息给 Agent：提交到队列，worker 线程 LLM 翻译 → IR 执行到黑色 GL 视口。 */
     private void handleUserMessage(String text) {
-        chatMessages.getChildren().add(buildUserBubble(text));
+        addMessageRow(buildUserBubble(text));
 
         int reqId;
         try {
@@ -215,7 +220,7 @@ public class ChatPanel extends VBox {
             Label fb = bubble("指令执行失败：" + t.getMessage(), STYLE_ERROR);
             HBox row = new HBox(fb);
             row.setAlignment(Pos.CENTER_LEFT);
-            chatMessages.getChildren().add(row);
+            addMessageRow(row);
             scrollToBottom();
             return;
         }
@@ -223,7 +228,7 @@ public class ChatPanel extends VBox {
         Label feedback = bubble("已发送给 Agent，正在执行…", STYLE_SENDING);
         HBox aiRow = new HBox(6, feedback, buildCancelButton(reqId, feedback));
         aiRow.setAlignment(Pos.CENTER_LEFT);
-        chatMessages.getChildren().add(aiRow);
+        addMessageRow(aiRow);
         pendingFeedback.put(reqId, feedback);
         scrollToBottom();
     }
@@ -254,6 +259,34 @@ public class ChatPanel extends VBox {
 
     private void scrollToBottom() {
         Platform.runLater(() -> chatScroll.setVvalue(1.0));
+    }
+
+    /* ==================== 消息行的右键删除 ==================== */
+
+    /**
+     * 把一条消息行加入对话区，并挂上右键「删除」菜单。
+     *
+     * <p>HBox 是 Pane，没有 {@code setContextMenu}，所以用 {@code setOnContextMenuRequested}
+     * 手动弹出；事件会从气泡 Label 冒泡上来，点气泡或点行空白处都能触发。
+     */
+    private void addMessageRow(HBox row) {
+        row.setOnContextMenuRequested(e -> {
+            ContextMenu menu = new ContextMenu();
+            menu.getStyleClass().add(MENU_STYLE_CLASS);
+            MenuItem delete = new MenuItem("删除");
+            delete.setOnAction(ev -> deleteMessage(row));
+            menu.getItems().add(delete);
+            menu.show(row, e.getScreenX(), e.getScreenY());
+            e.consume();
+        });
+        chatMessages.getChildren().add(row);
+    }
+
+    /** 删除一条消息（从对话区移除该行）。 */
+    private void deleteMessage(HBox row) {
+        // 若这条 AI 气泡还在等结果，一并从待更新表摘掉，避免回调去改一个已不在场景里的气泡
+        pendingFeedback.entrySet().removeIf(entry -> entry.getValue().getParent() == row);
+        chatMessages.getChildren().remove(row);
     }
 
     /** 用户消息气泡（橙色底，Blender 强调色）。 */
