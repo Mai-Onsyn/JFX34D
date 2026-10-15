@@ -43,10 +43,10 @@ public class TopBar extends StackPane {
      */
     public TopBar(RendererInterface renderer, GL4DRegion region, ViewportBox viewportBox,
                   IntConsumer onInputModeChange) {
-        Label title = new Label("JFX 34D");
+        Label title = new Label("四维智构");
         title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: " + Theme.TEXT_TITLE + ";");
 
-        Label file = new Label("scene.4do");
+        Label file = new Label("建模工具");
         file.setStyle("-fx-text-fill: " + Theme.TEXT_MUTED + ";");
 
         Separator sep = new Separator(Orientation.VERTICAL);
@@ -76,13 +76,10 @@ public class TopBar extends StackPane {
         SegmentedControl inputMode = new SegmentedControl(
                 new String[]{"手写模式", "语音模式"}, 0, onInputModeChange);
 
-        Label agentStatus = new Label("● Agent 在线");
-        agentStatus.setStyle("-fx-text-fill: " + Theme.SUCCESS + ";");
-
         Button renderSettings = Theme.buildLiquidButton("设置");
         renderSettings.setOnAction(e -> SettingsDialog.show(renderer, cache, viewportBox));
 
-        HBox rightBox = new HBox(12, dimSwitch, inputMode, agentStatus, renderSettings);
+        HBox rightBox = new HBox(12, dimSwitch, inputMode, renderSettings);
         rightBox.setAlignment(Pos.CENTER_RIGHT);
 
         Region spacer = new Region();
