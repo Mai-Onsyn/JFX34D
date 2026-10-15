@@ -39,6 +39,12 @@ public final class DatasetPaths {
     /** 题库目录（存放 {@code *.jsonl}）。 */
     public static final Path TASKS_DIR = DATA_ROOT.resolve("tasks");
 
+    /** 场景资源目录（初始场景等）。 */
+    public static final Path SCENE_ROOT = DATA_ROOT.resolve("scene");
+
+    /** **初始场景**（复位时回到的那份场景）。 */
+    public static final Path BASELINE_DIR = SCENE_ROOT.resolve("baseline");
+
     /** 题库清单里代表「内置 14 题」的哨兵值（不是文件路径）。 */
     public static final String BUILTIN_BANK = "(内置 14 题)";
 

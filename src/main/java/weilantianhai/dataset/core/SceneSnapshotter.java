@@ -14,22 +14,38 @@ import weilantianhai.agent.ir.operations.FxThreads;
 /**
  * 场景快照采集 + 任务间复位。所有操作都在 FX 线程上做。
  *
- * <h3>为什么要复位</h3>
+ * <h3>复位到哪，由调用方决定</h3>
  *
- * <p>每个任务的起始状态必须完全一致，否则数据集里的差异来自"上一题的残留"而非"模型能力"。
- * 软复位清空 4D 模型树 + 机位 + 相机姿态，并放回一个固定的初始模型。
+ * <p>每个任务的起始状态必须一致，否则数据集里的差异来自"上一题的残留"而非"模型能力"。
+ * 但"一致"不等于"非得是空场景"：
+ *
+ * <ul>
+ *   <li><b>空场景</b> —— 真的清空，**什么都不塞**；</li>
+ *   <li><b>初始场景</b> —— 回到 {@link SceneBaseline} 里存的那份场景，
+ *       于是可以先搭好一个复杂场景（带子模型的 Tower 之类），再在上面连着测很多操作。</li>
+ * </ul>
+ *
+ * <p>走哪种由构造时传入的 {@code useBaseline} 决定 —— 界面上的开关随时改、下一题就生效。
+ *
+ * <h3>为什么不塞 seed 模型了</h3>
+ *
+ * <p>早先复位会放回一个 {@code Tesseract}。那个凭空多出来的模型一路带偏：
+ * {@code LIST_MODEL} 多一个用户没建的东西、{@code model.count} 得按"1 + 新建数"算、
+ * 出题器要专门声明它的存在、提示词又得补一条"模型不存在怎么办"。
+ * 现在复位**只做减法**（清空）或**回到你存的场景**，不再无中生有。
  */
 public final class SceneSnapshotter {
 
     private final GL4DRegion region;
     private final RendererInterface renderer;
-    /** 复位时放回的初始模型（保证每题起点一致）。 */
-    private final String seedModelName;
+    /** 复位时是否回到"初始场景"（false = 清成空场景）。运行时实时读取，开关立即生效。 */
+    private final java.util.function.BooleanSupplier useBaseline;
 
-    public SceneSnapshotter(GL4DRegion region, RendererInterface renderer, String seedModelName) {
+    public SceneSnapshotter(GL4DRegion region, RendererInterface renderer,
+                            java.util.function.BooleanSupplier useBaseline) {
         this.region = region;
         this.renderer = renderer;
-        this.seedModelName = seedModelName;
+        this.useBaseline = useBaseline;
     }
 
     /* ==================== 采集 ==================== */
@@ -94,7 +110,8 @@ public final class SceneSnapshotter {
     /* ==================== 复位 ==================== */
 
     /**
-     * 软复位：清空 4D 模型树与机位，相机回到基线，放回初始模型。
+     * 复位：清空 4D 模型树与机位，相机回到基线，然后
+     * **按模式**要么留空、要么加载「初始场景」。
      *
      * <p>为什么清的是 {@code scene4D.meshList} 而不是调 {@code DELETE_MODEL}：
      * 前者是一次性 list 操作，不受"路径是否存在于中间层"的影响；后者可能因为残留的
@@ -102,11 +119,12 @@ public final class SceneSnapshotter {
      *
      * <h3>复位后自检</h3>
      *
-     * <p>{@code reset()} 之后立刻采一次快照，与上方常量描述的**基线**比对。
-     * 若不一致就抛异常 —— 因为"复位没复位干净"会让后续所有题的结论都不可信，
+     * <p>{@code reset()} 之后立刻采一次快照，与**期望状态**比对。期望状态 =
+     * 空表（空场景模式）或初始场景里那些模型的路径（初始场景模式）。
+     * 不一致就抛异常 —— 因为"复位没复位干净"会让后续所有题的结论都不可信，
      * 而且这种错误**静默**（界面上看不出来），是最危险的一类。
      *
-     * @throws IllegalStateException 复位后状态与基线不符
+     * @throws IllegalStateException 复位后状态与期望不符
      */
     public void reset() throws Exception {
         FxThreads.run(this::resetOnFx);
@@ -114,17 +132,18 @@ public final class SceneSnapshotter {
     }
 
     /**
-     * 校验当前状态确实是基线状态。用于 {@link #reset()} 之后，也可单独调用。
+     * 校验当前状态确实是复位后的期望状态。用于 {@link #reset()} 之后，也可单独调用。
      *
      * @throws IllegalStateException 不符时，异常消息里带上实际值
      */
     public void verifyBaseline() throws Exception {
         JSONObject snap = snapshot();
         List<String> models = snap.getJSONArray("models").toJavaList(String.class);
-        if (!models.equals(List.of(seedModelName))) {
+        List<String> expected = expectedModels();
+        if (!new java.util.TreeSet<>(models).equals(new java.util.TreeSet<>(expected))) {
             throw new IllegalStateException(
-                    "复位后模型树不是基线：期望 [" + seedModelName + "]，实际 " + models
-                            + " —— 上一题的模型没清干净，本题结论不可信");
+                    "复位后模型树与期望不符：期望 " + expected + "，实际 " + models
+                            + " —— 上一题的模型没清干净（或初始场景没加载成功），本题结论不可信");
         }
         List<?> bookmarks = snap.getJSONArray("bookmarks");
         if (bookmarks != null && !bookmarks.isEmpty()) {
@@ -137,6 +156,13 @@ public final class SceneSnapshotter {
                     + BASELINE_POS.x + ", " + BASELINE_POS.y + ", "
                     + BASELINE_POS.z + ", " + BASELINE_POS.w + ")，实际 " + pos);
         }
+    }
+
+    /** 复位后**期望**看到哪些模型（空场景 → 空表；初始场景 → meta 里记的那些）。 */
+    public List<String> expectedModels() {
+        return useBaseline.getAsBoolean() && SceneBaseline.exists()
+                ? SceneBaseline.expectedModels()
+                : List.of();
     }
 
     /** 复位基线：相机位于 z 轴负方向 10 处，朝向单位姿态。 */
@@ -169,8 +195,16 @@ public final class SceneSnapshotter {
         cam.getVz().set(0f, 0f, 1f, 0f);
         cam.getVw().set(0f, 0f, 0f, 1f);
 
-        // 4. 放回初始模型
-        renderer.getShape().createTesseract("", seedModelName, new Vector4f(0, 0, 0, 0), 1);
+        // 4. 按模式决定要不要把「初始场景」放回来。
+        //    不塞任何 seed 模型 —— 清空就是清空。
+        if (useBaseline.getAsBoolean() && SceneBaseline.exists()) {
+            try {
+                SceneBaseline.load(renderer);
+            } catch (Exception e) {
+                throw new IllegalStateException(
+                        "加载初始场景失败（" + SceneBaseline.dir() + "）：" + e.getMessage(), e);
+            }
+        }
     }
 
     private static JSONArray vec(Vector4f v) {

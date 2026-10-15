@@ -224,6 +224,18 @@ public final class TaskGenerator {
         sb.append("- 模型路径用 `/` 分隔，例如 `Tower/Base`；中间层不必预先存在。\n");
         sb.append("- 坐标系是**左手系**。\n\n");
 
+        sb.append("## 题目的可完成性（出题时必须遵守）\n\n");
+        sb.append("被测模型拿到的是**一句自然语言指令 + 一个已经准备好的场景**。")
+          .append("由此三条硬规则（违反会让题目根本做不了）：\n\n");
+        sb.append("1. 题目里出现的模型，必须是**这道题自己创建的**。\n");
+        sb.append("   把「创建」和后续的「修改 / 读取」写在**同一条 prompt 里**：\n");
+        sb.append("   - 正例：「创建一个名为 Box 的空模型，然后把它改名为 Crate」。\n");
+        sb.append("   - 反例：「把 Box 沿 x 轴平移 5」—— Box 从没被创建，")
+          .append("被测模型只能回一句「模型不存在」，这道题什么也考不出来。\n");
+        sb.append("2. **绝不要出依赖「别的题建出来的模型」的题** —— 不要假设场景里有某个东西。\n");
+        sb.append("3. 需要多步操作时，仍然全部写在**这一条** prompt 里（可以写得很长），不要拆成两条题。\n\n");
+        sb.append("一句话：**不要出现「引用一个题目里没创建的模型」的题**。\n\n");
+
         sb.append("## 本次要求\n\n");
         sb.append("- 出题类别：").append(describeCategory(category)).append('\n');
         sb.append("- 难度：").append(describeDifficulty(difficulty)).append('\n');
@@ -232,13 +244,14 @@ public final class TaskGenerator {
         sb.append("## 难度说明\n\n");
         sb.append("- `simple`：单步操作，参数照抄即可。例：「创建一个叫 Box 的空模型」。\n");
         sb.append("- `medium`：2~3 步，通常需要**先查询再操作**。")
-          .append("例：「先列出所有模型，然后把其中的 Tesseract 隐藏」。\n");
+          .append("例：「创建一个叫 Box 的模型，先列出所有模型确认它建好了，然后把它隐藏」。\n");
         sb.append("- `complex`：多步且**后一步依赖前一步的结果**，涉及路径寻址 / 坐标计算 / 批量操作。")
           .append("例：「创建一个叫 Tower 的模型，在里面创建边长为 1 的超立方体 Base 和 Top，")
           .append("把 Base 沿 w 轴平移 2，把 Top 沿 w 轴平移 -2，最后把 Tower 的子模型全部合并」。\n");
         sb.append("- `trap`：**故意不可能或语义冲突**的要求，考察模型会不会正确地失败而不是硬造。")
           .append("例：「创建一个机位，位置在 (0,0,0,0)，朝向看向 (0,0,0,0)」（视线方向为零向量，应当被拒绝）。")
-          .append("注意：trap 题的 `check` 通常为空，`note` 要写明**期望的正确行为**。\n\n");
+          .append("trap 题的 `check` 用 `reject with <回执里应当出现的片段>`（报错才算通过），")
+          .append("`note` 写明**期望的正确行为**。\n\n");
 
         sb.append("## 输出格式（严格遵守）\n\n");
         sb.append("输出一个 JSON 数组，**不要**任何解释文字、**不要** markdown 代码围栏。每项：\n\n");
@@ -252,19 +265,33 @@ public final class TaskGenerator {
         sb.append("```\n\n");
 
         sb.append("## check 语法（能用就用，用不了就留空）\n\n");
+        sb.append("场景类 —— 看「世界变成了什么」：\n");
         sb.append("```\n");
         sb.append("bookmark:<名字> exists\n");
         sb.append("bookmark:<名字> pos ≈ [x,y,z,w]\n");
         sb.append("bookmark:<名字> absent\n");
         sb.append("model:<路径> exists\n");
         sb.append("model:<路径> absent\n");
+        sb.append("model:<路径> subtree_exists        （该路径或其任一后代存在 —— 合并类操作用）\n");
         sb.append("model:<路径> vertices == N\n");
         sb.append("model:<路径> tetrahedrons == N\n");
         sb.append("camera.pos ≈ [x,y,z,w]\n");
         sb.append("bookmark.count == N\n");
         sb.append("model.count == N\n");
         sb.append("```\n");
-        sb.append("容差 1e-3。**只写你确实能算准的检查**——写错了会误判。\n");
+        sb.append("文本类 —— 看「AI 说了什么」，用于**纯查询题**（世界没变，快照恒等）：\n");
+        sb.append("```\n");
+        sb.append("reply contains <片段>              （回复里出现该子串，自动归一化空白与全角标点）\n");
+        sb.append("reply matches <正则>\n");
+        sb.append("```\n");
+        sb.append("反向类 —— 用于**陷阱题**：语义是反的，**报错才算通过**：\n");
+        sb.append("```\n");
+        sb.append("reject with <片段>                 （这道题应当失败，且回执里出现该片段）\n");
+        sb.append("```\n");
+        sb.append("容差 1e-3。**只写你确实能算准的检查** —— 写错了会误判。\n");
+        sb.append("注意 `model.count` 统计的是**整个场景的模型总数**，")
+          .append("不是这道题新建了几个 —— 写等于号时要把场景里已存在的模型也算进去；")
+          .append("算不准就别写这一条。\n");
 
         return sb.toString();
     }

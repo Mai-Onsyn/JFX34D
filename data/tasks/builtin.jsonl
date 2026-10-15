@@ -9,8 +9,8 @@
 {"id":3,"category":"camera_bookmark","prompt":"创建一个机位，名字叫「俯视原点」，位置在 (0, 10, 0, 0)，朝向看向原点 (0, 0, 0, 0)。","check":"bookmark:俯视原点 exists; bookmark:俯视原点 pos ≈ [0,10,0,0]","note":"首选 look_at 方案"}
 {"id":4,"category":"camera_bookmark","prompt":"创建两个机位：一个叫 A 位于 (2, 0, 0, 0) 看向原点，另一个叫 B 位于 (-2, 0, 0, 0) 看向原点。","check":"bookmark:A exists; bookmark:B exists; bookmark.count == 2","note":"一轮内造多个机位，验证不受相机动画影响"}
 {"id":5,"category":"camera_bookmark","prompt":"创建一个机位叫「原点」，位于原点本身，朝向看向原点。","check":"reject with 不能相同","note":"陷阱任务：pos 与 look_at 相同，视线方向是零向量，**正确的行为是拒绝**。若模型硬造一个机位（比如偷偷改 look_at），本条判为不通过"}
-{"id":6,"category":"model_tree","prompt":"列出当前场景里所有的模型。","check":"reply contains Tesseract","note":"纯查询：LIST_MODEL。复位后场景里固定有一个 Tesseract，故答案可预期"}
-{"id":7,"category":"model_tree","prompt":"创建一个名为 Box 的空模型。","check":"model:Box exists; model.count == 2","note":"CREATE_MODEL（复位后已有 seed Tesseract，故总数是 2）"}
+{"id":6,"category":"model_tree","prompt":"创建一个名为 Box 的空模型，然后列出当前场景里所有的模型。","check":"reply contains Box","note":"**自带 setup**：先建再列。复位后场景是空的，所以答案是只有 Box 一个"}
+{"id":7,"category":"model_tree","prompt":"创建一个名为 Box 的空模型。","check":"model:Box exists; model.count == 1","note":"CREATE_MODEL。复位后场景是空的，所以建完恰好 1 个"}
 {"id":8,"category":"model_tree","prompt":"创建一个名为 Box 的空模型，然后把它改名为 Crate。","check":"model:Crate exists; model:Box absent","note":"RENAME_MODEL —— **必须自带 setup**：Box 不能依赖上一题（7）建，因为每题执行前都会复位。这句 prompt 把「建」和「改」写在一起正是为此"}
 {"id":9,"category":"shape","prompt":"在原点创建一个边长为 2 的超立方体（tesseract），命名为 T1。","check":"model:T1 exists","note":"CREATE_TESSERACT"}
 {"id":10,"category":"shape","prompt":"在原点创建一个边长 1 的 5-cell，命名为 P5。","check":"model:P5 exists","note":"CREATE_5CELL"}

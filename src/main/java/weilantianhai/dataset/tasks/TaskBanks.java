@@ -107,14 +107,37 @@ public final class TaskBanks {
     }
 
     /**
-     * 给新题库起一个不重名的文件名，形如 {@code generated-20261011-181230.jsonl}。
+     * 给新题库起一个**保证不重名**的文件名，形如 {@code generated-20261011-181230.jsonl}。
      *
-     * <p>用时间戳而不是自增序号：出题是异步的，两次生成可能同时落盘，
-     * 序号会撞车。
+     * <p>命名规则：{@code <前缀>-<yyyyMMdd-HHmmss>.jsonl}。带上时间戳是为了能按时间排序，
+     * 但**光有时间戳不够** —— 精度只到秒，同一秒内生成两次（或你手速快点了两下「开始生成」）
+     * 就会撞名。而 {@code TaskLoader.save} 走的是 {@code Files.writeString}（**截断覆盖**），
+     * 撞名就会**静默顶掉**前一次的结果。
+     *
+     * <p>所以这里在时间戳之外再补一道保险：若目标文件已存在，依次尝试
+     * {@code -2}、{@code -3}… 直到找到一个空位（和系统"同名(1)"一个意思，只是格式不同）。
+     *
+     * <p>前缀里的路径分隔符等会被替换成下划线 —— 用户能直接输入这个名字，
+     * 不能让它跑到别的目录去。
      */
     public static Path newBankFile(String prefix) {
-        String safe = (prefix == null || prefix.isBlank()) ? "generated" : prefix.strip();
-        return DatasetPaths.TASKS_DIR.resolve(safe + "-" + LocalDateTime.now().format(STAMP) + ".jsonl");
+        String safe = sanitizePrefix(prefix);
+        String base = safe + "-" + LocalDateTime.now().format(STAMP);
+        Path candidate = DatasetPaths.TASKS_DIR.resolve(base + ".jsonl");
+        for (int i = 2; i <= 99 && Files.exists(candidate); i++) {
+            candidate = DatasetPaths.TASKS_DIR.resolve(base + "-" + i + ".jsonl");
+        }
+        return candidate;
+    }
+
+    /** 题库名前缀安全化：路径分隔符、通配符、空白等一律换成下划线。 */
+    private static String sanitizePrefix(String prefix) {
+        if (prefix == null || prefix.isBlank()) {
+            return "generated";
+        }
+        String s = prefix.strip().replaceAll("[\\\\/:*?\"<>|\\s]+", "_");
+        // 全是非法字符时兜底，避免出现 "-20261013-223020.jsonl" 这种没有主名的文件
+        return s.isBlank() || s.replace("_", "").isBlank() ? "generated" : s;
     }
 
     /**

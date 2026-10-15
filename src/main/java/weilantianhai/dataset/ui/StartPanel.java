@@ -1,9 +1,11 @@
 package weilantianhai.dataset.ui;
 
 import javafx.application.Platform;
+import javafx.beans.property.BooleanProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -19,16 +21,22 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * 开始页：程序起来后**先停在这里**，让用户选好模型与题库，点「开始」才真正跑题。
+ * 开始页：程序起来后**先停在这里**，让用户选好实验配置，点「开始」才真正跑题。
  *
  * <h3>为什么要先停一下</h3>
  *
  * <p>原版一进窗口就开始跑循环，用户根本来不及做题前准备（换模型、换题库、改数据集目录），
- * 而且模型选错了会白跑一轮。更实际的问题是：**跑之前选模型和题库，本来就是"实验配置"的一部分**，
- * 它应该发生在实验开始前，而不是实验中途。
+ * 模型选错了还会白跑一轮。选模型 / 选题库 / 决定要不要落盘，本来就是**实验配置**，
+ * 应该发生在实验开始之前，而不是跑起来之后手忙脚乱地补。
  *
- * <p>点开始后本面板会 {@code setVisible(false)}，控制权交回 {@link DatasetApp}，
- * 由它启动主循环。
+ * <h3>它只盖住 4D 视口，不盖顶栏</h3>
+ *
+ * <p>早先这一版是把开始页铺满整个窗口的，结果**顶栏的「出题…」按钮被挡住点不到** ——
+ * 用户想"先出题再开始"就做不到。现在它只作为 {@code viewportStack} 的一层，
+ * 只遮住中间的 4D 视口：顶栏（模型/题库/出题）与底部日志都保持可见可用，
+ * 于是出题过程中的日志也能实时看到。
+ *
+ * <p>点开始后本面板 {@code setVisible(false)}，控制权交回 {@link DatasetApp} 启动主循环。
  */
 public final class StartPanel extends StackPane {
 
@@ -48,28 +56,47 @@ public final class StartPanel extends StackPane {
                     + "-fx-font-size: 14px; -fx-font-weight: bold;"
                     + "-fx-padding: 10 46; -fx-background-radius: 8; -fx-cursor: hand;";
 
+    private static final String BTN_GEN =
+            "-fx-background-color: rgba(90,95,102,0.9); -fx-text-fill: #e8eaed;"
+                    + "-fx-font-size: 12px; -fx-padding: 10 18; -fx-background-radius: 8;"
+                    + "-fx-cursor: hand;";
+
     private final ComboBox<String> modelBox = new ComboBox<>();
     private final ComboBox<String> bankBox = new ComboBox<>();
     private final TextField dataField = new TextField();
+    private final CheckBox writeToggle = new CheckBox("写入数据集");
+    private final CheckBox keepToggle = new CheckBox("题目之间保留场景");
     private final Label bankInfo = new Label();
     private final Label dataInfo = new Label();
     private final Button startBtn = new Button("开 始");
 
-    /** 点开始时的回调：(modelKey, bankName, datasetRoot)。 */
+    /** 点开始时的回调。 */
     private final Consumer<Config> onStart;
 
     /** 开始页的配置快照。 */
-    public record Config(String modelKey, String bankName, Path datasetRoot) {
+    public record Config(String modelKey, String bankName, Path datasetRoot,
+                         boolean writeToDataset, boolean keepScene) {
     }
 
-    public StartPanel(String initialModel, Consumer<Config> onStart) {
+    /**
+     * @param initialModel     初始被测试模型
+     * @param writeToDataset   「写入数据集」开关（与顶栏那个共用同一个属性，双向同步）
+     * @param keepScene        「题目之间保留场景」开关（同上）
+     * @param onStart          点「开始」时回调
+     * @param onGenerate       点「出题…」时回调（复用顶栏那套出题流程）
+     */
+    public StartPanel(String initialModel,
+                      BooleanProperty writeToDataset,
+                      BooleanProperty keepScene,
+                      Consumer<Config> onStart,
+                      Runnable onGenerate) {
         this.onStart = onStart;
         setStyle("-fx-background-color: rgba(15,17,20,0.72);");
         setAlignment(Pos.CENTER);
 
         Label title = new Label("JFX34D 数据集生成器");
         title.setStyle("-fx-font-size: 21px; -fx-font-weight: bold; -fx-text-fill: #e8eaed;");
-        Label sub = new Label("先选好被测试模型与题库，再开始。跑的过程中也能换。");
+        Label sub = new Label("先生成/选好题库，再开始。跑的过程中也能换题库与模型。");
         sub.setStyle("-fx-font-size: 12px; -fx-text-fill: #8a8f94;");
 
         // ---- 被测试模型 ----
@@ -92,9 +119,39 @@ public final class StartPanel extends StackPane {
         dataField.textProperty().addListener((o, a, b) -> updateDataInfo(b));
         updateDataInfo(dataField.getText());
 
+        // ---- 写入数据集开关 ----
+        writeToggle.setSelected(writeToDataset.get());
+        // 双向：从开关到属性（用户点它），也从属性到开关（顶栏那个被点了）
+        writeToggle.selectedProperty().bindBidirectional(writeToDataset);
+        writeToggle.setStyle("-fx-font-size: 12px; -fx-text-fill: #c7ccd1;");
+        Label writeHint = new Label("关闭 = 只跑不落盘（试跑，不污染已有数据集）");
+        writeHint.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+
+        // ---- 题目之间保留场景开关 ----
+        keepToggle.setSelected(keepScene.get());
+        keepToggle.selectedProperty().bindBidirectional(keepScene);
+        keepToggle.setStyle("-fx-font-size: 12px; -fx-text-fill: #c7ccd1;");
+        Label keepHint = new Label("开启 = 题目之间完全不复位，下一题接着上一题继续。"
+                + "关掉则每题复位（空场景，或顶栏设的「初始场景」）");
+        keepHint.setStyle("-fx-font-size: 11px; -fx-text-fill: #e0a86c;");
+        keepHint.setWrapText(true);
+        keepHint.setMaxWidth(300);
+
+        // ---- 按钮 ----
         startBtn.setStyle(BTN_START);
         startBtn.setDefaultButton(true);
         startBtn.setOnAction(e -> fireStart());
+
+        Button genBtn = new Button("出题…");
+        genBtn.setStyle(BTN_GEN);
+        genBtn.setOnAction(e -> {
+            if (onGenerate != null) {
+                onGenerate.run();
+            }
+        });
+
+        HBox buttons = new HBox(12, startBtn, genBtn);
+        buttons.setAlignment(Pos.CENTER_LEFT);
 
         VBox card = new VBox(14,
                 title, sub,
@@ -102,8 +159,10 @@ public final class StartPanel extends StackPane {
                 field("被测试模型", modelBox, null),
                 field("题库", bankBox, bankInfo),
                 field("数据集目录", dataField, dataInfo),
+                new VBox(3, writeToggle, writeHint),
+                new VBox(3, keepToggle, keepHint),
                 spacer(4),
-                startBtn);
+                buttons);
         card.setAlignment(Pos.CENTER_LEFT);
         card.setPadding(new Insets(30, 38, 30, 38));
         card.setMaxWidth(Region.USE_PREF_SIZE);
@@ -190,10 +249,11 @@ public final class StartPanel extends StackPane {
         Path root = DatasetPaths.anchorToProjectRoot(Path.of(data));
         setVisible(false);
         setManaged(false);
-        Platform.runLater(() -> onStart.accept(new Config(model, bank, root)));
+        Platform.runLater(() -> onStart.accept(
+                new Config(model, bank, root, writeToggle.isSelected(), keepToggle.isSelected())));
     }
 
-    /** 当前选中的题库（供 DatasetApp 读取）。 */
+    /** 当前选中的题库。 */
     public String selectedBank() {
         return bankBox.getValue();
     }
@@ -201,12 +261,6 @@ public final class StartPanel extends StackPane {
     /** 当前选中的模型标识。 */
     public String selectedModel() {
         return modelBox.getValue();
-    }
-
-    /** 数据集目录控件（供 DatasetApp 在换题库时同步显示）。 */
-    public Path selectedDatasetRoot() {
-        String data = dataField.getText() == null ? "" : dataField.getText().strip();
-        return DatasetPaths.anchorToProjectRoot(Path.of(data));
     }
 
     /**

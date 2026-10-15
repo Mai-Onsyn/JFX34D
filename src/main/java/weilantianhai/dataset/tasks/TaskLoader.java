@@ -60,8 +60,9 @@ public final class TaskLoader {
      *   <li><b>题目之间不能有状态依赖。</b>
      *       {@code SceneSnapshotter.reset()} 在**每道题执行前**都会清空模型树 / 机位 / 相机，
      *       所以"这题用上题建的 Box"必然失败 —— 记录下来的不是模型能力，而是"找不到模型"。
-     *       每道题要么**自带 setup**（在同一句 prompt 里先建后改），要么只依赖复位放回的那个
-     *       固定 seed 模型（名字见 {@code SceneSnapshotter.seedModelName}，当前是 {@code Tesseract}）。</li>
+     *       每道题都要**自带 setup**（在同一句 prompt 里先建后改）。
+     *       （场景复位成空场景或"初始场景"，见 {@code SceneBaseline}；
+     *       无论哪种，题目的起点都由你自己在 prompt 里交代清楚。）</li>
      *   <li><b>判据要能判。</b> 纯查询题用 {@code reply contains ...}，
      *       陷阱题用 {@code reject with ...}（详情见 {@link TaskGoal}）。</li>
      * </ol>
@@ -96,13 +97,13 @@ public final class TaskLoader {
 
         // ---- 模型树 ----
         t.add(new TaskGoal(6, "model_tree",
-                "列出当前场景里所有的模型。",
-                "reply contains Tesseract",
-                "纯查询：LIST_MODEL。复位后场景里固定有一个 Tesseract，故答案可预期"));
+                "创建一个名为 Box 的空模型，然后列出当前场景里所有的模型。",
+                "reply contains Box",
+                "**自带 setup**：先建再列。复位后场景是空的，所以答案是只有 Box 一个"));
         t.add(new TaskGoal(7, "model_tree",
                 "创建一个名为 Box 的空模型。",
-                "model:Box exists; model.count == 2",
-                "CREATE_MODEL（复位后已有 seed Tesseract，故总数是 2）"));
+                "model:Box exists; model.count == 1",
+                "CREATE_MODEL。复位后场景是空的，所以建完恰好 1 个"));
         t.add(new TaskGoal(8, "model_tree",
                 "创建一个名为 Box 的空模型，然后把它改名为 Crate。",
                 "model:Crate exists; model:Box absent",

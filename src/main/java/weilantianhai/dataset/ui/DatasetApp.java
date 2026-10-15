@@ -39,6 +39,7 @@ import weilantianhai.agent.llm.PromptLoader;
 import weilantianhai.dataset.DatasetPaths;
 import weilantianhai.dataset.core.AgentTaskRunner;
 import weilantianhai.dataset.core.CheckEvaluator;
+import weilantianhai.dataset.core.SceneBaseline;
 import weilantianhai.dataset.core.SceneSnapshot;
 import weilantianhai.dataset.core.SceneSnapshotter;
 import weilantianhai.dataset.core.TaskRunRecord;
@@ -70,15 +71,36 @@ import java.util.concurrent.ConcurrentHashMap;
  * <h3>两阶段启动（重要）</h3>
  *
  * <p>窗口起来后**先停在开始页**（{@link StartPanel}），让用户选好模型与题库 ——
- * 只有点了「开始」才进入执行页跑循环。理由是"选模型/选题库"属于**实验配置**，
+ * 只有点了「开始」才进入执行页跑循环。理由是"选模型/选题库/决定要不要落盘"属于**实验配置**，
  * 应该发生在实验开始前，而不是跑起来之后手忙脚乱地补。
  *
  * <pre>
- *   启动 → 开始页（选模型 / 选题库 / 选数据集目录）→ [开始] → 执行页（跑题 + 打分）
+ *   启动 → 开始页（选模型 / 选题库 / 选数据集目录 / 写入开关）
+ *          ↑ 页内可直接「出题…」生成新题库，生成完自动选中
+ *          └─ [开始] → 执行页（跑题 + 打分）
  * </pre>
  *
- * <p>执行页顶栏仍有**模型**与**题库**两个下拉框：题目之间可以随便换。
- * 换题库会在**下一题**生效（当前题不中断）。
+ * <p>开始页**只盖住 4D 视口**（是 {@code viewportStack} 的一层），不盖顶栏与日志 ——
+ * 早期版本铺满整窗，把顶栏的「出题…」按钮挡住了，想"先出题再开始"就点不到。
+ *
+ * <p>执行页顶栏另有**模型** / **题库** / **写入数据集** / **保留上一题场景** / **初始场景**
+ * 一组控件：题目之间可以随便换。换题库会在**下一题**生效（当前题不中断）。
+ *
+ * <p><b>复位到哪，三种模式（顶栏可切）</b>：
+ *
+ * <table>
+ *   <caption>复位模式</caption>
+ *   <tr><th>保留上一题场景</th><th>复位到初始场景</th><th>每题开始时</th></tr>
+ *   <tr><td>关</td><td>关</td><td>清成**空场景**（什么都不塞）</td></tr>
+ *   <tr><td>关</td><td>开</td><td>回到 {@code data/scene/baseline} 里存的那份场景</td></tr>
+ *   <tr><td>开</td><td>—</td><td>**完全不复位**，接着上一题继续</td></tr>
+ * </table>
+ *
+ * <p>「存为初始场景」按钮把**当前场景**存下来当起点 —— 想测复杂操作时，
+ * 先搭好一个复杂场景再定成起点即可，不必每道题都自带 setup。
+ * 详见 {@link SceneBaseline}（含该存读格式的已知损耗）。
+ *
+ * <p>关掉「写入数据集」就是**试跑** —— 照跑照打分，但不写 {@code raw/} 与 {@code summary/}。
  *
  * <h3>启动方式</h3>
  *
@@ -109,6 +131,10 @@ public class DatasetApp extends Application {
     private static String genCategory = "mixed";
     /** {@code --no-start-page}：跳过开始页直接跑（给自动/批量场景用）。 */
     private static boolean skipStartPage = false;
+    /** {@code --keep-scene}：题目之间不清场景。实例属性在 {@link #start} 里才建，所以先记在静态字段。 */
+    private static boolean keepSceneCli = false;
+    /** {@code --baseline}：强制复位到初始场景（即便尚未保存过，也会照此设置）。 */
+    private static boolean baselineCli = false;
 
     private GL4DRegion region;
     private RendererInterface renderer;
@@ -121,6 +147,44 @@ public class DatasetApp extends Application {
     private TextArea logArea;
     private ComboBox<String> modelBox;
     private ComboBox<String> bankBox;
+
+    /**
+     * 「写入数据集」开关的**唯一真值**。
+     *
+     * <p>开始页与顶栏各有一个 CheckBox，都双向绑定到这个属性 ——
+     * 所以在哪边拨动都立刻生效，不会出现"两处开关打架"。
+     * 关掉时题目照跑照打分，只是**不落盘**（也不写 summary），适合试跑刷题不打脏数据。
+     */
+    private final javafx.beans.property.BooleanProperty writeToDatasetProp =
+            new javafx.beans.property.SimpleBooleanProperty(true);
+
+    /**
+     * 「保留上一题场景」开关的**唯一真值**。默认关闭。
+     *
+     * <p>关闭（默认）：每题开始前 {@link SceneSnapshotter#reset()} ——
+     * 清空模型树 + 机位、相机回基线，然后留空或加载初始场景。保证**每题起点一致**。
+     *
+     * <p>开启：**完全不复位**，各题接着上一题继续，于是下一题能直接引用上一题建出来的模型
+     * （可以做"累积式"任务）。代价是各题起点不再一致，"这题失败"可能源于上一题残留。
+     * 没有复位也就没有复位自检 —— 那本来就是为"每题复位"设计的。
+     */
+    private final javafx.beans.property.BooleanProperty keepSceneProp =
+            new javafx.beans.property.SimpleBooleanProperty(false);
+
+    /**
+     * 「复位到初始场景」开关的唯一真值。
+     *
+     * <p>默认值 = **是否已经存过初始场景**（存过就默认用它，没存过就只能复位成空场景）。
+     *
+     * <p>与 {@link #keepSceneProp} 的分工：
+     * <ul>
+     *   <li>{@code keepScene} 开 → **完全不复位**，接着上一题继续；</li>
+     *   <li>{@code keepScene} 关 + 本开关开 → 每题复位到**初始场景**；</li>
+     *   <li>两个都关 → 每题复位成**空场景**。</li>
+     * </ul>
+     */
+    private final javafx.beans.property.BooleanProperty baselineResetProp =
+            new javafx.beans.property.SimpleBooleanProperty(SceneBaseline.exists());
 
     /** 已完成的记录，供「完整 trace」弹窗用。 */
     private final Map<Integer, TaskRunRecord> recordsByTask = new ConcurrentHashMap<>();
@@ -136,6 +200,12 @@ public class DatasetApp extends Application {
     @Override
     public void start(Stage stage) {
         Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
+
+        // 命令行开关在建 StartPanel 之前落到属性上，这样开始页/顶栏的状态与之一致
+        keepSceneProp.set(keepSceneCli);
+        if (baselineCli) {
+            baselineResetProp.set(true);
+        }
 
         // ---- 引导渲染 ----
         RenderBootstrap.Result render = RenderBootstrap.create();
@@ -161,7 +231,8 @@ public class DatasetApp extends Application {
         CameraBookmarksView overlay = new CameraBookmarksView(render.renderer());
         UIInterface.initialize(null, overlay);
 
-        this.snapshotter = new SceneSnapshotter(region, renderer, "Tesseract");
+        this.snapshotter = new SceneSnapshotter(region, renderer,
+                () -> baselineResetProp.get() && SceneBaseline.exists());
 
         // ---- 装配窗口 ----
         StackPane viewportStack = new StackPane(region);
@@ -175,8 +246,16 @@ public class DatasetApp extends Application {
         StackPane.setMargin(scorePanel, new Insets(8));
         viewportStack.getChildren().add(scorePanel);
 
-        // ---- 开始页：盖在整个窗口之上，点「开始」才消失 ----
-        startPanel = new StartPanel(modelKey, this::onStartClicked);
+        // ---- 开始页：只盖住 4D 视口，不盖顶栏 ----
+        //
+        // 早先这里是铺满整个窗口的（scene.setRoot(new StackPane(root, startPanel))），
+        // 结果把顶栏的「出题…」按钮挡住了 —— 用户想"先出题再开始"根本点不到。
+        // 现在它只是 viewportStack 的一层：顶栏与底部日志都保持可见可用，
+        // 出题过程也能实时看到日志。
+        startPanel = new StartPanel(modelKey, writeToDatasetProp, keepSceneProp,
+                this::onStartClicked, this::showGeneratorDialog);
+        StackPane.setAlignment(startPanel, Pos.CENTER);
+        viewportStack.getChildren().add(startPanel);
 
         BorderPane root = new BorderPane();
         root.setCenter(viewportStack);
@@ -189,14 +268,11 @@ public class DatasetApp extends Application {
         stage.setScene(scene);
         stage.show();
 
-        // 开始页放进 root 之上（用 scene 的 root 包一层，保证它盖住顶栏和日志）
-        StackPane overlayRoot = new StackPane(root, startPanel);
-        scene.setRoot(overlayRoot);
-
         // 题库目录先建好，并把内置题导出成可编辑的模板文件
         try {
             TaskBanks.ensureBuiltinExport();
             refreshBankBox(null);
+            startPanel.refreshBanks(null);
         } catch (Exception e) {
             log("[warn] 题库目录初始化失败: " + e.getMessage());
         }
@@ -217,7 +293,8 @@ public class DatasetApp extends Application {
         if (skipStartPage) {
             startPanel.setVisible(false);
             startPanel.setManaged(false);
-            onStartClicked(new StartPanel.Config(modelKey, bankName, storePath()));
+            onStartClicked(new StartPanel.Config(modelKey, bankName, storePath(),
+                    true, keepSceneProp.get()));
         }
     }
 
@@ -240,10 +317,18 @@ public class DatasetApp extends Application {
 
         modelKey = cfg.modelKey() == null ? MODEL_DEEPSEEK : cfg.modelKey();
         datasetRoot = cfg.datasetRoot();
+        writeToDatasetProp.set(cfg.writeToDataset());
+        keepSceneProp.set(cfg.keepScene());
         store = new DatasetStore(datasetRoot);
 
         log("[start] 模型=" + modelKey + "  题库=" + cfg.bankName()
+                + "  写入数据集=" + (cfg.writeToDataset() ? "是" : "否（试跑）")
+                + "  复位=" + describeResetMode()
                 + "  数据集=" + DatasetPaths.resolve(datasetRoot));
+        if (cfg.keepScene()) {
+            log("[warn] 「保留上一题场景」已开启 —— 题目之间**不复位**，各题起点将不再一致，"
+                    + "差异可能来自上一题残留。");
+        }
 
         // 切到选中的模型（可能和启动默认值不同）
         switchModel(modelKey, true);
@@ -257,6 +342,19 @@ public class DatasetApp extends Application {
 
     private Path storePath() {
         return datasetRoot == null ? DatasetPaths.DATASET_ROOT : datasetRoot;
+    }
+
+    /** 当前复位模式的可读描述（写进日志，方便回溯这批数据是在什么起点下跑出来的）。 */
+    private String describeResetMode() {
+        if (keepSceneProp.get()) {
+            return "不复位（保留上一题场景）";
+        }
+        if (baselineResetProp.get()) {
+            return SceneBaseline.exists()
+                    ? "初始场景（" + SceneBaseline.expectedModels().size() + " 个模型）"
+                    : "空场景（还没有存过初始场景）";
+        }
+        return "空场景";
     }
 
     private HBox buildHeader() {
@@ -294,7 +392,51 @@ public class DatasetApp extends Application {
         VBox genCol = new VBox(2, new Label(" "), genBtn);
         genCol.setAlignment(Pos.CENTER_LEFT);
 
-        HBox bar = new HBox(14, box, modelCol, bankCol, genCol);
+        // ---- 写入数据集开关（与开始页那个共用同一个属性） ----
+        CheckBox writeBox = new CheckBox("写入数据集");
+        writeBox.setStyle("-fx-font-size: 12px; -fx-text-fill: #c7ccd1;");
+        writeBox.selectedProperty().bindBidirectional(writeToDatasetProp);
+        Label writeLabel = new Label("落盘");
+        writeLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+        VBox writeCol = new VBox(2, writeLabel, writeBox);
+        writeCol.setAlignment(Pos.CENTER_LEFT);
+
+        // ---- 题目之间保留场景（默认关；开了下一题接着上一题） ----
+        CheckBox keepBox = new CheckBox("保留上一题场景");
+        keepBox.setStyle("-fx-font-size: 12px; -fx-text-fill: #c7ccd1;");
+        keepBox.selectedProperty().bindBidirectional(keepSceneProp);
+        keepBox.setTooltip(new javafx.scene.control.Tooltip(
+                "关闭（默认）：每题执行前复位到初始场景（或空场景），保证各题起点一致。\n"
+                        + "开启：只有第一题复位，之后接着上一题继续 —— 可以引用上一题建的模型，\n"
+                        + "但各题起点不再一致。"));
+        Label keepLabel = new Label("场景");
+        keepLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+        VBox keepCol = new VBox(2, keepLabel, keepBox);
+        keepCol.setAlignment(Pos.CENTER_LEFT);
+
+        // ---- 初始场景：一键把当前场景存下来，之后复位就回到它 ----
+        Button baselineBtn = new Button("存为初始场景");
+        baselineBtn.setStyle("-fx-font-size: 12px;");
+        baselineBtn.setTooltip(new javafx.scene.control.Tooltip(
+                "把**当前场景**存成「初始场景」。\n"
+                        + "存过之后，每题复位就回到这份场景（而不是清空）——\n"
+                        + "适合先搭好一个复杂场景，再在上面连着测很多操作。\n"
+                        + "位置：" + DatasetPaths.resolve(SceneBaseline.dir())));
+        baselineBtn.setOnAction(e -> saveBaseline());
+        CheckBox baselineBox = new CheckBox("复位到初始场景");
+        baselineBox.setStyle("-fx-font-size: 12px; -fx-text-fill: #c7ccd1;");
+        baselineBox.selectedProperty().bindBidirectional(baselineResetProp);
+        baselineBox.setTooltip(new javafx.scene.control.Tooltip(
+                "开启：每题复位回到「已保存的初始场景」。\n"
+                        + "关闭：每题复位成**空场景**（什么都不塞）。"));
+        Label baselineLabel = new Label("初始场景");
+        baselineLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #8a8f94;");
+        HBox baselineRow = new HBox(8, baselineBox, baselineBtn);
+        baselineRow.setAlignment(Pos.CENTER_LEFT);
+        VBox baselineCol = new VBox(2, baselineLabel, baselineRow);
+        baselineCol.setAlignment(Pos.CENTER_LEFT);
+
+        HBox bar = new HBox(14, box, modelCol, bankCol, writeCol, keepCol, baselineCol, genCol);
         bar.setPadding(new Insets(10, 14, 10, 14));
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setStyle("-fx-background-color: rgba(38,42,47,0.95);");
@@ -375,6 +517,38 @@ public class DatasetApp extends Application {
         return LLMClient.deepSeek();
     }
 
+    /* ==================== 初始场景 ==================== */
+
+    /**
+     * 「存为初始场景」：把**当前场景**存下来，之后每题复位就回到它。
+     *
+     * <p>放到后台线程做（要落盘，且走一次 FX 线程切换），避免卡界面。
+     * 保存完自动把「复位到初始场景」勾上。
+     *
+     * <p>典型用法：先跑一个「把场景搭好」的任务（记得关掉写入数据集），
+     * 看着场景里东西搭齐了，再点这个按钮把它定成起点。
+     */
+    private void saveBaseline() {
+        Thread t = new Thread(() -> {
+            try {
+                SceneBaseline.save(region, renderer);
+                List<String> models = SceneBaseline.expectedModels();
+                log("[baseline] 已保存初始场景 → " + DatasetPaths.resolve(SceneBaseline.dir()));
+                log("[baseline] " + SceneBaseline.describe());
+                if (models.isEmpty()) {
+                    log("[baseline] ⚠ 当前场景里没有可保存的模型（空场景，或只有不含四面体的空容器）"
+                            + "—— 复位到它的效果与空场景相同");
+                }
+                Platform.runLater(() -> baselineResetProp.set(true));
+            } catch (Exception e) {
+                log("[baseline] 保存失败: " + e);
+                e.printStackTrace();
+            }
+        }, "baseline-save");
+        t.setDaemon(true);
+        t.start();
+    }
+
     /* ==================== 出题（LLM 自动出题器） ==================== */
 
     /** 出题对话框：选数量 / 难度 / 类别，生成后**存成一份新题库**。 */
@@ -441,7 +615,7 @@ public class DatasetApp extends Application {
                 log("[gen] 开始出题：count=" + opt.count + " difficulty=" + opt.difficulty
                         + " category=" + opt.category);
                 TaskGenerator gen = new TaskGenerator(activeClient, opt);
-                List<TaskGoal> tasks = gen.generate(nextFreeId());
+                List<TaskGoal> tasks = gen.generate(startIdFor(out));
                 String saved = TaskBanks.saveAsBank(tasks, out);
                 log("[gen] 完成 " + tasks.size() + " 条 → " + DatasetPaths.resolve(out));
                 // 新题库立刻出现在两个下拉框里
@@ -477,8 +651,13 @@ public class DatasetApp extends Application {
 
             System.out.println("[gen] 出题中 count=" + opt.count
                     + " difficulty=" + opt.difficulty + " category=" + opt.category);
+            if (explicitTaskFile != null && Files.exists(out)) {
+                // 显式指定了已存在的文件：这是用户自己的选择，但要提醒一句会覆盖
+                System.out.println("[gen] 注意：--tasks= 指向已存在的文件，将被覆盖 → "
+                        + DatasetPaths.resolve(out));
+            }
             TaskGenerator gen = new TaskGenerator(activeClient, opt);
-            List<TaskGoal> tasks = gen.generate(1);
+            List<TaskGoal> tasks = gen.generate(startIdFor(out));
             TaskLoader.save(tasks, out);
             System.out.println("[gen] 完成 " + tasks.size() + " 条 → " + DatasetPaths.resolve(out));
         } catch (Exception e) {
@@ -492,12 +671,30 @@ public class DatasetApp extends Application {
     /** {@code --generate} 模式下显式指定的输出文件（{@code --tasks=}）。 */
     private static Path explicitTaskFile;
 
-    /** 已有题库里的最大 id + 1，避免新题 id 撞车。 */
-    private int nextFreeId() {
+    /**
+     * 新题目的起始 id。
+     *
+     * <p>基准是**输出文件**，不是"当前选中的题库"：
+     *
+     * <ul>
+     *   <li>写进一个**全新的**题库文件 → 从 **1** 开始（它是独立的题集，
+     *       凭什么叫 15 号？）；</li>
+     *   <li>写进一个**已存在**的文件（`--generate --tasks=已有.jsonl`）→ 接着它自己的
+     *       最大 id 往下排，避免覆盖既有编号。</li>
+     * </ul>
+     *
+     * <p>早期版本按"当前选中的题库"算，于是拿内置题（1~14）当基准，
+     * 新出的题一律从 15 起 —— 新题库里凭空多出一段编号，看起来像丢了十几道题。
+     */
+    private int startIdFor(Path out) {
+        if (out == null || !Files.exists(out)) {
+            return 1;
+        }
         int max = 0;
         try {
-            List<TaskGoal> existing = TaskBanks.load(bankName);
-            for (TaskGoal g : existing) max = Math.max(max, g.id());
+            for (TaskGoal g : TaskLoader.load(out)) {
+                max = Math.max(max, g.id());
+            }
         } catch (Exception ignored) {
         }
         return max + 1;
@@ -551,10 +748,10 @@ public class DatasetApp extends Application {
         AgentInterface agent = AgentInterface.getInstance();
         AgentTaskRunner runner = new AgentTaskRunner(agent, () -> snapshotter.snapshot());
 
-        // 已跑过的 task id：换题库后 id 可能重复，重跑同 id 不覆盖已有记录
-        java.util.Set<Integer> doneIds = new java.util.HashSet<>();
         // 当前 tasks 列表对应的题库名（与 bankName 不同 → 说明用户在跑的过程中换了题库）
         String loadedBank = bankName;
+        // 本次运行的记录（试跑模式下没有落盘，汇总只能靠它）
+        List<TaskRunRecord> runRecords = new java.util.ArrayList<>();
 
         int index = 0;
         for (TaskGoal task : tasks) {
@@ -595,9 +792,21 @@ public class DatasetApp extends Application {
             record.setApiModel(taskApiModel);
 
             try {
-                // 1. 复位场景（内部会自检：复位不干净就抛异常，不会静默污染后续结论）
-                snapshotter.reset();
-                record.setSnapshotBefore(new SceneSnapshot(snapshotter.snapshot()));
+                // 1. 复位场景（或按开关跳过）
+                //
+                //    - 「保留上一题场景」开 → **完全不复位**，接着上一题继续；
+                //    - 否则 → reset()：清空 + 相机回基线，然后按「复位到初始场景」开关
+                //      决定是留空还是把初始场景加载回来。reset() 内部会自检，
+                //      复位结果与期望不符就抛异常，不会静默污染后续结论。
+                if (!keepScene()) {
+                    snapshotter.reset();
+                }
+                // 快照一次即可：它要跨 FX 线程，别白跑两趟
+                SceneSnapshot before = new SceneSnapshot(snapshotter.snapshot());
+                if (keepScene()) {
+                    log("[keep] 本题不复位，接着上一题继续（现有模型：" + before.modelPaths() + "）");
+                }
+                record.setSnapshotBefore(before);
 
                 // 2. 执行
                 agent.setTraceListener(null); // 由 runner 内部接管
@@ -635,43 +844,85 @@ public class DatasetApp extends Application {
                     }
                 }
 
-                // 6. 落盘
-                store.append(record);
+                // 6. 落盘（受「写入数据集」开关控制）
                 recordsByTask.put(task.id(), record);
-                doneIds.add(task.id());
-                log(String.format("[save] task=%d verdict=%s rounds=%d %.1fs",
-                        task.id(), record.getVerdict(), record.roundCount(), record.getElapsedMs() / 1000.0));
+                runRecords.add(record);
+                if (writeToDataset()) {
+                    store.append(record);
+                    log(String.format("[save] task=%d verdict=%s rounds=%d %.1fs",
+                            task.id(), record.getVerdict(), record.roundCount(),
+                            record.getElapsedMs() / 1000.0));
+                } else {
+                    log(String.format("[dry-run] task=%d verdict=%s rounds=%d %.1fs（开关关闭，未落盘）",
+                            task.id(), record.getVerdict(), record.roundCount(),
+                            record.getElapsedMs() / 1000.0));
+                }
 
             } catch (Throwable t) {
                 log("[error] task=" + task.id() + " -> " + t);
                 t.printStackTrace();
                 try {
                     record.setVerdict(TaskRunRecord.Verdict.ERROR, String.valueOf(t), "system");
-                    store.append(record);
+                    // 第 6 步可能已经 add 过了（比如 append 抛 IOException 才走到这里），
+                    // 别重复计入，否则试跑汇总的样本数会虚高
+                    if (!runRecords.contains(record)) {
+                        runRecords.add(record);
+                    }
+                    if (writeToDataset()) {
+                        store.append(record);
+                    }
                 } catch (Exception ignored) {
                 }
             }
         }
 
         // 7. 汇总
-        try {
-            List<JSONObject> all = store.loadAllRaw();
-            MetricsAggregator.Report report = MetricsAggregator.aggregate(all);
-            String md = MetricsAggregator.toMarkdown(report);
-            String day = java.time.LocalDate.now().toString();
-            store.writeSummary("compare__" + day + ".md", md);
-            store.writeSummary(day + "__" + model + ".json",
-                    MetricsAggregator.toJson(report).toJSONString(
-                            com.alibaba.fastjson2.JSONWriter.Feature.PrettyFormat));
-            log("=== 汇总 ===\n" + MetricsAggregator.toConsole(report));
-            log("[done] 汇总已写入 " + DatasetPaths.resolve(store.summaryDir()));
-        } catch (Exception e) {
-            log("[error] 汇总失败: " + e.getMessage());
+        if (writeToDataset()) {
+            try {
+                List<JSONObject> all = store.loadAllRaw();
+                MetricsAggregator.Report report = MetricsAggregator.aggregate(all);
+                String md = MetricsAggregator.toMarkdown(report);
+                String day = java.time.LocalDate.now().toString();
+                store.writeSummary("compare__" + day + ".md", md);
+                store.writeSummary(day + "__" + model + ".json",
+                        MetricsAggregator.toJson(report).toJSONString(
+                                com.alibaba.fastjson2.JSONWriter.Feature.PrettyFormat));
+                log("=== 汇总 ===\n" + MetricsAggregator.toConsole(report));
+                log("[done] 汇总已写入 " + DatasetPaths.resolve(store.summaryDir()));
+            } catch (Exception e) {
+                log("[error] 汇总失败: " + e.getMessage());
+            }
+        } else {
+            // 试跑模式：磁盘上没有新数据，汇总只能拿本次运行的内存记录来算，且不写文件
+            try {
+                List<JSONObject> all = new java.util.ArrayList<>();
+                for (TaskRunRecord r : runRecords) {
+                    all.add(r.toJson());
+                }
+                MetricsAggregator.Report report = MetricsAggregator.aggregate(all);
+                log("=== 本次试跑汇总（未落盘） ===\n" + MetricsAggregator.toConsole(report));
+            } catch (Exception e) {
+                log("[error] 试跑汇总失败: " + e.getMessage());
+            }
         }
 
         setProgress("全部完成（题库 " + loadedBank + "）");
-        log("[done] 数据集写入 " + DatasetPaths.resolve(store.root()));
+        if (writeToDataset()) {
+            log("[done] 数据集写入 " + DatasetPaths.resolve(store.root()));
+        } else {
+            log("[done] 试跑结束 —— 「写入数据集」关闭，本次没有改动 " + DatasetPaths.resolve(store.root()));
+        }
         Platform.runLater(this::showSummaryDialog);
+    }
+
+    /** 「写入数据集」开关的当前值。 */
+    private boolean writeToDataset() {
+        return writeToDatasetProp.get();
+    }
+
+    /** 「题目之间保留场景」开关的当前值。 */
+    private boolean keepScene() {
+        return keepSceneProp.get();
     }
 
     /**
@@ -712,9 +963,16 @@ public class DatasetApp extends Application {
 
     private void showSummaryDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("数据集生成完成");
-        alert.setHeaderText("汇总已写入 " + DatasetPaths.resolve(store.summaryDir()));
-        alert.setContentText("查看 compare__<date>.md 获取模型量化评估总表。");
+        if (writeToDataset()) {
+            alert.setTitle("数据集生成完成");
+            alert.setHeaderText("汇总已写入 " + DatasetPaths.resolve(store.summaryDir()));
+            alert.setContentText("查看 compare__<date>.md 获取模型量化评估总表。");
+        } else {
+            alert.setTitle("试跑结束");
+            alert.setHeaderText("「写入数据集」处于关闭状态，本次没有落盘");
+            alert.setContentText("结果只在上方日志里（含本次汇总）。"
+                    + "想真正写入，请打开「写入数据集」开关后重跑。");
+        }
         alert.show();
     }
 
@@ -793,6 +1051,8 @@ public class DatasetApp extends Application {
      *   --auto                   全自动模式（不做人工打分，直接按判据落盘）
      *   --model=deepseek|qwen    起始被测试模型（缺省 deepseek）
      *   --no-start-page          跳过开始页，直接开跑
+     *   --keep-scene             题目之间**不清场景**（下一题接着上一题，完全不复位）
+     *   --baseline               复位到**初始场景**（{@code data/scene/baseline}，需先在界面里存过）
      *
      *   --generate               只出题不跑循环；生成 JSONL 后退出
      *   --count=&lt;n&gt;              --generate 的题目数量（缺省 20）
@@ -812,6 +1072,8 @@ public class DatasetApp extends Application {
                 datasetRoot = Path.of(a.substring("--data=".length()));
             } else if (a.equals("--auto")) autoScoreOnly = true;
             else if (a.equals("--no-start-page")) skipStartPage = true;
+            else if (a.equals("--keep-scene")) keepSceneCli = true;
+            else if (a.equals("--baseline")) baselineCli = true;
             else if (a.startsWith("--model=")) {
                 modelKey = a.substring("--model=".length()).strip().toLowerCase();
             } else if (a.equals("--generate")) generateMode = true;
