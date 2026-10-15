@@ -35,6 +35,6 @@ public class CreateModelOperation extends GuardedOperation {
     protected String run(RendererInterface renderer) {
         renderer.getModel().createEmptyModel(name);
         return "Successfully create \"" + name + "\"\n"
-                + "Now models: " + ModelQuery.rootCount(renderer);
+                + "Now models: " + ModelQuery.modelCount(renderer);
     }
 }

@@ -33,6 +33,6 @@ public class DeleteModelOperation extends GuardedOperation {
     protected String run(RendererInterface renderer) {
         renderer.getModel().removeModel(name);
         return "Successfully delete \"" + name + "\"\n"
-                + "Now models: " + ModelQuery.rootCount(renderer);
+                + "Now models: " + ModelQuery.modelCount(renderer);
     }
 }

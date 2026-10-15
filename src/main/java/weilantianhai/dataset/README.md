@@ -414,7 +414,7 @@ java -cp <classpath> weilantianhai.dataset.store.DatasetStore .workbuddy/dataset
 > 临时自测类已在交付前删除，避免污染 `src/main/java`。
 >
 > 复验方式：写一个 `main`，用 `javac`（classpath 需含 `target/classes` 与 fastjson2/joml/kotlin-stdlib）
-> + `java` 跑即可（**全部不联网**）。累计五轮共 **137 条断言**：
+> + `java` 跑即可（**全部不联网**）。累计六轮共 **145 条断言**：
 >
 > **第一轮（37 条）**
 > 1. `LLMClient.withTemperature` / `withModel` 的不可变性与字段保留
@@ -450,6 +450,13 @@ java -cp <classpath> weilantianhai.dataset.store.DatasetStore .workbuddy/dataset
 > 19. 初始场景：目录可被 `-Djfx34d.baseline.dir` 覆盖、未保存时 `exists()=false`、
 >     能从 `meta.json` 读出期望模型、`describe()` 带保存时间与模型数
 > 20. 坏 `meta.json` → `expectedModels()` 返回空表而不是抛异常
+>
+> **第六轮（8 条，10-15）—— `listAllModels` 换接口**
+> 21. `listModel()` 只给 2 个根路径 vs `listAllModels()` 给全部 4 个完整路径（含 `Tower/Base`、`Tower/Top`），
+>     两者长度确实不同、后者保留添加顺序
+> 22. `listAllModels().size()` **等于** `meshList` 长度（也就是判据 `model.count` 的口径），
+>     而 `listModel()` 会少算子模型
+> 23. `javap -c` 全量扫描 `weilantianhai` 全部 class：**一处 `listModel` 调用都不剩**
 
 ## 注意事项
 
