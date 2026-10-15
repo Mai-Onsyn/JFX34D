@@ -41,36 +41,33 @@
 }
 ```
 
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `version` | 是 | 固定为 `1` |
-| `done` | 否 | 默认 `false`。**为 `true` 时 `operations` 必须为空数组**，否则整条请求会被判为格式错误 |
-| `operations` | 是 | 操作数组，按顺序执行；结束本轮时为空数组 |
+| 字段         | 必填 | 说明                                                         |
+| ------------ | ---- | ------------------------------------------------------------ |
+| `version`    | 是   | 固定为 `1`                                                   |
+| `done`       | 否   | 默认 `false`。**为 `true` 时 `operations` 必须为空数组**，否则整条请求会被判为格式错误 |
+| `operations` | 是   | 操作数组，按顺序执行；结束本轮时为空数组                     |
 
 每个操作：
 
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `type` | 是 | 操作名，只能使用下面列出的 |
-| `id` | 是 | 正整数，同一次返回内必须唯一 |
-| `data` | 否 | 操作参数；无参数的操作（如 `GET_CAMERA_POS`、`LIST_MODEL`）可省略 |
-| `no_result` | 否   | **默认 `true`（引擎不回传结果给你）**。**除非 100% 确定不需要这一条的结果，否则一律写 `"no_result": false`** |
+| 字段        | 必填 | 说明                                                         |
+| ----------- | ---- | ------------------------------------------------------------ |
+| `type`      | 是   | 操作名，只能使用下面列出的                                   |
+| `id`        | 是   | 正整数，同一次返回内必须唯一                                 |
+| `data`      | 否   | 操作参数；无参数的操作（如 `GET_CAMERA_POS`、`LIST_MODEL`）可省略 |
+| `no_result` | 否   | **必须显式写 `"no_result": false`，没有例外。** 只有写 `false` 引擎才会把该条操作的回执回传给你；省略或写 `true` 就什么都看不到 |
 
-> ⚠️ **每一步都要看结果**：`no_result` 的缺省值是 `true`，含义是"这条操作我不关心结果，别回传给我"。
-> 省略它，你就**看不到这条操作成功了还是失败了、参数有没有被拒、世界变成了什么样**。
->
-> **默认策略：所有操作都写 `"no_result": false`。**
-> 只有在你 100% 确定不需要看这一条的结果时，才可以省略或写 `true`
-> —— 例如**一批相同类型的操作**后面会用**一条查询操作统一确认**（比如连续 CREATE_TESSERACT
-> 之后统一 `LIST_MODEL` 或 `GET_MODEL_INFO`），这种情况下中间那几条才值得省略。
->
-> **为什么必须看**：不看结果 = **盲发指令**。你不知道上一步建成了没有、现在场景里有什么，
-> 就贸然发下一步 —— 这正是两类错误的根源：
+> ⚠️ **每条操作都必须写 `"no_result": false`，没有例外。**
+> `no_result` 的缺省值是 `true`，含义是"这条操作我不关心结果，别回传给我"。
+> 省略它，你就**看不到这条操作成功了还是失败了、参数有没有被拒、世界变成了什么样**，
+> 等于**盲发指令**。盲发指令是两类错误的根源：
 >
 > > - **死循环**：反复发同一条查询，却看不到"已经收敛、该结束了"的信号；
 > > - **误操作**：对不存在的模型下手、参数被引擎拒绝却毫不知情，还继续往下走。
-> > - 养成"**发一步 → 看结果 → 再决定下一步**"的习惯，不要一路发到底。
-> >
+>
+> 唯一的"允许不写"的场合是——**你 100% 确定这一条的结果不影响你后续任何决策**，
+> 但这种情况在真实任务里**几乎不存在**：连 `CREATE_*` 都该看回执里的路径和胞数确认建对了。
+> 所以：**默认全部写 `false`，一路看下去。**
+> 养成"**发一步 → 看结果 → 再决定下一步**"的习惯，不要一路发到底。
 
 ## 全局约定
 
@@ -103,15 +100,15 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 各操作接受的路径：
 
-| 操作 | 接受的路径 |
-| --- | --- |
-| `CREATE_*` 形状 | `target` 可带多级路径、**不必已存在**；结果路径 = `target/name`，且**必须尚不存在** |
-| `LIST_MODEL` / `GET_MODEL_INFO` | 任意（`GET_MODEL_INFO` 传分组路径会给汇总） |
-| `TRANSFORM_MODEL` / `MERGE_ALL_SUB_MODELS` | 真实模型，或分组路径（此时作用于**它自己和全部后代**） |
-| `GET_MODEL_MATRIX` / `RENAME_MODEL` / `SET_MODEL_VISIBLE` | **必须精确存在** |
-| 几何编辑（`GET_TETRAHEDRON`、`SET_TETRAHEDRON_VERTEX`、`TRANSFORM_TETRAHEDRONS`、`ADD_TETRAHEDRON`、`REMOVE_TETRAHEDRON`、`SLICE_MODEL`） | **只能是没有子节点的真实模型** |
-| `COPY_MODEL` / `MERGE_MODEL` / `APPLY_TRANSFORM_TO_VERTEX` | 源必须精确存在 |
-| `DELETE_MODEL` | 任意前缀，删除该路径**及其整棵子树** |
+| 操作                                                         | 接受的路径                                                   |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `CREATE_*` 形状                                              | `target` 可带多级路径、**不必已存在**；结果路径 = `target/name`，且**必须尚不存在** |
+| `LIST_MODEL` / `GET_MODEL_INFO`                              | 任意（`GET_MODEL_INFO` 传分组路径会给汇总）                  |
+| `TRANSFORM_MODEL` / `MERGE_ALL_SUB_MODELS`                   | 真实模型，或分组路径（此时作用于**它自己和全部后代**）       |
+| `GET_MODEL_MATRIX` / `RENAME_MODEL` / `SET_MODEL_VISIBLE`    | **必须精确存在**                                             |
+| 几何编辑（`GET_TETRAHEDRON`、`SET_TETRAHEDRON_VERTEX`、`TRANSFORM_TETRAHEDRONS`、`ADD_TETRAHEDRON`、`REMOVE_TETRAHEDRON`、`SLICE_MODEL`） | **只能是没有子节点的真实模型**                               |
+| `COPY_MODEL` / `MERGE_MODEL` / `APPLY_TRANSFORM_TO_VERTEX`   | 源必须精确存在                                               |
+| `DELETE_MODEL`                                               | 任意前缀，删除该路径**及其整棵子树**                         |
 
 **模型种类（kind）**：`GROUP`（空容器，没几何）、`SHAPE`（参数化形状）、`CARVED`（被雕刻过，参数失效）、`MERGED`（合并产物）。
 
@@ -122,11 +119,11 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 ### 一、摄像机 — 位置
 
-| 操作 | data | 返回 |
-| --- | --- | --- |
-| `GET_CAMERA_POS` | 无 | `Pos=(x, y, z, w)` |
+| 操作              | data                                          | 返回               |
+| ----------------- | --------------------------------------------- | ------------------ |
+| `GET_CAMERA_POS`  | 无                                            | `Pos=(x, y, z, w)` |
 | `MOVE_CAMERA_POS` | `axis`（`x`/`y`/`z`/`w`）、`distance`（可负） | `Success` + 新位置 |
-| `SET_CAMERA_POS` | `pos` | `Success` + 新位置 |
+| `SET_CAMERA_POS`  | `pos`                                         | `Success` + 新位置 |
 
 `MOVE_CAMERA_POS` 的轴依次对应 右 / 上 / 前 / 第四维正方向；移动只改位置，不改视角。
 
@@ -138,11 +135,11 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 视角由四个基向量 `vx, vy, vz, vw` 描述。旋转时**旋转的是摄像机的基向量**，所以画面看起来朝**相反**方向转动。
 
-| 操作 | data | 返回 |
-| --- | --- | --- |
-| `GET_CAMERA_VIEW` | 无 | `vx/vy/vz/vw` 四个基向量 |
-| `ROTATE_CAMERA_VIEW` | `axis`（平面）、`angle`（角度制） | 旋转后的四个基向量 |
-| `SET_CAMERA_VIEW` | `vx`、`vy`、`vz`、`vw` | 四个基向量 |
+| 操作                 | data                              | 返回                     |
+| -------------------- | --------------------------------- | ------------------------ |
+| `GET_CAMERA_VIEW`    | 无                                | `vx/vy/vz/vw` 四个基向量 |
+| `ROTATE_CAMERA_VIEW` | `axis`（平面）、`angle`（角度制） | 旋转后的四个基向量       |
+| `SET_CAMERA_VIEW`    | `vx`、`vy`、`vz`、`vw`            | 四个基向量               |
 
 六个旋转平面：`xy` 屏幕内旋转（roll）；`xz` 右方向卷入/卷出第四维；`xw` 偏航 yaw（不动 `vy`、`vz`）；
 `yz` 上方向卷入/卷出第四维；`yw` 俯仰 pitch（不动 `vx`、`vz`）；`zw` 前方卷入/卷出第四维。
@@ -157,12 +154,12 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 **造机位有三种方式，按优先级从高到低——这是本节最容易出错的地方：**
 
-| 优先级 | 方式 | 你要给的 | 适用场景 |
-| --- | --- | --- | --- |
+| 优先级     | 方式                                  | 你要给的                            | 适用场景                                   |
+| ---------- | ------------------------------------- | ----------------------------------- | ------------------------------------------ |
 | 🥇 **首选** | `SET_CAMERA_BOOKMARK` + **`look_at`** | 位置 `pos` + **看向的点 `look_at`** | **绝大多数情况**。只需给两个点，朝向自动算 |
-| 🥈 次选 | `SET_CAMERA_BOOKMARK` + `view` | 位置 `pos` + 四个基向量 | 确实要精确控制朝向时 |
-| 🥉 兜底 | `SAVE_CAMERA_BOOKMARK` | 无（拍当前相机） | 只有"把**现在**看到的存下来"才用 |
-| — | `SET_CAMERA_BOOKMARK` 什么都不给 | 只有 `pos` | 单位基（正对） |
+| 🥈 次选     | `SET_CAMERA_BOOKMARK` + `view`        | 位置 `pos` + 四个基向量             | 确实要精确控制朝向时                       |
+| 🥉 兜底     | `SAVE_CAMERA_BOOKMARK`                | 无（拍当前相机）                    | 只有"把**现在**看到的存下来"才用           |
+| —          | `SET_CAMERA_BOOKMARK` 什么都不给      | 只有 `pos`                          | 单位基（正对）                             |
 
 > ✅ **首选 `look_at`**：写法是"相机放在 `pos`，朝着 `look_at` 看"。例如"从正前方看原点"
 > 就是 `pos=[0,0,6,0]`、`look_at=[0,0,0,0]`。**不要**自己去凑四个基向量——很容易算错。
@@ -171,14 +168,14 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 > `SET_CAMERA_POS` 是**动画**（约 1 秒才到位），紧接着 `SAVE` 读到的是动画**起点**，
 > 结果是所有机位的位置全都一样、全是错的。
 
-| 操作 | data | 返回 |
-| --- | --- | --- |
-| `LIST_CAMERA_BOOKMARKS` | 无 | 机位清单（`[下标] 名称 pos=(x,y,z,w)`） |
-| `SET_CAMERA_BOOKMARK` | `name`、`pos`、`look_at`／`view`（二选一，见上表） | `Success` + 新机位下标 + view |
-| `SAVE_CAMERA_BOOKMARK` | `name`（可选，缺省"机位N"） | `Success` + 新机位下标 |
-| `GO_CAMERA_BOOKMARK` | `name` 或 `index` | `Success` + 目标机位 |
-| `RENAME_CAMERA_BOOKMARK` | `name`/`index` + `new_name` | `Success` |
-| `DELETE_CAMERA_BOOKMARK` | `name` 或 `index` | `Success` |
+| 操作                     | data                                               | 返回                                    |
+| ------------------------ | -------------------------------------------------- | --------------------------------------- |
+| `LIST_CAMERA_BOOKMARKS`  | 无                                                 | 机位清单（`[下标] 名称 pos=(x,y,z,w)`） |
+| `SET_CAMERA_BOOKMARK`    | `name`、`pos`、`look_at`／`view`（二选一，见上表） | `Success` + 新机位下标 + view           |
+| `SAVE_CAMERA_BOOKMARK`   | `name`（可选，缺省"机位N"）                        | `Success` + 新机位下标                  |
+| `GO_CAMERA_BOOKMARK`     | `name` 或 `index`                                  | `Success` + 目标机位                    |
+| `RENAME_CAMERA_BOOKMARK` | `name`/`index` + `new_name`                        | `Success`                               |
+| `DELETE_CAMERA_BOOKMARK` | `name` 或 `index`                                  | `Success`                               |
 
 `look_at` 与 `view` **不能同时给**；`look_at` 也不能等于 `pos`（那样视线方向为零，朝向无法确定）。
 优先级：`look_at` > `view` > 都不给（单位基）。
@@ -200,17 +197,17 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 ### 四、模型树操作
 
-| 操作 | data | 说明 |
-| --- | --- | --- |
-| `LIST_MODEL` | 无 | 列出**所有模型**的完整路径（带下标，不只是根路径） |
-| `CREATE_MODEL` | `name` | 建空模型（`GROUP`），名称必须未被占用 |
-| `DELETE_MODEL` | `name` | 删除该路径**及整棵子树** |
-| `COPY_MODEL` | `src`、`dst` | 复制节点（**连同整棵子树**） |
-| `MERGE_MODEL` | `src1`、`src2`、`dst` | 两个模型变换烘焙后拼成新模型 |
-| `APPLY_TRANSFORM_TO_VERTEX` | `name`、`dest` | 把变换烘焙进顶点；`dest` **必须不存在且不能等于 `name`** |
-| `RENAME_MODEL` | `path`、`newName` | 改**叶名**（不是路径）；连整棵子树一起改名 |
-| `MERGE_ALL_SUB_MODELS` | `src`、`dst` | 把 `src` 及其**全部后代**烘焙后合并 |
-| `SET_MODEL_VISIBLE` | `name`、`visible` | 隐藏/显示该节点**及整棵子树** |
+| 操作                        | data                  | 说明                                                     |
+| --------------------------- | --------------------- | -------------------------------------------------------- |
+| `LIST_MODEL`                | 无                    | 列出**所有模型**的完整路径（带下标，不只是根路径）       |
+| `CREATE_MODEL`              | `name`                | 建空模型（`GROUP`），名称必须未被占用                    |
+| `DELETE_MODEL`              | `name`                | 删除该路径**及整棵子树**                                 |
+| `COPY_MODEL`                | `src`、`dst`          | 复制节点（**连同整棵子树**）                             |
+| `MERGE_MODEL`               | `src1`、`src2`、`dst` | 两个模型变换烘焙后拼成新模型                             |
+| `APPLY_TRANSFORM_TO_VERTEX` | `name`、`dest`        | 把变换烘焙进顶点；`dest` **必须不存在且不能等于 `name`** |
+| `RENAME_MODEL`              | `path`、`newName`     | 改**叶名**（不是路径）；连整棵子树一起改名               |
+| `MERGE_ALL_SUB_MODELS`      | `src`、`dst`          | 把 `src` 及其**全部后代**烘焙后合并                      |
+| `SET_MODEL_VISIBLE`         | `name`、`visible`     | 隐藏/显示该节点**及整棵子树**                            |
 
 要点：
 
@@ -228,14 +225,14 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 六种 `method`：
 
-| method | data | 语义 |
-| --- | --- | --- |
-| `MATRIX` | `row0` ~ `row4` | 5×5 行主序矩阵**左乘**到当前矩阵 |
-| `TRANSLATE` | `x` / `y` / `z` / `w`，至少一个 | 平移，未给的轴按 0 |
-| `SCALE` | `all`，或 `x` / `y` / `z` / `w` 至少一个 | 缩放，未给的轴按 1；负值镜像 |
-| `ROTATE` | `axis`（平面）、`angle`（角度制） | 平面 `(a,b)` 上 **a 转向 b 为正** |
-| `CLIP` | `source`、`target`、`amount` | 切变：`p_target += amount · p_source` |
-| `COORDINATE` | `pos`，或 `vx`/`vy`/`vz`/`vw` 至少一个 | 设置后续变换的基坐标系 |
+| method       | data                                     | 语义                                  |
+| ------------ | ---------------------------------------- | ------------------------------------- |
+| `MATRIX`     | `row0` ~ `row4`                          | 5×5 行主序矩阵**左乘**到当前矩阵      |
+| `TRANSLATE`  | `x` / `y` / `z` / `w`，至少一个          | 平移，未给的轴按 0                    |
+| `SCALE`      | `all`，或 `x` / `y` / `z` / `w` 至少一个 | 缩放，未给的轴按 1；负值镜像          |
+| `ROTATE`     | `axis`（平面）、`angle`（角度制）        | 平面 `(a,b)` 上 **a 转向 b 为正**     |
+| `CLIP`       | `source`、`target`、`amount`             | 切变：`p_target += amount · p_source` |
+| `COORDINATE` | `pos`，或 `vx`/`vy`/`vz`/`vw` 至少一个   | 设置后续变换的基坐标系                |
 
 ```json
 {"type":"TRANSFORM_MODEL","id":4,"no_result":false,"data":{
@@ -255,15 +252,15 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
   "target":"Tower","name":"Base","center":[0,0,0,0],"edgeLength":2.0}}
 ```
 
-| 操作 | 除 target / name 外必填 | 胞数（四面体数） |
-| --- | --- | --- |
-| `CREATE_TETRAHEDRON` | `center`、`radius`（`> 0`） | 1 |
-| `CREATE_5CELL` | `center`、`size`（棱长，`> 0`） | 5 |
-| `CREATE_16CELL` | `center`、`radius`（`> 0`） | 16 |
-| `CREATE_TESSERACT` | `center`、`edgeLength`（`> 0`） | 48 |
-| `CREATE_PRISM4` | `base`（3D 网格）、`ws`、`we` | 3 × base 三角形数 |
-| `CREATE_CONE4` | `base`（3D 网格）、`apex` | base 三角形数 |
-| `CREATE_BALL4` | `center`、`radius`（`> 0`）、`density`（`> 0`） | 8 · k³ · 6 |
+| 操作                 | 除 target / name 外必填                         | 胞数（四面体数）  |
+| -------------------- | ----------------------------------------------- | ----------------- |
+| `CREATE_TETRAHEDRON` | `center`、`radius`（`> 0`）                     | 1                 |
+| `CREATE_5CELL`       | `center`、`size`（棱长，`> 0`）                 | 5                 |
+| `CREATE_16CELL`      | `center`、`radius`（`> 0`）                     | 16                |
+| `CREATE_TESSERACT`   | `center`、`edgeLength`（`> 0`）                 | 48                |
+| `CREATE_PRISM4`      | `base`（3D 网格）、`ws`、`we`                   | 3 × base 三角形数 |
+| `CREATE_CONE4`       | `base`（3D 网格）、`apex`                       | base 三角形数     |
+| `CREATE_BALL4`       | `center`、`radius`（`> 0`）、`density`（`> 0`） | 8 · k³ · 6        |
 
 - 形状**没有颜色参数**，颜色由实现自动分配。要指定颜色只能用 `SET_TETRAHEDRON_VERTEX` / `ADD_TETRAHEDRON`。
 - `CREATE_TESSERACT` 的 8 个胞分别朝向 `+X` `-X` `+Y` `-Y` `+Z` `-Z` `+W` `-W`，
@@ -290,13 +287,13 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 }
 ```
 
-| `shape` | 必填 | 可选（默认） | 位置与朝向 |
-| --- | --- | --- | --- |
-| `SPHERE` | `radius` | `density`(8.0) | 球心在原点 |
-| `CUBE` | `edge` | — | 中心在原点，棱平行坐标轴 |
-| `PRISM` | `sides`(≥3) | `radius`(1.0)、`height`(1.0) | 轴线沿 **+Y**，Y 方向居中 |
-| `PYRAMID` | `sides`(≥3) | `radius`(1.0)、`height`(1.0) | 轴线沿 **+Y**，底面在 `y=-height/2` |
-| `CONE` | `radius` | `height`(1.0)、`segments`(16) | 轴线沿 **+Y**，底面圆在 `y=-height/2` |
+| `shape`   | 必填        | 可选（默认）                  | 位置与朝向                            |
+| --------- | ----------- | ----------------------------- | ------------------------------------- |
+| `SPHERE`  | `radius`    | `density`(8.0)                | 球心在原点                            |
+| `CUBE`    | `edge`      | —                             | 中心在原点，棱平行坐标轴              |
+| `PRISM`   | `sides`(≥3) | `radius`(1.0)、`height`(1.0)  | 轴线沿 **+Y**，Y 方向居中             |
+| `PYRAMID` | `sides`(≥3) | `radius`(1.0)、`height`(1.0)  | 轴线沿 **+Y**，底面在 `y=-height/2`   |
+| `CONE`    | `radius`    | `height`(1.0)、`segments`(16) | 轴线沿 **+Y**，底面圆在 `y=-height/2` |
 
 `transforms[].method` 只支持 `TRANSLATE`（`x`/`y`/`z`）、`SCALE`（`all` 或 `x`/`y`/`z`）、
 `ROTATE`（`axis` 只接受 3D 的 `xy`/`xz`/`yz`，`angle` 角度制）、`MATRIX`（`row0`~`row3`）。
@@ -307,15 +304,15 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 > ⚠️ 这组操作会**直接改顶点/四面体**，并把目标节点从 `SHAPE` 降级为 `CARVED`（参数不再能描述它）。
 > 主路径应该是上面的形状操作，只有在需要精细修改时才用这组。
 
-| 操作 | data | 返回 |
-| --- | --- | --- |
-| `GET_MODEL_INFO` | `name` | `##` 开头的详情（kind / 参数 / 胞数 / 包围盒 / 变换矩阵 / 子模型） |
-| `GET_TETRAHEDRON` | `name`、`tet` | `## path#i` + 四个顶点（局部坐标） |
-| `SET_TETRAHEDRON_VERTEX` | `name`、`tet`、`vertex`(`0`~`3`)、`pos`；可选 `color`、`normal` | 新顶点值 + 降级提示 |
-| `TRANSFORM_TETRAHEDRONS` | `name`、`tets`、`row0`~`row4` | 变换的胞数 |
-| `ADD_TETRAHEDRON` | `name`、`v0`~`v3`；可选 `color` | 新胞下标 |
-| `REMOVE_TETRAHEDRON` | `name`、`tet` | 剩余胞数 |
-| `SLICE_MODEL` | `name`、`plane`、`pathA`、`pathB` | 两个新路径与各自胞数 |
+| 操作                     | data                                                         | 返回                                                         |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `GET_MODEL_INFO`         | `name`                                                       | `##` 开头的详情（kind / 参数 / 胞数 / 包围盒 / 变换矩阵 / 子模型） |
+| `GET_TETRAHEDRON`        | `name`、`tet`                                                | `## path#i` + 四个顶点（局部坐标）                           |
+| `SET_TETRAHEDRON_VERTEX` | `name`、`tet`、`vertex`(`0`~`3`)、`pos`；可选 `color`、`normal` | 新顶点值 + 降级提示                                          |
+| `TRANSFORM_TETRAHEDRONS` | `name`、`tets`、`row0`~`row4`                                | 变换的胞数                                                   |
+| `ADD_TETRAHEDRON`        | `name`、`v0`~`v3`；可选 `color`                              | 新胞下标                                                     |
+| `REMOVE_TETRAHEDRON`     | `name`、`tet`                                                | 剩余胞数                                                     |
+| `SLICE_MODEL`            | `name`、`plane`、`pathA`、`pathB`                            | 两个新路径与各自胞数                                         |
 
 - `tet` 是**该模型内的下标**（从 0 开始）。**删除后下标会顺移**，删完要重新查询。
 - `TRANSFORM_TETRAHEDRONS` 的 `tets` 传**空数组 `[]` 表示该模型内全部四面体**。
@@ -338,10 +335,10 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 它是**两级**接口，必须按顺序用：
 
-| 操作 | data | 返回 |
-| --- | --- | --- |
-| `LIST_DATASET_CATEGORIES` | 无 | **分类目录**：每个类别的记录数、判对数、涉及模型 |
-| `GET_DATASET_RECORDS` | `category`（必填）、`model`(可选)、`verdict`(可选)、`limit`(可选，默认 5，上限 50) | 该类别下的记录：题目 + 人工结论 + 人工评语 + 你当时的回答 |
+| 操作                      | data                                                         | 返回                                                      |
+| ------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| `LIST_DATASET_CATEGORIES` | 无                                                           | **分类目录**：每个类别的记录数、判对数、涉及模型          |
+| `GET_DATASET_RECORDS`     | `category`（必填）、`model`(可选)、`verdict`(可选)、`limit`(可选，默认 5，上限 50) | 该类别下的记录：题目 + 人工结论 + 人工评语 + 你当时的回答 |
 
 **用法**：先 `LIST_DATASET_CATEGORIES` 看看有哪些类别、各多少条，**再**挑一个类别调
 `GET_DATASET_RECORDS`。`category` 要填分类目录里出现过的名字。
@@ -382,11 +379,11 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
         收到 `[System] 你刚刚重复了与上一轮完全相同的操作` 这类消息时，立即照它说的做，
         不要再重复。
 
-7. **默认每条操作都写 `"no_result": false`，尽量去看每一步的结果。**
-   只有在你 100% 确定不需要这一条结果时才省略或写 `true`（例如一批同类操作后统一查询确认）。
-   **不看结果 = 盲发指令**：你不知道上一步成没成功、参数有没有被拒、世界变成了什么样，
-   于是会一头扎进死循环（反复发同一条查询）或做出错误操作（对不存在的模型下手）。
-   发一步、看结果、再决定下一步。
+7. **每条操作都必须写 `"no_result": false`，没有例外。**
+   `no_result` 的缺省值是 `true`（引擎不回传结果）。省略它或不写，你就**看不到这一条是否成功、
+   参数有没有被拒、世界变成了什么样**，等于**盲发指令** —— 这会直接导致两类致命错误：
+   一头扎进死循环（反复发同一条查询）或做出错误操作（对不存在的模型下手）。
+   **发一步、看结果、再决定下一步。**
 
 8. 用户指令模糊时选最合理的解释并执行，不要返回空操作。
 
@@ -435,12 +432,12 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 ```json
 {"version":1,"done":false,"operations":[
-  {"type":"CREATE_MODEL","id":1,"no_result":true,"data":{"name":"Tower"}},
-  {"type":"CREATE_PRISM4","id":2,"no_result":true,"data":{
+  {"type":"CREATE_MODEL","id":1,"no_result":false,"data":{"name":"Tower"}},
+  {"type":"CREATE_PRISM4","id":2,"no_result":false,"data":{
       "target":"Tower","name":"Body",
       "base":{"shape":"PRISM","sides":6,"radius":1.0,"height":2.0,"color":"#FF66CCFF"},
       "ws":-1.5,"we":1.5}},
-  {"type":"CREATE_BALL4","id":3,"no_result":true,"data":{
+  {"type":"CREATE_BALL4","id":3,"no_result":false,"data":{
       "target":"Tower","name":"Top","center":[0,0,0,2.2],"radius":0.9,"density":2.0}},
   {"type":"TRANSFORM_MODEL","id":4,"no_result":false,"data":{
       "name":"Tower","transforms":[{"method":"ROTATE","data":{"axis":"xw","angle":20}}]}}]}
@@ -510,7 +507,7 @@ Tower                     GROUP   （CREATE_MODEL 建出来的空容器）
 
 ```json
 {"version":1,"done":false,"operations":[
-  {"type":"TRANSFORM_MODEL","id":1,"no_result":true,"data":{
+  {"type":"TRANSFORM_MODEL","id":1,"no_result":false,"data":{
       "name":"Tower/Base","transforms":[{"method":"TRANSLATE","data":{"w":0.5}}]}},
   {"type":"SET_MODEL_VISIBLE","id":2,"no_result":false,"data":{
       "name":"Tower/Base","visible":false}}]}
