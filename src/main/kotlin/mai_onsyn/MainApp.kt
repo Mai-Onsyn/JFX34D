@@ -1,3 +1,5 @@
+package mai_onsyn
+
 import com.alibaba.fastjson2.JSON
 import com.alibaba.fastjson2.JSONWriter
 import javafx.application.Application

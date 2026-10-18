@@ -22,7 +22,7 @@
              这里必须写 MainKt，不能写继承 javafx.application.Application 的 MainApp：
              fat jar 里 JavaFX 在 classpath 上（不在 module path），直接启动 Application 子类会被
              sun.launcher 拦下来报 "JavaFX runtime components are missing"。 -->
-        <jfx34d.main.class>MainKt</jfx34d.main.class>
+        <jfx34d.main.class>HCloudbyte.ui.Main</jfx34d.main.class>
 
         <!-- JNI 原生库名（= jni/CMakeLists.txt 里的 project(jfx34d_jni)）。
              Java 侧固定写死 System.loadLibrary("./jni/jfx34d_jni")，
