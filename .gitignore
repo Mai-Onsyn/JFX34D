@@ -45,5 +45,3 @@ src/main/java/weilantianhai/progress/
 #apikey
 .env
 .workbuddy/
-
-data/dataset/.migrated-backup-*/
