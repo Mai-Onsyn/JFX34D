@@ -5,13 +5,6 @@ import mai_onsyn.renderer.ogl3d.data.Triangle
 import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector3f
 
-/**
- * 正 n 棱锥，对应文档 §5.3 的 `PYRAMID`。
- *
- * - 轴线沿 **+Y**；底面在 `y = center.y - height/2`，锥顶在 `y = center.y + height/2`；
- * - 底面为正 [sides] 边形，外接圆半径 [radius]，**一个顶点在 +X 方向**；
- * - 底面 + 侧面都生成，法向朝外，结果**封闭**。
- */
 fun createPyramid(
     sides: Int,
     radius: Float = 1f,

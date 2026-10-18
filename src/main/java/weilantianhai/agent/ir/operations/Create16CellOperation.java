@@ -5,15 +5,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * CREATE_16CELL：创建超八面体（16-cell）（文档 §5.2.3）。
- *
- * <p>参数：{@code target}、{@code name}、{@code center}、{@code radius}（{@code > 0}）。
- *
- * <p>8 个顶点位于四条坐标轴的 {@code ±radius} 处，16 个胞。
- */
 public class Create16CellOperation extends GuardedOperation {
-
     private ShapeTarget target;
     private Vector4f center;
     private float radius;

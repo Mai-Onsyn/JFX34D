@@ -2,15 +2,7 @@ package HCloudbyte.ui.statusbar;
 
 import mai_onsyn.renderer.interfaces.RendererInterface;
 
-/**
- * 场景四面体总数统计。
- *
- * <p>{@code getModelInfos} 返回 markdown 文本：实体 mesh 报 {@code "Tetrahedrons: N"}，
- * 分组路径报 {@code "Total tetrahedrons: N"}。逐个根路径取信息并解析，优先汇总值。
- * 解析有开销，调用方（状态栏）做了低频刷新（约 2 秒一次）。
- */
 final class TetrahedronCounter {
-
     private TetrahedronCounter() {
     }
 

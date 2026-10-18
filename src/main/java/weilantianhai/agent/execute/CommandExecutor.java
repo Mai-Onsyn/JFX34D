@@ -7,7 +7,6 @@ import weilantianhai.agent.ir.IRException;
 import weilantianhai.agent.ir.resolver.IRParser;
 
 public class CommandExecutor {
-
     /** done=true 时返回的结束标记 */
     public static final String DONE_MARKER = "# Done";
 
@@ -19,15 +18,6 @@ public class CommandExecutor {
         this.renderer = renderer;
     }
 
-    /**
-     * 解析 LLM 返回的 JSON，执行操作，拼装 Markdown 返回给 LLM。
-     * 解析失败或执行失败不抛异常，返回 Error Markdown，让 LLM 重试。
-     *
-     * @param jsonText LLM 返回的原始 JSON 文本
-     * @return 成功：拼接好的 Markdown（可能为空，所有操作都 no_result=true 时）
-     *         done：返回 "# Done"
-     *         失败：Error Markdown
-     */
     public String execute(String jsonText) throws IRException {
         IRBundle bundle;
         try{
@@ -38,18 +28,6 @@ public class CommandExecutor {
         return execute(bundle, jsonText);
     }
 
-    /**
-     * 用**已解析**的 bundle 执行操作，避免上层再解析一次。
-     *
-     * <p>调用方（AgentInterfaceImpl）需要在执行前看到 {@code done} / {@code content}，
-     * 所以它自己解析一遍后把结果交给这里；{@code rawJson} 仅用于失败时的 Error Markdown 回显。
-     *
-     * @param bundle  已解析的 IRBundle（调用方负责非 null）
-     * @param rawJson LLM 返回的原始 JSON 文本，仅用于错误回显
-     * @return 成功：拼接好的 Markdown（可能为空）
-     *         done：返回 "# Done"
-     *         失败：Error Markdown
-     */
     public String execute(IRBundle bundle, String rawJson) throws IRException {
         if(bundle.isDone()){
             return DONE_MARKER;

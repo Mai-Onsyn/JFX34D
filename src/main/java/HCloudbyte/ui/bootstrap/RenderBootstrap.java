@@ -6,14 +6,7 @@ import mai_onsyn.renderer.core.GL4DRegion;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 
-/**
- * 渲染侧引导：创建 4D 渲染视口与渲染接口，并铺好初始场景（默认模型 + 相机位置 + 视口指示方块）。
- *
- * <p>等价于原 {@code start4DTest2} 的用法：{@code RendererInterface.init(region)} 把
- * {@code RendererInterface} 绑定到 GL4DRegion 的摄像机，UI 的 getCamera() 与视口键盘共用同一摄像机。
- */
 public final class RenderBootstrap {
-
     private RenderBootstrap() {
     }
 
@@ -44,4 +37,3 @@ public final class RenderBootstrap {
         return new Result(region, renderer, viewportBox);
     }
 }
-

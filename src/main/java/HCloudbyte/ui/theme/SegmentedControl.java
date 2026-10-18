@@ -8,18 +8,7 @@ import javafx.scene.layout.HBox;
 
 import java.util.function.IntConsumer;
 
-/**
- * 分段选择控件（一排互斥的 ToggleButton），橙色高亮当前项。
- *
- * <p>两种用法：
- * <ul>
- *   <li>只要「选中回调」：{@code new SegmentedControl(options, defaultIndex, onChange)}；</li>
- *   <li>还需要「程序化选中」（例如渲染侧键盘 I 键切回同步）：调用 {@link #select(int)}，
- *       它只切选中态与样式、<b>不触发 onChange</b>，避免回调循环。</li>
- * </ul>
- */
 public final class SegmentedControl extends HBox {
-
     private static final String NORMAL_STYLE =
             "-fx-background-color: transparent;"
                     + "-fx-background-radius: 6;"

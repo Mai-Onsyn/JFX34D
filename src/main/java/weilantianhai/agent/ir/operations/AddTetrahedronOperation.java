@@ -6,30 +6,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * ADD_TETRAHEDRON：直接指定四个顶点，往模型里追加一个四面体（文档 §6.5）。
- *
- * <p>参数：{@code name}、{@code v0}~{@code v3}（每个是 {@code {pos, color?, normal?}}），
- * 可选操作级 {@code color}（一次指定四个顶点，会被顶点自己的 {@code color} 覆盖）。
- *
- * <pre>
- * # ADD_TETRAHEDRON(id=26)
- * Successfully add tetrahedron #0 to "Sculpt/Patch"
- * Tetrahedrons: 1
- * Now kind is CARVED
- * </pre>
- *
- * <p>往一个空模型（{@code GROUP}）里加胞是合法的，它会变成 {@code CARVED}。
- *
- * <p><b>跨语言说明</b>：Java 无法构造渲染侧的 {@code Vertex4D}（构造函数 private、
- * 公开那个带 {@code DefaultConstructorMarker} 且是 synthetic），所以经由
- * {@link AgentBridge#addTetrahedron} 转发，位置/颜色/法向都用扁平数组传递。
- *
- * <p><b>法向量缺省</b>：四个顶点的法向都留空时，由渲染侧补一个由这四个点算出的
- * 超平面单位法向量（{@code hyperplaneNormal}）。
- */
 public class AddTetrahedronOperation extends GuardedOperation {
-
     private static final String[] VERTEX_KEYS = {"v0", "v1", "v2", "v3"};
 
     private String name;

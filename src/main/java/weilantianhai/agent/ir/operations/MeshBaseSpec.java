@@ -14,20 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * 文档 §5.3 的 **3D 底面网格 JSON DSL** 的解析与构建。
- *
- * <p>{@code CREATE_PRISM4} 与 {@code CREATE_CONE4} 需要一个 3D 网格当底面，
- * AI 不写三角形，而是用"{@code shape} + 几何参数 + {@code transforms}"描述一个基本几何体，
- * 由接入层（也就是这里）生成三角形网格。文档 §附录 D 明确这属于接入层职责。
- *
- * <p>流程：解析 → 校验 → 调 {@link AgentBridge#baseMesh} 让渲染侧生成 →
- * 用 3D {@link Transform} 依次累加 {@code transforms} → {@code MeshOps.applyTransform}
- * 把变换**烘焙进顶点**（{@code constructPrism4}/{@code constructCone4} 只读顶点位置，
- * 不会去乘 {@code Mesh.transform}，所以必须先烘焙）。
- */
 final class MeshBaseSpec {
-
     /** 单个 3D 变换步骤 */
     @FunctionalInterface
     private interface Step3D {

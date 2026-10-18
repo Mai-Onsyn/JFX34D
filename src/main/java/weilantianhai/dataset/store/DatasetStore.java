@@ -17,33 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-/**
- * 数据集存储：分类落盘 + 读取。
- *
- * <h3>目录结构</h3>
- *
- * <pre>
- * &lt;root&gt;/                                  (默认 data/dataset，见 {@link weilantianhai.dataset.DatasetPaths})
- * ├── raw/
- * │   └── 2026-10-11/
- * │       ├── deepseek__camera_bookmark.jsonl      ← key 是**分组标识**，不是 API 模型名
- * │       ├── deepseek__shape.jsonl
- * │       └── qwen__camera_bookmark.jsonl
- * ├── summary/
- * │   ├── 2026-10-11__deepseek.json
- * │   └── compare__2026-10-11.md
- * └── index.jsonl                     (全局索引：一行一条精简记录)
- * </pre>
- *
- * <p>分类主键 = {@code <model>__<category>}，两个轴都进文件名，
- * 因此「同一任务横向比不同模型」与「同一模型纵向看不同类别」都是一次文件扫描。
- *
- * <p><b>注意</b>：文件名里的 model 是 {@code deepseek} / {@code qwen} 这类**分组标识**
- * （见 {@code DatasetApp.modelKey}），不是 {@code deepseek-flash} / {@code qwen/qwen3.5-9b}
- * 这样的 API 模型名。后者记在记录的 {@code env.api_model} 里。混用会让同一模型在统计里裂成两行。
- */
 public final class DatasetStore {
-
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private final Path root;
@@ -52,13 +26,6 @@ public final class DatasetStore {
         this.root = root;
     }
 
-    /**
-     * 默认根目录：项目下的 {@code data/dataset}。
-     *
-     * <p>这里**不用** {@code .workbuddy/} —— 那是工具的临时目录（已在 .gitignore 里），
-     * 而数据集是要归档、要对比、要交给别人的实验产物。详见
-     * {@link weilantianhai.dataset.DatasetPaths}。
-     */
     public static DatasetStore defaultStore() {
         return new DatasetStore(weilantianhai.dataset.DatasetPaths.DATASET_ROOT);
     }
@@ -189,29 +156,6 @@ public final class DatasetStore {
 
     /* ==================== 迁移：统一模型标识 ==================== */
 
-    /**
-     * 迁移记录：把 {@code env.model} 里的 **API 模型名**归一化成**分组标识**，
-     * 并按新标识重排到 {@code <model>__<category>.jsonl}。
-     *
-     * <h3>为什么需要</h3>
-     *
-     * <p>早期版本的 {@code currentModelName()} 直接读 {@code deepseek.properties} 的
-     * {@code model=}（值是 {@code deepseek-flash}），后来改成用下拉框的 key（{@code deepseek}）。
-     * 于是同一个模型在原始数据里既有 {@code "model":"deepseek"} 又有 {@code "model":"deepseek-flash"}，
-     * 汇总表里被拆成两行、样本数各算一半。
-     *
-     * <p>本方法按 {@code aliases} 映射把老名字归到新名字，同时
-     * **把原值补写进 {@code env.api_model}**（若原本没有），信息不丢。
-     *
-     * <h3>安全性</h3>
-     *
-     * <p>先全部读进内存、确认无误，再**整体重写** raw 目录（原文件先挪到
-     * {@code raw/.migrated-backup-<ts>/}），最后重建 {@code index.jsonl}。
-     * 任何一步抛异常都不会留下半新半旧的状态。
-     *
-     * @param aliases 老名 → 新名，例如 {@code {"deepseek-flash": "deepseek"}}
-     * @return 迁移摘要（改了哪些文件、共几条）
-     */
     public MigrationReport normalizeModels(Map<String, String> aliases) throws IOException {
         Path raw = root.resolve("raw");
         if (!Files.exists(raw)) return new MigrationReport(0, List.of(), List.of());
@@ -260,11 +204,6 @@ public final class DatasetStore {
             }
         }
 
-        // 4. 按新 (model, category) 重写。
-        //
-        // 关键：必须写**内存里已改过 env.model 的 byFile**，不能重读备份目录 ——
-        // 备份是磁盘上的原件，重读会把刚改的改动丢掉（踩过一次）。
-        // 按「原文件所属的那一天」分桶写，保持 raw/<date>/ 结构。
         List<String> written = new ArrayList<>();
         // day 名 -> (文件名前缀 -> 记录列表)
         Map<String, Map<String, List<JSONObject>>> perDay = new LinkedHashMap<>();
@@ -343,17 +282,6 @@ public final class DatasetStore {
         }
     }
 
-    /**
-     * 命令行迁移入口（不依赖 JavaFX，可以直接 {@code java} 跑）：
-     *
-     * <pre>
-     * java -cp ... weilantianhai.dataset.store.DatasetStore [数据集根目录]
-     * </pre>
-     *
-     * <p>默认根目录 {@code data/dataset}；把 {@code deepseek-flash -> deepseek}、
-     * {@code qwen/qwen3.5-9b -> qwen} 这类「API 名 → 分组标识」的映射应用一遍，
-     * 原目录备份到 {@code .migrated-backup-<ts>/}（在 {@code raw/} **之外**）。
-     */
     public static void main(String[] args) throws Exception {
         Path root = args.length > 0 ? Path.of(args[0])
                 : weilantianhai.dataset.DatasetPaths.DATASET_ROOT;

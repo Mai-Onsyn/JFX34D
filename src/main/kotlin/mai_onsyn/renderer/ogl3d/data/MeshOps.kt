@@ -6,22 +6,6 @@ import org.joml.Vector2f
 import org.joml.Vector3f
 import kotlin.math.abs
 
-/**
- * 3D 网格的便捷操作：三角形列表 ↔ [Mesh]，以及把变换**手动烘焙**进顶点。
- *
- * 为什么要手动烘焙：`cpu4dkt` 的 `constructPrism4` / `constructCone4`（服务于
- * `ShapeInterface.createPrism4` / `createCone4`）只读 `base.triangles` 里顶点的 `pos`，
- * **不会**去乘 `base.transform.matrix`。所以给 3D 底面做的变换必须在调用这两个 4D
- * 生成器之前先落到顶点上，也就是先
- *
- * ```
- * val base = createPrism(...).toMesh()          // 生成
- * val t = Transform(); t.rotate(Direction.Plane.XZ, 30f)   // 变换累加到 matrix 上
- * val baked = base.applyTransform(t)            // 手动烘焙进顶点（返回新 Mesh）
- * renderer.shape.createPrism4("Tower", "Body", baked, ws = -1f, we = 1f)
- * ```
- */
-
 /** 把一组三角形包成 [Mesh]；[transform] 只挂载、不烘焙（渲染时由 GPU 应用）。 */
 fun MutableList<Triangle>.toMesh(transform: Transform = Transform.NONE): Mesh =
     Mesh(this, transform)
@@ -37,12 +21,6 @@ fun Mesh.applyTransform(matrix: Matrix4f): Mesh =
 fun Mesh.applyTransform(transform: Transform = this.transform): Mesh =
     applyTransform(Matrix4f(transform.matrix))
 
-/**
- * 把矩阵应用到每个顶点，返回新的三角形列表（源列表不变）：
- * - 位置：`p' = M · p`（含平移，w 按 1 处理，内部做透视除法，仿射矩阵下等价）；
- * - 法向：`n' = (M₃ₓ₃⁻¹)ᵀ · n` 再归一化 —— 非均匀缩放 / 切变下方向才正确；
- * - 颜色、UV、贴图直接带过去。
- */
 fun MutableList<Triangle>.transformed(matrix: Matrix4f): MutableList<Triangle> {
     val normalMatrix = normalMatrixOf(matrix)
     val result = ArrayList<Triangle>(size)

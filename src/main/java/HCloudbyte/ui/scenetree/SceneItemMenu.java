@@ -6,14 +6,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 
-/**
- * 节点右键菜单：把「菜单项 → 操作」接线起来。
- *
- * <p>启停规则：只要底层接口支持该路径（含中间/分组路径）就启用；
- * 只有「合并 / 烘焙」要求源是一个真实模型，故对结构节点禁用。
- */
 final class SceneItemMenu {
-
     private SceneItemMenu() {
     }
 

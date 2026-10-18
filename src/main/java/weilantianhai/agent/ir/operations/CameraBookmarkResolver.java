@@ -7,22 +7,7 @@ import weilantianhai.agent.ir.IRException;
 
 import java.util.List;
 
-/**
- * 机位寻址工具：把 {@code name} / {@code index} 参数解析为机位列表里的**唯一下标**。
- *
- * <p>机位操作共用一套寻址规则，收敛在这里：
- *
- * <ul>
- *   <li>{@code name} 优先——写起来更像人话（"跳到俯视"）；</li>
- *   <li>{@code index} 兜底——重名或名字难写时用；下标从 0 开始，与
- *       {@code LIST_CAMERA_BOOKMARKS} 的返回一致；</li>
- *   <li>两个都没给 → 报错；</li>
- *   <li>名字找不到 → 报错并**列出当前所有机位名**，方便 LLM 下一轮纠正；</li>
- *   <li>名字匹配到多个 → 报错并要求改用 {@code index}（不擅自替用户挑一个）。</li>
- * </ul>
- */
 final class CameraBookmarkResolver {
-
     private CameraBookmarkResolver() {}
 
     /**

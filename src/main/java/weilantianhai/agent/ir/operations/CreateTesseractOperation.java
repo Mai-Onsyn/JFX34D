@@ -5,16 +5,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * CREATE_TESSERACT：创建超立方体（tesseract）（文档 §5.2.4）。
- *
- * <p>参数：{@code target}、{@code name}、{@code center}、{@code edgeLength}（{@code > 0}）。
- *
- * <p>16 个顶点、8 个立方体胞，每胞 Kuhn 分解为 6 个四面体 = **48 个胞**。
- * 8 个胞使用固定调色板，顺序 {@code +X, -X, +Y, -Y, +Z, -Z, +W, -W}。
- */
 public class CreateTesseractOperation extends GuardedOperation {
-
     private ShapeTarget target;
     private Vector4f center;
     private float edgeLength;

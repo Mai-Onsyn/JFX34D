@@ -4,26 +4,7 @@ import javafx.scene.Node
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * 鍫嗗彔甯冨眬锛堝搴?Compose 鐨?`Box`锛夛細鎵€鏈夊瓙鑺傜偣鍙犳斁鍦ㄥ悓涓€鍧楀尯鍩熼噷锛屾寜涔濆鏍煎榻愩€? *
- * * [contentAlignment] 鍐冲畾榛樿瀵归綈锛堥粯璁ゅ乏涓?[Alignment.Box.TOP_START]锛夛紝
- *   瀛愯妭鐐瑰彲浠ョ敤 `Modifier.NONE.alignSelf(Alignment.Box.BOTTOM_END)` 鍗曠嫭瑕嗙洊銆? * * 灏哄榛樿鎸夊唴瀹硅嚜閫傚簲锛宍Modifier.NONE.fillMaxSize()` / `fillMaxWidth()` / `height(x)` 閮藉彲浠ョ敤锛? *   `Modifier.NONE.weight(w)` 鍦ㄨ繖閲岃〃绀恒€屾拺婊℃暣鍧楀尯鍩熴€嶏紙Box 娌℃湁涓昏酱锛屾潈閲嶆暟鍊兼湰韬笉鍙備笌鍒嗛厤锛夈€? * * 鍏稿瀷鐢ㄦ硶锛氳儗鏅?+ 鍓嶆櫙鍙犲姞銆佸眳涓唴瀹广€佸姞杞介伄缃┿€佽鏍囩瓑銆? *
- * Kotlin锛? * ```kotlin
- * val box = Box()
- * box.modifier = Modifier.NONE.fillMaxSize()
- * box.contentAlignment = Alignment.Box.CENTER
- * box.add(background, Modifier.NONE.fillMaxSize())
- * box.add(label)                                            // 灞呬腑鍙犲湪鑳屾櫙涓? * box.add(badge, Modifier.NONE.alignSelf(Alignment.Box.TOP_END))
- * ```
- *
- * Java锛? * ```java
- * Box box = new Box();
- * box.setContentAlignment(Alignment.Box.CENTER);
- * box.add(label);
- * ```
- */
 open class Box(vararg children: Node) : LayoutContainer<Box>(*children) {
-
     /** 榛樿涔濆鏍煎榻愶紝榛樿 [Alignment.Box.TOP_START]銆?*/
     var contentAlignment: Alignment.Box = Alignment.Box.TOP_START
         set(value) {

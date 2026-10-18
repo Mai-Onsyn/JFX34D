@@ -25,14 +25,7 @@ import org.joml.Vector4f;
 
 import java.util.function.IntConsumer;
 
-/**
- * 顶部栏：标题 / 文件名 / 投影切换 / 3D-4D 输入模式 / 手写-语音模式 / Agent 状态 / 渲染设置。
- *
- * <p>只负责把控件摆好并接线；「场景设置」弹窗内容全在
- * {@link SettingsDialog}，缓存值放在长期持有的 {@link SettingsCache} 里。
- */
 public class TopBar extends StackPane {
-
     private final SettingsCache cache = new SettingsCache();
 
     /**
@@ -95,13 +88,6 @@ public class TopBar extends StackPane {
 
     /* ==================== 看向某点 ==================== */
 
-    /**
-     * 「看向」控件：输入一个 4D 点坐标，点击（或回车）后让四维摄像机转向该点。
-     *
-     * <p>实现：用渲染侧的 {@code Camera4DUtilsKt.lookAt4D(eye, target)} 算出目标坐标系
-     *（摄像机机位 CameraRecord.lookAt 用的也是它），再调 {@code CameraInterface.setView(...)} ——
-     * 该接口内部走四元数 SLERP 平滑动画，所以是"转过去"而不是瞬移。
-     */
     private static HBox buildLookAt(RendererInterface renderer) {
         TextField point = new TextField();
         point.setPromptText("看向 x, y, z, w");

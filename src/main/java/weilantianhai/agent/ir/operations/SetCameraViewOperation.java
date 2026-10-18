@@ -6,16 +6,7 @@ import mai_onsyn.renderer.utils.Coordinate4D;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * SET_CAMERA_VIEW：直接设置摄像机坐标系（文档 §3.2.3）。
- *
- * <p>参数：{@code vx}、{@code vy}、{@code vz}、{@code vw} 四个四维向量。
- *
- * <p>按文档要求，校验在接入层做：四个向量都必须是单位向量，且两两正交
- * （{@code CameraInterfaceImpl.setView} 自身是直接赋值，不做检查）。
- */
 public class SetCameraViewOperation extends GuardedOperation {
-
     private Vector4f vx;
     private Vector4f vy;
     private Vector4f vz;

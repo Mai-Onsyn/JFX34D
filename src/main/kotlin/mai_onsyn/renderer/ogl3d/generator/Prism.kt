@@ -5,13 +5,6 @@ import mai_onsyn.renderer.ogl3d.data.Triangle
 import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector3f
 
-/**
- * 正 n 棱柱，对应文档 §5.3 的 `PRISM`。
- *
- * - 轴线沿 **+Y**，Y 方向以 [center] 为参照居中（`-height/2 ~ +height/2`）；
- * - 底面为正 [sides] 边形，外接圆半径 [radius]，**一个顶点在 +X 方向**；
- * - 端盖 + 侧面都生成，法向朝外，结果**封闭**。
- */
 fun createPrism(
     sides: Int,
     radius: Float = 1f,

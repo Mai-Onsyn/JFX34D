@@ -4,14 +4,7 @@ import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.TitledPane;
 
-/**
- * 可折叠区块：背景与面板底色统一的 TitledPane。
- *
- * <p>做三件事：默认整块透明（透出面板背景）、悬停微亮、展开保持透明。
- * 标题栏 / 内容区 / 箭头也全部压成透明，否则 TitledPane 默认底会把面板玻璃底盖掉。
- */
 public final class CollapsibleSection extends TitledPane {
-
     private static final String BASE =
             "-fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0;"
                     + "-fx-background-radius: 6; -fx-padding: 0; -fx-text-fill: #e8e8e8;";

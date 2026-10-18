@@ -4,18 +4,7 @@ import javafx.scene.Cursor;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 
-/**
- * 全局 UI 主题（Blender / IDE 深色风格）：深灰面板 + 橙色强调。
- *
- * <p>这里只放两类东西：
- * <ul>
- *   <li><b>样式字符串常量</b>（面板底、分段控件底、按钮态、文本配色）——想改颜色/圆角，只改这里；</li>
- *   <li><b>通用控件工厂</b>（液态按钮、标题/弱化/提示文本）——避免每个面板各写一遍 {@code setStyle}。</li>
- * </ul>
- * 不放任何业务逻辑。
- */
 public final class Theme {
-
     private Theme() {
     }
 

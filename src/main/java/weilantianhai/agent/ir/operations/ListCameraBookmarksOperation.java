@@ -6,20 +6,7 @@ import weilantianhai.agent.ir.IRException;
 
 import java.util.List;
 
-/**
- * LIST_CAMERA_BOOKMARKS：列出 UI 中所有摄像机机位。无参数据。
- *
- * <p>返回格式：
- * <pre>
- * 共 2 个机位：
- * [0] 俯视   pos=(0, 10, 0, 0)
- * [1] 机位2  pos=(3, 0, -4, 1)
- * </pre>
- *
- * <p>返回的 {@code [n]} 就是其它机位操作可用的 {@code index}。
- */
 public class ListCameraBookmarksOperation extends GuardedOperation {
-
     @Override
     public String name() {
         return "LIST_CAMERA_BOOKMARKS";

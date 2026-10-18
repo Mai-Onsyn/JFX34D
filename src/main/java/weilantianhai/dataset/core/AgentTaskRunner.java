@@ -11,20 +11,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * 单任务执行器：把一条 {@link TaskGoal} 交给 Agent，阻塞等到它完成，采集全程 trace。
- *
- * <h3>同步化</h3>
- *
- * <p>{@link AgentInterface#submitUserInput} 是异步的（排队 + worker 线程）；这里用
- * "注册 TraceListener + ResponseListener + CountDownLatch" 把它包装成阻塞调用，
- * 方便脚本顺序推进。
- *
- * <p><b>注意</b>：{@code setResponseListener} 是「最后一个生效」——本类在运行期间独占它。
- * 所以数据集脚本**不能同时开 ChatPanel**（否则两边互相覆盖）。这是刻意的取舍。
- */
 public final class AgentTaskRunner {
-
     /** 单任务超时（毫秒）。超时按 TIMEOUT 处理，已采集的 trace 仍会落盘。 */
     private static final long DEFAULT_TIMEOUT_MS = 300_000L;
 

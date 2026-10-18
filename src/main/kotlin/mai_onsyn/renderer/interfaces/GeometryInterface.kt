@@ -5,19 +5,7 @@ import mai_onsyn.renderer.cpu4dkt.Tetrahedron
 import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector4f
 
-/**
- * 模型几何编辑：直接操作某个模型路径上的四面体与顶点。
- *
- * 寻址约定（与 [ShapeInterface] 一致）：
- * - name 一律是 "模型/部件" 形式的完整路径，如 "Tower/Base"；
- * - 四面体用**该模型内的索引**寻址，从 0 开始按加入顺序，不用 Tetrahedron.id；
- *   删除后其后的索引顺移，但只在同一个模型内部，不会影响别的部件；
- * - 顶点/四面体级编辑会把目标从 SHAPE 降级为 CARVED（params 不再能描述它）。
- *
- * 这些是"雕刻"级的接口，AI 的主路径应该是 [ShapeInterface] 的部件级操作。
- */
 interface GeometryInterface {
-
     /**
      * 模型整体信息：kind / params / 四面体数 / 世界包围盒 / 变换矩阵 / 子模型。
      * name 可以是一个"分组路径"（如 "Tower"），此时返回它下面所有子模型的汇总。**不列出顶点**。

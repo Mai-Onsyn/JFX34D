@@ -7,34 +7,7 @@ import mai_onsyn.renderer.utils.Coordinate4D;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * SET_CAMERA_BOOKMARK：**用指定的位置与朝向直接创建一个机位**，不读当前相机。
- *
- * <p>这是造机位的首选方式。三种指定朝向的写法（**三选一**）：
- *
- * <ol>
- *   <li><b>{@code look_at}</b>（<b>首选</b>）—— 再给一个"看向的点"，朝向由
- *       {@link CameraRecord#lookAt(String, Vector4f, Vector4f)} 自动算出。
- *       AI 只需给两个点，不用凑四个正交基，最不容易出错；</li>
- *   <li>{@code view} —— 显式给四个基向量 {@code vx/vy/vz/vw}，需要精确控制朝向时用；</li>
- *   <li>都不给 —— 用单位基（正对）。</li>
- * </ol>
- *
- * <p>{@code look_at} 与 {@code view} **不能同时给**（语义冲突）。
- *
- * <p>与 {@code SAVE_CAMERA_BOOKMARK} 的区别：本操作**不碰相机**，因此完全不受
- * 摄像机那 1 秒平滑动画影响，可在一轮里连造多个机位。
- *
- * <p>参数：
- * <ul>
- *   <li>{@code name}    —— 必填，重名报错；</li>
- *   <li>{@code pos}     —— 必填，相机所在的四维位置；</li>
- *   <li>{@code look_at} —— 可选（与 {@code view} 二选一），相机看向的四维点；</li>
- *   <li>{@code view}    —— 可选（与 {@code look_at} 二选一），四个基向量。</li>
- * </ul>
- */
 public class SetCameraBookmarkOperation extends GuardedOperation {
-
     private String name;
     private Vector4f pos;
     /** 已解析好的朝向；三种来源之一。null 表示用单位基。 */

@@ -1,14 +1,5 @@
 package mai_onsyn.renderer.animation
 
-/**
- * 一个可平滑过渡到目标值的容器。它自己带时间基准，按真实时间推进（与帧率 / 推进频率解耦），
- * 由外部循环（如 [mai_onsyn.renderer.interfaces.impl.CameraInterfaceImpl] 的 tick 线程）反复调用 [tick] 驱动。
- *
- * 语义：
- *  - [animateTo] 启动一段缓动动画，[isAnimating] 置 true；
- *  - [snapTo] 立即到值并取消动画（键盘那种"直接同步"的写入走这里）；
- *  - [tick] 每次推进一帧，动画结束的那一帧也会把 [value] 精确落到 [target]。
- */
 class AnimatedValue<T>(
     initial: T,
     private val interpolator: Interpolator<T>,

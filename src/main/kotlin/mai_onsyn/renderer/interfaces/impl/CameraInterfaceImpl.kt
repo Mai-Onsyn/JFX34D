@@ -10,36 +10,12 @@ import mai_onsyn.renderer.utils.interpolator
 import org.joml.Math.toRadians
 import org.joml.Vector4f
 
-/**
- * [CameraInterface] 的实现，兼作摄像机的**平滑动画门面**。
- *
- * 位置的写入统一收口到一个 [AnimatedValue]（唯一真相源），[Camera4D.pos] 降级为每帧被写回的输出缓存，
- * 因此 [Camera4D] 本身保持零改动。两条写入路径：
- *  - **API 路径**（[setPosition] / [moveRight] / [moveUp] / [moveAna] / [moveForward]）：触发平滑动画；
- *  - **键盘路径**（[nudgeRight] / [nudgeUp] / [nudgeAna] / [nudgeForward]）：动画进行中直接丢弃（禁用键盘），
- *    否则即时同步进 [AnimatedValue] 并立刻写回 [Camera4D]。
- *
- * 坐标系（视角）：仅 [setView] 做动画，插值用四元数 SLERP（[Coordinate4D.interpolate]），
- * 保证中间帧始终是正交基；动画起点在触发瞬间从相机实时基向量快照（[snapshotView]），
- * 所以键盘直接旋转后的姿态也能被平滑接续、不会跳变。其余六个 rotate* 仍直接透传给 [Camera4D]。
- *
- * 一个后台 tick 线程按 [tickHz] 推进动画；动画按真实时间计算进度，与帧率解耦。
- *
- * @param camera 被包装的原始摄像机（整个项目里应只有这一个实例被驱动）
- * @param tickHz 动画推进频率（Hz）
- */
 class CameraInterfaceImpl(
     val camera: Camera4D,
     var tickHz: Int = 120,
 ): CameraInterface {
-
     private val posValue = AnimatedValue(Vector4f(camera.pos), VEC4_LERP)
 
-    /**
-     * 坐标系（视角）动画。起点由 [snapshotView] 在 [setView] 触发时即时抓取，
-     * 因此键盘直接旋转（绕过本类）造成的姿态变化也能被正确接续，不会跳变。
-     * 插值用四元数 SLERP（见 [Coordinate4D.interpolate]），保证中间帧始终是正交基。
-     */
     private val viewValue = AnimatedValue(snapshotView(), Coordinate4D.interpolator())
 
     private var tickThread: Thread? = null

@@ -14,20 +14,7 @@ import mai_onsyn.renderer.cpu4dkt.MeshKind;
 
 import java.util.function.Function;
 
-/**
- * 树节点单元格：只负责「怎么显示一行」。
- * <ul>
- *   <li>文字用单元格自身的 text（叶名 + 类型配色），行尾小眼睛用 graphic + {@link ContentDisplay#RIGHT} 靠右。</li>
- *   <li><b>不要给 graphic 设 {@code prefWidth = Double.MAX_VALUE}</b>：会把单元格宽度撑成
- *       {@code Double.MAX_VALUE}，导致背景几何退化、背景完全画不出来（踩过）。</li>
- *   <li>行背景 / hover / 选中高亮一律用内联 {@code setStyle} 控制（靠监听 selected/hover 触发）。</li>
- *   <li>右键：先选中本行，再在鼠标位置弹出菜单（菜单由外部工厂构造）。</li>
- * </ul>
- *
- * <p>本类不持有模型数据，所有信息都经 {@link SceneModelAccess} 现查。
- */
 final class SceneTreeCell extends TreeCell<String> {
-
     private static final String EYE_OPEN = "M1 6 Q 8 -1 15 6 Q 8 13 1 6 M8 3.8 A 2.6 2.2 0 1 1 8 8.2 A 2.6 2.2 0 1 1 8 3.8";
     private static final String EYE_CLOSED = "M1 6 Q 8 -1 15 6 Q 8 13 1 6 M1 1 L15 11";
 

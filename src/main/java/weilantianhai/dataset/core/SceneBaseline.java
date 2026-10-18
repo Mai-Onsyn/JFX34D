@@ -20,37 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-/**
- * 「初始场景」：把一个复杂场景**存下来**，之后每题复位都回到它。
- *
- * <h3>为什么要这个</h3>
- *
- * <p>早先的复位是"清空 + 塞一个 `Tesseract`"。那个凭空多出来的模型把所有东西都带偏了：
- * `LIST_MODEL` 里多一个用户没建的东西、`model.count` 得按"1 + 新建数"算、
- * 出题器还得专门声明"只有一个 Tesseract"、提示词里又得补一条"模型不存在怎么办"。
- * 而且每道题都被迫**自带 setup**（先建后改写在同一句），测复杂操作时很别扭。
- *
- * <p>现在复位有两种：**空场景**（真的清空，什么都不塞）、或**回到这份初始场景**。
- * 于是可以先搭好一个复杂场景（例如一个带子模型的 Tower），再在上面连着测很多操作。
- *
- * <h3>怎么存的</h3>
- *
- * <p>直接借引擎自己的 {@code IOInterface.saveModel / loadModel}（那是"操作模型与文件交互"的接口，
- * 本来就属于 UI/内部调用，不是给 AI 的），落成每个根模型一个 {@code .4do} 文件
- * 加一份 {@code meta.json}。
- *
- * <p><b>已知损耗</b>（都是引擎存读格式本身决定的，写在这里免得以后当成 bug）：
- * <ul>
- *   <li>读回来一律是 {@code CARVED}（顶点已烘焙）——<b>形状参数丢了</b>，
- *       所以复位后 {@code GET_MODEL_INFO} 看到的不再是原来的类型与参数；</li>
- *   <li>模型自己的变换矩阵会被**烘进顶点**，读回来是单位矩阵 ——
- *       别拿初始场景里的模型去比对 `GET_MODEL_MATRIX` 的原始值；</li>
- *   <li>**没有四面体的模型（空 GROUP 容器）不落盘**，自然也不会被恢复
- *       （子模型照常恢复，路径不受影响 —— 因为 `Mesh4D.name` 就是完整路径）。</li>
- * </ul>
- */
 public final class SceneBaseline {
-
     /** 沿用引擎自带的后缀（{@code IOInterface.loadModel} 读的就是这个格式）。 */
     private static final String EXT = ".4do";
     private static final String META = "meta.json";
@@ -84,12 +54,6 @@ public final class SceneBaseline {
         return Files.isRegularFile(metaFile());
     }
 
-    /**
-     * 把**当前场景**保存为初始场景（内部切 FX 线程）。
-     *
-     * <p>会先清空旧的那份 —— 否则上一次保存的残留文件会被当成这一份的一部分，
-     * 复位时一起加载回来。
-     */
     public static void save(GL4DRegion region, RendererInterface renderer) throws Exception {
         FxThreads.run(() -> saveOnFx(region, renderer));
     }
@@ -141,12 +105,6 @@ public final class SceneBaseline {
         Files.writeString(metaFile(), meta.toJSONString(), StandardCharsets.UTF_8);
     }
 
-    /**
-     * 把初始场景加载进当前场景。
-     *
-     * <p><b>必须在 FX 线程上调用</b>，并且调用前场景应当是**空的**
-     * （{@code loadModel} 对同名模型会直接报错）。
-     */
     public static void load(RendererInterface renderer) throws IOException {
         for (Path f : files()) {
             renderer.getIo().loadModel("", f.toFile());

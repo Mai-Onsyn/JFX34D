@@ -9,39 +9,12 @@ import mai_onsyn.renderer.ogl3d.data.SimpleScene3D
 import mai_onsyn.renderer.ogl4d.DirectGL4DEngine
 import mai_onsyn.renderer.utils.fixedFrame
 
-/**
- * 4D 场景的画布 —— 用 compute shader 直接变换 4D 顶点, 取代 [mai_onsyn.renderer.core.deprecated.GL4DRegion]
- * 里那条「CPU(C++) 串行变换 + JNI 回传 + 重建 Mesh」的路径。
- *
- * 用法和 GL4DRegion 基本一样:
- * ```
- * val region = DirectGL4DRegion()
- * region.scene4D.meshList.add(Mesh4D(constructHypercube()))
- * box.add(region, modifier.fillMaxSize())
- * ```
- * 输入也一样: 默认鼠标键盘控制 3D 相机, 按 I 切到 4D 相机 (WASD/空格/Shift/EQ 移动,
- * 方向键 + R/Alt 做六个平面的旋转)。
- *
- * 与 GL4DRegion 的差别:
- *  - 没有后台投影线程, 4D 数据只在使用时才打包上传 (改 transform 不会重传顶点)。
- *  - 4D 网格由 [mai_onsyn.renderer.ogl4d.DirectGL4DEngine] 用同一个 basic shader 在 3D 场景之后画一遍,
- *    共用颜色/深度缓冲, 所以背景色、光照、透明、线框的语义都跟老路径一致。
- *  - 因为 GL3DRegion.setOutlineRendering 是 final 的且只作用于 3D 引擎, 4D 的线框开关
- *    走 [set4DOutlineRendering]。光照开关继续用继承来的 enableLightRendering (同一个 uniform)。
- *  - 它不继承 GL4DRegion, 所以不能传给 RendererInterface.init (那个只收 GL4DRegion)。
- */
 class GL4DRegion(
     val scene3D: SimpleScene3D = SimpleScene3D(),
     val scene4D: SimpleScene4D = SimpleScene4D()
 ) : GL3DRegion(scene3D) {
-
     private val engine = DirectGL4DEngine(scene4D, scene3D)
 
-    /**
-     * 摄像机接口实现，包装同一个 [scene4D.camera4D]，也是本画布的摄像机动画门面。
-     * Agent 走它的 [CameraInterface] 方法（平滑动画），键盘走 nudge* 方法（动画中被禁用，否则即时同步），
-     * 两边共用一个 [mai_onsyn.renderer.animation.AnimatedValue]。
-     */
     val cameraInterface = CameraInterfaceImpl(scene4D.camera4D)
 
     private var enable4DInput = false

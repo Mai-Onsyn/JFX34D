@@ -7,15 +7,7 @@ import javafx.scene.layout.StackPane;
 import mai_onsyn.renderer.core.GL4DRegion;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 
-/**
- * 中央视口：直接承载 {@link GL4DRegion}（OpenGL 渲染区域，自带 4D 键盘操作），
- * 左上角叠加「相机机位」悬浮窗（{@link CameraBookmarksView}），其余区域保持干净。
- *
- * <p>【键盘操作（由 GL4DRegion 内置）】点击视口获得焦点；I 键启用/禁用 4D 键盘输入；
- * W/S 前后、A/D 左右、空格/Shift 上下、E/Q w±。
- */
 public class ViewportPanel extends StackPane {
-
     private final CameraBookmarksView overlay;
 
     public ViewportPanel(GL4DRegion viewport, RendererInterface renderer) {

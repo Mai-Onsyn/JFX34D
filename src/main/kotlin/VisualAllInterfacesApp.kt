@@ -18,24 +18,7 @@ import mai_onsyn.renderer.utils.Direction
 import org.joml.Vector3f
 import org.joml.Vector4f
 
-/**
- * 接口聚合可视化测试：一个窗口里把所有对外接口（除 IOInterface）都跑一遍。
- *
- * 跑法（项目根目录）：
- * ```
- * mvn compile exec:java -Dexec.mainClass=VisualAllInterfacesAppKt
- * ```
- * 或者直接在 IDEA 里运行本文件的 main()。
- *
- * 能用眼睛验证的接口（背景色、线框、光照、光源、视口尺寸、帧率上限、模型变换、
- * 摄像机旋转、切片结果）都在窗口里现场演示；能算的（胞数、顶点半径、闭合性、
- * 体积守恒）同时用断言检查，结果显示在左上角，也打印到控制台。
- *
- * 需要注意：JNI 原生库按 `./jni/jfx34d_jni` 相对启动目录查找，
- * 所以务必在项目根目录启动。
- */
 class VisualAllInterfacesApp : Application() {
-
     private val results = mutableListOf<String>()
     private var passed = 0
     private var failed = 0
@@ -254,13 +237,6 @@ class VisualAllInterfacesApp : Application() {
 
     // ------------------------------------------------------------ 动画
 
-    /**
-     * 动画部分负责三件事：
-     * 1. CameraInterface：让四维摄像机在几个平面里小幅摆动（绝对角度重建，不累加，所以画面不会飘走），
-     *    形状会被"卷进/卷出"第四维，能直观看到四维旋转的样子；
-     * 2. TransformInterface：整个画廊做小幅 4D 摆动（分组路径作用到全部子模型，现场演示）；
-     * 3. SceneInterface：线框 / 实体填充每 3 秒交替一次，用眼睛确认开关真的生效。
-     */
     private fun animate(api: RendererInterface, report: Label, status: Label) {
         Thread.ofVirtual().name("visual-check-anim").start {
             var frames = 0

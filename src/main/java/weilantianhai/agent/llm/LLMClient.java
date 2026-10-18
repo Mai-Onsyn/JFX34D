@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 public class LLMClient {
-
     private final HttpClient http;
     private final String baseURL;
     private final String model;
@@ -49,13 +48,6 @@ public class LLMClient {
         return temperature;
     }
 
-    /**
-     * 返回一个除温度外全部配置相同的副本。
-     *
-     * <p>给「出题器需要高温度、判题需要零温度」这类场景用，避免调用方反射改私有字段。
-     * 若 {@code enableThinking} 为真则温度无意义（API 会忽略），但这里不做拦截，
-     * 由 {@link #applyThinking} 决定是否真的发出该字段。
-     */
     public LLMClient withTemperature(double temperature) {
         return new LLMClient(baseURL, model, apiKey, maxTokens, enableThinking,
                 reasoningEffort, temperature);
@@ -166,18 +158,6 @@ public class LLMClient {
 
     // ------------------------------------------------------------------ 内部
 
-    /**
-     * 设置思考模式。
-     *
-     * <p><b>这里踩过一个坑</b>：DeepSeek 关闭思考用的是
-     * {@code thinking: {"type": "disabled"}}，而 {@code chat_template_kwargs.enable_thinking}
-     * 是 Qwen / vLLM 的写法，DeepSeek 会**静默忽略**。之前 {@code chat(List)} 用的正是后者，
-     * 等于思考根本没被关掉；而 DeepSeek V4 系列**默认开启思考**，
-     * 于是 {@code max_tokens} 会被推理过程吃光，{@code content} 返回空串，
-     * 上层只看到"JSON 解析为空"，完全看不出原因。
-     *
-     * <p>另外思考模式**不支持 {@code temperature}**，所以只在非思考模式下传这个字段。
-     */
     private void applyThinking(JSONObject root) {
         JSONObject thinking = new JSONObject();
         if (enableThinking) {
@@ -211,14 +191,6 @@ public class LLMClient {
         return extractContent(response.body());
     }
 
-    /**
-     * 从响应体里取 content，并在取不到时给出**可诊断**的错误。
-     *
-     * <p>之前是直接取 {@code choices[0].message.content}：一旦模型把输出预算花在推理上
-     * （DeepSeek V4 系列默认开启思考模式），content 就是空串，
-     * 调用方只能看到"JSON 解析为空"，完全猜不到原因。这里把
-     * {@code finish_reason} / {@code reasoning_content} / {@code usage} 一起带进错误信息。
-     */
     private String extractContent(String rawBody) {
         JSONObject json = JSON.parseObject(rawBody);
         JSONArray choices = json.getJSONArray("choices");

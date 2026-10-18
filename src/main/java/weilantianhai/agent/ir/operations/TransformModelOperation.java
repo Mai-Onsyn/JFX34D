@@ -12,39 +12,7 @@ import weilantianhai.agent.ir.IRException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * TRANSFORM_MODEL：对模型的 5×5 变换矩阵做操作（**不改顶点**）（文档 §4.2）。
- *
- * <p>参数：
- * <ul>
- *   <li>{@code name} — 目标路径；**可以是分组路径**，此时作用于它自己和全部后代</li>
- *   <li>{@code transforms} — 变换操作数组，每项含 {@code method} 与 {@code data}</li>
- *   <li>{@code apply}（可选，默认 {@code true}）— {@code true} 追加变换；
- *       {@code false} 时**覆盖**模型矩阵（先置单位阵再依次应用）</li>
- * </ul>
- *
- * <p>六种 method：
- * <ul>
- *   <li>{@code MATRIX} — {@code row0}~{@code row4}（5×5 行主序），左乘到模型矩阵</li>
- *   <li>{@code TRANSLATE} — {@code x}/{@code y}/{@code z}/{@code w}，至少给一个，未给按 0</li>
- *   <li>{@code SCALE} — {@code all} 或 {@code x}/{@code y}/{@code z}/{@code w}，未给按 1</li>
- *   <li>{@code ROTATE} — {@code axis}（四维平面）+ {@code angle}（角度制）</li>
- *   <li>{@code CLIP} — {@code source} + {@code target} + {@code amount}</li>
- *   <li>{@code COORDINATE} — 至少给 {@code pos} 或 {@code vx}/{@code vy}/{@code vz}/{@code vw}
- *       之一，未给的保持世界坐标系</li>
- * </ul>
- *
- * <p>返回：
- * <pre>
- * # TRANSFORM_MODEL(id=12)
- * Applied transform
- * "Tower" current is:
- * (1 0 0 0 0)
- * ...
- * </pre>
- */
 public class TransformModelOperation extends GuardedOperation {
-
     /** 单个变换步骤；在 parse 阶段构造，参数错误会在 parse 阶段就抛出来 */
     @FunctionalInterface
     private interface Step {

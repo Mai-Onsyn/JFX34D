@@ -14,11 +14,6 @@ fun SimpleScene4D.requireNotContains(name: String) {
     if (find != null) throw IllegalArgumentException("Model \"$name\" already exists")
 }
 
-/**
- * 找不到模型时的报错文本，带上候选，让 AI 一次自纠而不是再查一轮。
- * 优先给同级的兄弟路径里名字接近的；一个都不像就把同级全部列出来，
- * 因为"什么都不给"对 AI 来说是最没用的报错。
- */
 fun SimpleScene4D.noSuchMeshMessage(name: String): String {
     val parent = name.substringBeforeLast('/', "").ifEmpty { null }
     val pool = (if (parent != null) childrenOf(parent).map { it.name } else meshList.map { it.name })
@@ -31,8 +26,6 @@ fun SimpleScene4D.noSuchMeshMessage(name: String): String {
     val candidates = (if (similar.isNotEmpty()) similar else pool).take(8)
     return "Model \"$name\" does not exist. Candidates: ${candidates.joinToString(", ")}"
 }
-
-
 
 /**
  * name 命中一个模型时只作用于它；name 是一个分组路径（如 "Tower"）时作用于

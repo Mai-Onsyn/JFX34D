@@ -4,14 +4,7 @@ import com.alibaba.fastjson2.JSONObject;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * RENAME_CAMERA_BOOKMARK：重命名一个机位。
- *
- * <p>参数：定位用 {@code name} 或 {@code index}（二选一，name 优先）；
- * 新名称用 {@code new_name}。
- */
 public class RenameCameraBookmarkOperation extends GuardedOperation {
-
     private JSONObject data;
     private String newName;
 

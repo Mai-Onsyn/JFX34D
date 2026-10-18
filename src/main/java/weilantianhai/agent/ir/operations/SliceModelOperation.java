@@ -6,35 +6,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * SLICE_MODEL：用一个超平面把模型**精确**切成两半，产出两个新模型（文档 §6.7）。
- *
- * <p>参数：
- * <ul>
- *   <li>{@code name} — 源模型路径（必须是无子节点的真实模型）</li>
- *   <li>{@code plane} — 超平面，由四个**仿射无关**的顶点定义，坐标取**源模型的局部坐标系**；
- *       四个顶点各给一个 {@code pos} 即可（颜色/法向量对切片无意义）</li>
- *   <li>{@code pathA} — {@code f(p) < 0} 那一半的路径，必须不存在</li>
- *   <li>{@code pathB} — {@code f(p) >= 0} 那一半的路径，必须不存在且与 {@code pathA} 不同</li>
- * </ul>
- *
- * <pre>
- * # SLICE_MODEL(id=28)
- * Successfully slice "Sculpt/Box"
- * Created "Sculpt/Left" (42 tetrahedrons, f &lt; 0)
- * Created "Sculpt/Right" (6 tetrahedrons, f &gt;= 0)
- * Source "Sculpt/Box" is unchanged
- * </pre>
- *
- * <p>切片是真正的 {@code 1:3} / {@code 2:2} 切分（体积守恒）；两个产物都是 {@code CARVED}；
- * 源模型保持不变。
- *
- * <p><b>跨语言说明</b>：渲染接口的 {@code plane} 参数是一个 {@code Tetrahedron}，
- * 而 Java 无法构造 {@code Vertex4D}，所以经由 {@link AgentBridge#sliceModel} 转发，
- * 四个点用 16 个 float 传递。
- */
 public class SliceModelOperation extends GuardedOperation {
-
     private static final String[] PLANE_KEYS = {"v0", "v1", "v2", "v3"};
 
     private String name;

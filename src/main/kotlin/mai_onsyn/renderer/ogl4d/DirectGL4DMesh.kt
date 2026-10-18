@@ -18,18 +18,7 @@ import org.lwjgl.opengl.GL30.glGenVertexArrays
 import org.lwjgl.opengl.GL30.glVertexAttribPointer
 import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
 
-/**
- * 一个 [Mesh4D] 在 GPU 上的那份资源。
- *
- * - [ssbo]: 输入, 每个四面体 36 个 float (与老路径交给 JNI 的那份数据逐字节一致)。
- * - [vbo]:  输出, compute shader 直接把变换后的顶点写进来, 布局和 `Mesh` 的顶点格式一模一样
- *           (pos3 | color4 | normal3 | uv2), 所以画的时候直接当顶点缓冲用, 中间不过 CPU。
- * - [vao]:  绑定 [vbo] 的四个顶点属性, 属性位置与 `Shader.basic` 的 basic-vertex.glsl 对齐。
- *
- * 生命周期由 [DirectGL4DEngine] 管, 只允许在渲染线程 (有 GL 上下文) 里碰。
- */
 internal class DirectGL4DMesh {
-
     var vao = 0
         private set
     var vbo = 0
@@ -52,13 +41,6 @@ internal class DirectGL4DMesh {
     /** VBO 里总共有多少个顶点 */
     val vertexCount: Int get() = tetCount * OUT_VERTICES_PER_TET
 
-    /**
-     * 上次上传时的四面体对象引用。
-     *
-     * `Tetrahedron` / `Vertex4D` 的字段全是 val, 几何一旦被改动必然换成新对象,
-     * 所以「引用没换」就等于「几何没变」—— 这样只改 transform 的时候不用重传顶点,
-     * 而 transform 是每帧当 uniform 传上去的。
-     */
     private var snapshot: Array<Tetrahedron> = emptyArray()
     private var capacityTets = 0
 
@@ -158,14 +140,6 @@ internal class DirectGL4DMesh {
         return false
     }
 
-    /**
-     * 打包成 compute shader 输入的那份布局: 每个顶点 9 个 float
-     * `pos(x,y,z,w) | color(ARGB 的位模式当 float) | normal(x,y,z,w)`, 每个四面体 36 个。
-     *
-     * **格式必须和 [mai_onsyn.renderer.cpu4dkt.Tetrahedron.pack] 完全一致** —— 它是
-     * Kotlin 侧与 shader/C++ 之间那份冻结的契约 (老路径靠 JNI 传同一份数据)。
-     * 这里自己写一份是为了不再依赖原生库 (直接渲染这条路径本来就不需要 JNI)。
-     */
     private fun pack(mesh: Mesh4D): FloatArray {
         val tets = mesh.tetrahedrons
         val out = FloatArray(tets.size * IN_FLOATS_PER_TET)
