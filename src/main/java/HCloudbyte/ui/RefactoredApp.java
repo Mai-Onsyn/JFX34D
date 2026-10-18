@@ -10,23 +10,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
-/**
- * 重构版主应用入口。
- *
- * <p>在原来的 {@code HCloudbyte.ui.Main} 里把启动行改成：
- * <pre>{@code Application.launch(RefactoredApp.class);}</pre>
- * 即可切到本套 UI（原 {@code MainApp} 保持不动，随时可切回）。
- *
- * <p>职责很薄，只做四步：
- * <ol>
- *   <li>设置深色主题（PrimerDark）；</li>
- *   <li>{@link RenderBootstrap} 建渲染视口、{@link AgentBootstrap} 初始化 Agent；</li>
- *   <li>{@link RootLayout} 装配整个界面；</li>
- *   <li>开窗，Agent 未就绪时禁用输入并弹窗提示。</li>
- * </ol>
- */
 public class RefactoredApp extends Application {
-
     @Override
     public void start(Stage stage) {
         Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());

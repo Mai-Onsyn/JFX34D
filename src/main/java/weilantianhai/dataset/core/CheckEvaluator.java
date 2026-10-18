@@ -7,54 +7,11 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * 结构化判据求值器：把 {@link weilantianhai.dataset.tasks.TaskGoal#check()} 里的每条断言
- * 在 {@link SceneSnapshot} 上求值。
- *
- * <h3>支持的断言形态</h3>
- *
- * <pre>
- * bookmark:&lt;name&gt; exists
- * bookmark:&lt;name&gt; pos ≈ [x,y,z,w]
- * model:&lt;path&gt; exists
- * model:&lt;path&gt; vertices == N
- * model:&lt;path&gt; tetrahedrons == N
- * model:&lt;path&gt; absent
- * camera.pos ≈ [x,y,z,w]
- * bookmark.count == N
- * model.count == N
- *
- * -- 需要"回复文本"的（纯查询题）
- * reply contains &lt;片段&gt;          -- 回复里出现该子串
- * reply matches &lt;正则&gt;           -- 回复匹配该正则
- *
- * -- 需要"回执"的（陷阱题：必须失败）
- * reject with &lt;片段&gt;             -- 该任务应当失败，且回执里出现该片段
- * </pre>
- *
- * <p>「≈」比数值（容差 {@link SceneSnapshot#EPS}），「==」比整数。
- * 求值失败（语法不认）返回 {@code null} 的结果，表示"这条判据无法自动判定"，
- * 脚本会把整条任务标为「建议人工打分」。
- *
- * <h3>为什么要 reply / reject</h3>
- *
- * <p>场景快照只能反映"世界变成了什么"。纯查询题世界不变（快照恒等），
- * 陷阱题则要求"正确地失败"（成功反而是错的）—— 这两类都得看文本，
- * 所以引入了 {@link Context} 把回复与回执一起带进来。
- */
 public final class CheckEvaluator {
-
     /** 断言结果。 */
     public record Result(boolean passed, String detail) {
     }
 
-    /**
-     * 求值上下文：除了场景快照，还带上**文本证据**。
-     *
-     * <p>{@code reply} 是 AI 最后给出的自然语言回答（{@code done=true} 的 content）；
-     * {@code receipts} 是所有轮的操作回执拼接。两者都可为 null，
-     * 此时依赖它们的断言会返回"无法自动判定"。
-     */
     public record Context(SceneSnapshot snapshot, String reply, String receipts) {
         public static Context of(SceneSnapshot snapshot) {
             return new Context(snapshot, null, null);
@@ -187,10 +144,6 @@ public final class CheckEvaluator {
     }
 
     private static Result evalModel(String rest, SceneSnapshot snap) {
-        // rest 形如 "A exists" / "A absent" / "A vertices == 20" / "A tetrahedrons == 5"
-        // / "A subtree_exists"
-        // 路径里可能含 '/'，但不会含空格；字段名与运算符之间必有空格。
-        // 因此按**第一个空格**切分路径与 tail 最稳。
         int sp = rest.indexOf(' ');
         if (sp < 0) return null;
         String path = rest.substring(0, sp).strip();
@@ -206,9 +159,6 @@ public final class CheckEvaluator {
             return new Result(!exists, exists ? "模型「" + path + "」不该存在" : "模型「" + path + "」确实不存在");
         }
 
-        // "subtree_exists"：路径本身或它的任一后代存在。
-        // 用于「合并子模型」这类操作 —— 合并后子模型会被吸收，
-        // 直接断言子路径会误判，只能校验这棵子树非空。
         if (tail.equals("subtree_exists")) {
             String prefix = path.endsWith("/") ? path : path + "/";
             List<String> hits = snap.modelPaths().stream()
@@ -259,13 +209,6 @@ public final class CheckEvaluator {
 
     /* ==================== 文本类断言 ==================== */
 
-    /**
-     * {@code reply contains <片段>} / {@code reply matches <正则>}
-     *
-     * <p>用于**纯查询题**：世界没变，只有回答文本能判对错。
-     * 判定前先把两边的空白与全角逗号归一化，免得「(0, 0, -10, 0)」与「(0,0,-10,0)」
-     * 因为写法差异被误判为错。
-     */
     private static Result evalReply(String s, Context ctx) {
         String reply = ctx.reply();
         if (reply == null) {
@@ -297,12 +240,6 @@ public final class CheckEvaluator {
         return null;
     }
 
-    /**
-     * {@code reject with <片段>} —— **该任务应当失败**，且回执里出现该片段。
-     *
-     * <p>用于陷阱题。注意与其它断言**语义相反**：这里"报错"才是通过。
-     * 若模型硬造出一个结果（回执 Success）反而判为不通过。
-     */
     private static Result evalReject(String s, Context ctx) {
         String receipts = ctx.receipts();
         if (receipts == null) {

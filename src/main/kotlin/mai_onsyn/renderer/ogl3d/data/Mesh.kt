@@ -223,16 +223,6 @@ class Mesh(
     private val modelMatrixBuffer = BufferUtils.createFloatBuffer(16)
     private val materialColorBuffer = BufferUtils.createFloatBuffer(4)
 
-    /**
-     * 画这个 mesh —— 就这一个入口。
-     *
-     * 内部按材质组自己跑两趟, 外面不用关心:
-     *   不透明组: 正常写深度 (混合是全局开着的, 源 alpha=1 时等价于直接覆盖)
-     *   透明组:   关深度写入 + 开混合, 并按组中心从远到近排序
-     * 画完恢复成"写深度"的干净状态。
-     *
-     * @param cameraPos 世界空间相机位置, 透明排序用
-     */
     fun draw(modelLocation: Int, cameraPos: Vector3f) {
         if (dirty || uploadedCount < 0 || groups.isEmpty()) return
 

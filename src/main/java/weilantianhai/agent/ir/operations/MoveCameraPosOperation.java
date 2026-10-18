@@ -5,19 +5,7 @@ import mai_onsyn.renderer.interfaces.CameraInterface;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * MOVE_CAMERA_POS：按单轴移动摄像机（文档 §3.1.2）。
- *
- * <p>参数：
- * <ul>
- *   <li>{@code axis} — {@code x} | {@code y} | {@code z} | {@code w}</li>
- *   <li>{@code distance} — 移动距离，可正可负</li>
- * </ul>
- *
- * <p>移动只相对于当前摄像机坐标系，即 {@code pos += v_axis * distance}，不改变视角。
- */
 public class MoveCameraPosOperation extends GuardedOperation {
-
     /** 单次移动距离上限，纯粹防呆，避免 LLM 给一个夸张值把模型甩出视野 */
     private static final float MAX_DISTANCE = 10000f;
 

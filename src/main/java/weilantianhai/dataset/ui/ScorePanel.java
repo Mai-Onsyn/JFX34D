@@ -20,15 +20,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-/**
- * 打分组件：浮在 4D 窗口右上角，展示当前任务、AI 干了什么、自动判据结果，
- * 并让打分人给出「正确 / 不正确 + 评语」。
- *
- * <p>阻塞语义：{@link #awaitScore} 会在调用线程上等待，直到打分人点「提交并继续」或「跳过」。
- * 因此它必须被非 FX 线程调用（脚本主循环线程）。
- */
 public final class ScorePanel extends StackPane {
-
     private static final String PANEL_STYLE =
             "-fx-background-color: rgba(20,22,26,0.94);"
                     + "-fx-background-radius: 12;"

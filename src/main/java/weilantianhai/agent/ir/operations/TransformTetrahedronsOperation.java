@@ -7,21 +7,7 @@ import weilantianhai.agent.ir.IRException;
 
 import java.util.List;
 
-/**
- * TRANSFORM_TETRAHEDRONS：对指定四面体应用 5×5 变换矩阵（**直接改顶点**，模型矩阵不变）（文档 §6.4）。
- *
- * <p>参数：{@code name}、{@code tets}（下标数组；**空数组 {@code []} 表示该模型内全部四面体**）、
- * {@code row0}~{@code row4}（5×5 行主序）。
- *
- * <pre>
- * # TRANSFORM_TETRAHEDRONS(id=25)
- * Success
- * "Tower/Lid" transformed 2 tetrahedrons: [0, 2]
- * Now kind is CARVED
- * </pre>
- */
 public class TransformTetrahedronsOperation extends GuardedOperation {
-
     private String name;
     private List<Integer> tets;
     private float[] matrix;

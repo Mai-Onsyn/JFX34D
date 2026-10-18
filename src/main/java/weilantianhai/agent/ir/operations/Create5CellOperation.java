@@ -5,15 +5,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * CREATE_5CELL：创建四维单纯形（5-cell / 超四面体）（文档 §5.2.2）。
- *
- * <p>参数：{@code target}、{@code name}、{@code center}、{@code size}（棱长，{@code > 0}）。
- *
- * <p>标准 4-单纯形缩放到给定棱长，共 5 个胞，每胞"去掉一个顶点"。
- */
 public class Create5CellOperation extends GuardedOperation {
-
     private ShapeTarget target;
     private Vector4f center;
     private float size;

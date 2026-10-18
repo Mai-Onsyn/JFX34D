@@ -2,35 +2,6 @@ package mai_onsyn.jfx_tools.layout
 
 import javafx.geometry.Insets
 
-/**
- * 不可变的布局参数描述对象（类似 Compose 的 `Modifier`），可以反复链式调用、复用、共享。
- *
- * 因为 Java 不允许一个类里同时存在同名的静态方法和实例方法，所以静态入口统一用 [NONE]：
- *
- * Kotlin：
- * ```kotlin
- * column.modifier = Modifier.NONE.fillMaxWidth().padding(16.0)
- * column.add(label, Modifier.NONE.weight(1.0).padding(0.0, 4.0))
- * ```
- *
- * Java：
- * ```java
- * column.setModifier(Modifier.NONE.fillMaxWidth().padding(16));
- * column.add(label, Modifier.NONE.weight(1).padding(0, 4));
- * ```
- *
- * ### 尺寸语义
- * 所有尺寸都是「外框尺寸」（border-box，和 CSS 的 `box-sizing: border-box` 一致）：
- * `Modifier.NONE.width(100.0).padding(8.0)` 的宽度是 100，内容区是 84。
- *
- * ### 谁负责什么
- * * 容器自身的 Modifier：padding 走 `Region.padding`，固定尺寸 / fill 走 `min/pref/max` 尺寸属性，
- *   所以容器放进原生 JavaFX 布局（HBox/VBox/BorderPane/StackPane…）里也保持一样的表现。
- * * 子节点的 Modifier：由父容器负责实现。其中 padding 表现为子节点与兄弟节点之间的留白
- *   （可以理解为 margin），[weight]、[alignSelf]、[fillMaxWidth]、[fillMaxHeight] 语义见各容器文档。
- *
- * 未设置的尺寸字段取值都是 [UNSET]（即 `Double.NaN`）。
- */
 class Modifier private constructor(
     /** 固定宽度（外框），未设置为 [UNSET]。 */
     val width: Double,
@@ -61,7 +32,6 @@ class Modifier private constructor(
     /** 交叉轴垂直对齐覆盖值（[Box] / [Row] 的子节点用）。 */
     val alignVertical: Alignment.Vertical?
 ) {
-
     // ------------------------------------------------------------------ 尺寸
 
     /** 固定宽度（外框）。会清掉之前的 [fillMaxWidth]。 */
@@ -225,7 +195,6 @@ class Modifier private constructor(
     )
 
     companion object {
-
         /** 表示「未设置」的哨兵值（`Double.NaN`）。 */
         @JvmField
         val UNSET: Double = Double.NaN

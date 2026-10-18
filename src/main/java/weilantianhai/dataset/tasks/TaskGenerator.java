@@ -14,34 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/**
- * LLM 自动出题器：让模型基于**真实可用操作清单**生成任务，输出可被
- * {@link TaskLoader} 读的 JSONL。
- *
- * <h3>为什么出题 prompt 必须与 agent 的 system.md 隔离</h3>
- *
- * <p>如果把 agent 的 {@code system.md}（它规定了输出 IR JSON 的格式）喂给出题器，
- * 模型会不自觉地把「答案格式」也写进任务里，甚至直接给出 IR。所以这里用**独立的出题 prompt**，
- * 只告诉它：有哪些操作类型、每个操作要什么参数、以及输出 JSON 数组的格式。
- *
- * <h3>难度分级</h3>
- *
- * <ul>
- *   <li>{@code simple} —— 单操作，照抄参数即可（如「创建一个机位」）；</li>
- *   <li>{@code medium} —— 2~3 步，需要先查询再操作（如「先看有哪些模型，再删掉其中一个」）；</li>
- *   <li>{@code complex} —— 多步 + 依赖中间结果 + 路径寻址 / 坐标计算
- *       （如「建一个 Tower，里面放 Base 和 Top，各平移不同量，最后合并」）；</li>
- *   <li>{@code trap} —— 故意给不可能/冲突的要求，看模型会不会**正确地失败**
- *       （如「机位 pos 与 look_at 完全相同」应当被拒绝而不是硬造）。</li>
- * </ul>
- *
- * <h3>自检</h3>
- *
- * <p>生成后会做一遍**可完成性过滤**：把每条任务交给同一个模型做「这个任务只靠上面的操作能不能完成」
- * 的二分类判断，丢掉判为不可完成的（可关，见 {@link Options#selfFilter}）。
- */
 public final class TaskGenerator {
-
     /** 出题参数。 */
     public static final class Options {
         public int count = 20;
@@ -298,14 +271,6 @@ public final class TaskGenerator {
 
     /* ==================== 操作清单（从注册表导出） ==================== */
 
-    /**
-     * 从 {@link OperationRegistry} 导出真实可用操作清单。
-     *
-     * <p>注意：{@code OperationRegistry} 只暴露 {@code creat(type)} 与 {@code size()}，
-     * 没有「列出所有 type」的 API。这里为了**保持权威**，改为从注册表逐个探测已知 type，
-     * 探测不到的不列出——这样一旦注册表增删操作，出题清单会自动跟随。
-     * 参数说明则维护在下面的 {@link #OPERATION_DOCS} 里。
-     */
     private static String operationCatalog() {
         OperationRegistry probe = new OperationRegistry();
         StringBuilder sb = new StringBuilder();

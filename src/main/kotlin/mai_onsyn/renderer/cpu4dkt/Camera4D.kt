@@ -27,7 +27,6 @@ class Camera4D(
     var near: Float = 0.1f,
     var far: Float = 100f,
 ) {
-
     // 通用私有工具：把 (a, b) 这一对基向量在它们的平面内旋转
     private inline fun rotatePlane(
         a: Vector4f, b: Vector4f, angle: Float,
@@ -62,12 +61,6 @@ class Camera4D(
     fun moveAna(d: Float)    { pos.add(vz * d) }
     fun moveForward(d: Float){ pos.add(vw * d) }
 
-    /**
-     * 是否启用透视投影。
-     * `true`（默认）= 透视：投影后除以深度（第 5 分量），近大远小；
-     * `false` = 正交：不除深度，可见范围由 [orthoHalfExtent] 决定。
-     * 由 `SceneInterface.setPerspectiveProjection` 设置。
-     */
     var perspective: Boolean = true
 
     /**
@@ -100,16 +93,6 @@ class Camera4D(
         )
     }
 
-    /**
-     * 正交投影矩阵：把 4D 顶点平行投影到 3D 视口，没有近大远小。
-     *
-     * 与透视版唯一的**结构**差别是最后一行是 `[0,0,0,0,1]` —— 投影后第 5 分量恒为 1，
-     * 于是 compute shader 里的 `ndc = (c0,c1,c2)/c4` 不再带深度除法，远近不再缩放。
-     *
-     * 可见半幅固定取 [orthoHalfExtent]（与 fov 无关），所以缩放不随距离变化，符合正交投影直觉。
-     * 缩放的实现与透视版一致：`ndc_i = view_i / (orthoHalfExtent * aspect_i)`，
-     * 再乘 `viewPortLength * 0.5` 落到视口立方体上。
-     */
     fun orthographicProjectionMatrix(aspectX: Float = 1f, aspectZ: Float = 1f): Matrix5f {
         val sy = 1f / max(1e-6f, orthoHalfExtent)
         return Matrix5f(

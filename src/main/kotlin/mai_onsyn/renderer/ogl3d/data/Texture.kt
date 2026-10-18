@@ -49,11 +49,6 @@ class GLMaterial(
      */
     var vertexAlpha: Boolean = false
 
-    /**
-     * 材质带镂空/半透明: 贴图里有 alpha < 255 的像素, 或者顶点色 alpha != 1。
-     * 这种组要放到透明那一遍里画: 关深度写入 + 开混合,
-     * 让边缘像素按自己的 alpha 和后面的像素混合。
-     */
     var transparent: Boolean = false
         private set
 

@@ -5,13 +5,6 @@ import mai_onsyn.renderer.ogl3d.data.Triangle
 import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector3f
 
-/**
- * 圆锥，对应文档 §5.3 的 `CONE`。
- *
- * - 轴线沿 **+Y**；底面圆在 `y = center.y - height/2`，锥顶在 `y = center.y + height/2`；
- * - [segments] 为圆周分段数（≥3），**第一个底面点在 +X 方向**；
- * - 底面 + 侧面都生成，法向朝外，结果**封闭**。
- */
 fun createCone(
     radius: Float = 1f,
     height: Float = 1f,

@@ -23,22 +23,7 @@ import org.joml.Vector4f;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 视口左上角悬浮窗：摄像机机位（书签）管理。半透明深色玻璃面板，可折叠、列表可滚动。
- *
- * <p>展开时（宽 300）：
- * <pre>
- *   ┌ 相机机位  ………………  [记录] [▾]
- *   ├ 机位1  (1.2, 3.4, -2.0, 0.5)     <-- 单行：名称 + 位置
- *   └ …
- * </pre>
- * 折叠时：整块收成一个「相机机位 ▸」小按钮（宽高都收缩）。
- *
- * <p>交互：左键点击某行 = 切到该机位；右键菜单 = 重命名 / 删除。
- * 数据由 {@link HCloudbyte.ui.interfaces.UIInterface} 对外提供（AI 可增删查机位）。
- */
 public class CameraBookmarksView extends VBox {
-
     /** 展开时的固定宽度。 */
     private static final double EXPANDED_WIDTH = 200;
     /** 列表最大高度：超出后滚动，避免悬浮窗盖住整个视口。 */
@@ -330,12 +315,6 @@ public class CameraBookmarksView extends VBox {
         renderer.getCamera().setView(record.getView());
     }
 
-    /**
-     * 应用第 {@code index} 个机位；越界抛 {@link IndexOutOfBoundsException}。
-     *
-     * <p>供 {@link HCloudbyte.ui.interfaces.UIInterface} 的 AI 调用入口使用：
-     * 内部先 {@link #checkIndex(int)} 校验，再走与左键点击行完全相同的 {@link #applyRecord(CameraRecord)}。
-     */
     public void applyRecord(int index) {
         applyRecord(records.get(checkIndex(index)));
     }

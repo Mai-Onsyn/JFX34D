@@ -9,14 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 一条完整的数据集记录：一次「任务 → AI 执行 → 人工/自动打分」的全过程。
- *
- * <p>序列化目标：JSONL（一行一条），分类存放于
- * {@code .workbuddy/datasets/raw/<date>/<model>__<category>.jsonl}。
- */
 public final class TaskRunRecord {
-
     /** 打分标签枚举。 */
     public enum Verdict {
         CORRECT, INCORRECT, SKIP, TIMEOUT, ERROR
@@ -90,12 +83,6 @@ public final class TaskRunRecord {
         return !rounds.isEmpty() && rounds.stream().allMatch(RoundTrace::getExecOk);
     }
 
-    /**
-     * 所有轮的操作回执拼接（用于 {@code reject with ...} 这类陷阱题判据）。
-     *
-     * <p>陷阱题要看的是「有没有报错、报的什么错」，只在单轮回执里有，
-     * 所以全部拼起来一次给出。
-     */
     public String allReceipts() {
         StringBuilder sb = new StringBuilder();
         for (RoundTrace t : rounds) {
@@ -107,12 +94,6 @@ public final class TaskRunRecord {
         return sb.toString();
     }
 
-    /**
-     * AI 最后给出的自然语言回答（用于 {@code reply contains ...} 这类查询题判据）。
-     *
-     * <p>取最后一轮 {@code done=true} 的 content —— 那是模型对用户的正式答复。
-     * 若没有（例如任务超时），退回 {@link #getReplyMarkdown()}。
-     */
     public String finalAnswer() {
         for (int i = rounds.size() - 1; i >= 0; i--) {
             RoundTrace t = rounds.get(i);

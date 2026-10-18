@@ -10,17 +10,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 任务清单加载：从 JSONL 文件读任务，或使用内置清单。
- *
- * <p>JSONL 每行一个对象：
- * <pre>
- * {"id": 1, "category": "camera_bookmark", "prompt": "...", "check": "...", "note": "..."}
- * </pre>
- * {@code id} 可省（按行号自动编号）。
- */
 public final class TaskLoader {
-
     private TaskLoader() {
     }
 
@@ -51,22 +41,6 @@ public final class TaskLoader {
         return tasks;
     }
 
-    /**
-     * 内置任务清单：覆盖六大类的一张最小可跑集合。
-     *
-     * <h3>两条硬规则（都踩过坑）</h3>
-     *
-     * <ol>
-     *   <li><b>题目之间不能有状态依赖。</b>
-     *       {@code SceneSnapshotter.reset()} 在**每道题执行前**都会清空模型树 / 机位 / 相机，
-     *       所以"这题用上题建的 Box"必然失败 —— 记录下来的不是模型能力，而是"找不到模型"。
-     *       每道题都要**自带 setup**（在同一句 prompt 里先建后改）。
-     *       （场景复位成空场景或"初始场景"，见 {@code SceneBaseline}；
-     *       无论哪种，题目的起点都由你自己在 prompt 里交代清楚。）</li>
-     *   <li><b>判据要能判。</b> 纯查询题用 {@code reply contains ...}，
-     *       陷阱题用 {@code reject with ...}（详情见 {@link TaskGoal}）。</li>
-     * </ol>
-     */
     public static List<TaskGoal> builtin() {
         List<TaskGoal> t = new ArrayList<>();
 

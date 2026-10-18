@@ -7,22 +7,7 @@ import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector4f
 import kotlin.math.abs
 
-/**
- * 用四维超平面精确切割四面体。
- *
- * 超平面由四个仿射无关的点定义，法向量用四维广义叉积求出，f(p) = n·p - d。
- *
- * 被跨越的四面体只有两种切法：
- * - 1 : 3  一侧是一个四面体，另一侧是一个三棱柱；
- * - 2 : 2  两侧各是一个三棱柱。
- * 三棱柱按标准方式分解为 3 个四面体。
- *
- * 落在超平面上的顶点统一按"非负"一侧参与分类（符号扰动）。这样顶点共面、棱共面
- * 这些边界情形不需要单独分支：退化出来的子四面体（重复顶点）会被丢弃，
- * 既不会重复计入，也不会漏掉体积。
- */
 internal object TetrahedronSlicer {
-
     private const val EPS = 1e-6f
 
     /** f(p) = n·p - d；f < 0 归 A，f >= 0 归 B */

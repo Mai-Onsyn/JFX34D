@@ -6,15 +6,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 纯路径建树：只吃「完整路径集合」，不依赖任何渲染 / 模型对象。
- *
- * <p>规则：路径按 {@code /} 分段，每段拼出一个完整路径作为节点值。
- * 中间段即使不是真实模型（如 {@code Tower/Upper}）也会自动建出结构节点。
- * 节点只存自己的完整路径，绝不缓存模型数据。
- */
 final class SceneTreeBuilder {
-
     private SceneTreeBuilder() {
     }
 

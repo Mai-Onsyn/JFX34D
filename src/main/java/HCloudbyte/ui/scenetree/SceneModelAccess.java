@@ -8,14 +8,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * 场景模型只读门面：把「某路径是不是真实模型」「它的类型/可见性」这类查询收口在这里。
- *
- * <p>树节点只存路径字符串，不持有任何 {@link Mesh4D}；需要模型信息时都走这里。
- * 真实模型通过 {@link ModelInterface#getModel(String)} 取，取不到（结构节点）按 null 处理。
- */
 final class SceneModelAccess {
-
     private final ModelInterface model;
     /** 当前场景全部真实模型的完整路径（每次重建树时刷新）。 */
     private volatile Set<String> realPaths = Set.of();

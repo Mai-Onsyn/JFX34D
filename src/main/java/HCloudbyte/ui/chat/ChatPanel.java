@@ -28,16 +28,7 @@ import weilantianhai.agent.interfaces.ResponseListener;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 右侧聊天视图（语音建模模式）。
- *
- * <p>已接入 agent 侧 {@link AgentInterface}（队列 + worker 线程架构）：
- * {@code submitUserInput(text)} 提交自然语言指令 → worker 线程 LLM → IR JSON →
- * CommandExecutor 执行到 RendererInterface（黑色 GL 视口响应），
- * 结果经 {@code setResponseListener} 的 onResponse / onError 回到 UI 线程更新气泡。
- */
 public class ChatPanel extends VBox {
-
     private static final String STYLE_SENDING =
             "-fx-background-color: rgba(58,62,67,0.95); -fx-background-radius: 14;"
                     + " -fx-text-fill: #c4c9cf; -fx-font-size: 12px;";
@@ -263,12 +254,6 @@ public class ChatPanel extends VBox {
 
     /* ==================== 消息行的右键删除 ==================== */
 
-    /**
-     * 把一条消息行加入对话区，并挂上右键「删除」菜单。
-     *
-     * <p>HBox 是 Pane，没有 {@code setContextMenu}，所以用 {@code setOnContextMenuRequested}
-     * 手动弹出；事件会从气泡 Label 冒泡上来，点气泡或点行空白处都能触发。
-     */
     private void addMessageRow(HBox row) {
         row.setOnContextMenuRequested(e -> {
             ContextMenu menu = new ContextMenu();

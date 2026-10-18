@@ -58,57 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 数据集生成脚本的主窗口。
- *
- * <h3>为什么是独立的 {@code Application}</h3>
- *
- * <p>它复用 {@link RenderBootstrap} 与 {@link AgentBootstrap} 建渲染器与 Agent，
- * 但**不建 {@code RootLayout}**（那套 UI 里的 {@code ChatPanel} 会抢
- * {@code setResponseListener}，与数据集采集冲突）。窗口只放：
- * 4D 视口 + 左上角机位悬浮窗 + 右上角打分组件 + 顶部进度条。
- *
- * <h3>两阶段启动（重要）</h3>
- *
- * <p>窗口起来后**先停在开始页**（{@link StartPanel}），让用户选好模型与题库 ——
- * 只有点了「开始」才进入执行页跑循环。理由是"选模型/选题库/决定要不要落盘"属于**实验配置**，
- * 应该发生在实验开始前，而不是跑起来之后手忙脚乱地补。
- *
- * <pre>
- *   启动 → 开始页（选模型 / 选题库 / 选数据集目录 / 写入开关）
- *          ↑ 页内可直接「出题…」生成新题库，生成完自动选中
- *          └─ [开始] → 执行页（跑题 + 打分）
- * </pre>
- *
- * <p>开始页**只盖住 4D 视口**（是 {@code viewportStack} 的一层），不盖顶栏与日志 ——
- * 早期版本铺满整窗，把顶栏的「出题…」按钮挡住了，想"先出题再开始"就点不到。
- *
- * <p>执行页顶栏另有**模型** / **题库** / **写入数据集** / **保留上一题场景** / **初始场景**
- * 一组控件：题目之间可以随便换。换题库会在**下一题**生效（当前题不中断）。
- *
- * <p><b>复位到哪，三种模式（顶栏可切）</b>：
- *
- * <table>
- *   <caption>复位模式</caption>
- *   <tr><th>保留上一题场景</th><th>复位到初始场景</th><th>每题开始时</th></tr>
- *   <tr><td>关</td><td>关</td><td>清成**空场景**（什么都不塞）</td></tr>
- *   <tr><td>关</td><td>开</td><td>回到 {@code data/scene/baseline} 里存的那份场景</td></tr>
- *   <tr><td>开</td><td>—</td><td>**完全不复位**，接着上一题继续</td></tr>
- * </table>
- *
- * <p>「存为初始场景」按钮把**当前场景**存下来当起点 —— 想测复杂操作时，
- * 先搭好一个复杂场景再定成起点即可，不必每道题都自带 setup。
- * 详见 {@link SceneBaseline}（含该存读格式的已知损耗）。
- *
- * <p>关掉「写入数据集」就是**试跑** —— 照跑照打分，但不写 {@code raw/} 与 {@code summary/}。
- *
- * <h3>启动方式</h3>
- *
- * <p>在 IDE 里直接 Run {@link DatasetLauncher}（不能用 javac 手搓 classpath —— 渲染侧是 Kotlin，
- * 且 {@code target/classes} 的 UI 部分是旧布局）。命令行参数见 {@link #main}。
- */
 public class DatasetApp extends Application {
-
     /** 模型下拉框的两个取值（同时也是落盘用的模型标识）。 */
     public static final String MODEL_DEEPSEEK = "deepseek";
     public static final String MODEL_QWEN = "qwen";
@@ -148,41 +98,12 @@ public class DatasetApp extends Application {
     private ComboBox<String> modelBox;
     private ComboBox<String> bankBox;
 
-    /**
-     * 「写入数据集」开关的**唯一真值**。
-     *
-     * <p>开始页与顶栏各有一个 CheckBox，都双向绑定到这个属性 ——
-     * 所以在哪边拨动都立刻生效，不会出现"两处开关打架"。
-     * 关掉时题目照跑照打分，只是**不落盘**（也不写 summary），适合试跑刷题不打脏数据。
-     */
     private final javafx.beans.property.BooleanProperty writeToDatasetProp =
             new javafx.beans.property.SimpleBooleanProperty(true);
 
-    /**
-     * 「保留上一题场景」开关的**唯一真值**。默认关闭。
-     *
-     * <p>关闭（默认）：每题开始前 {@link SceneSnapshotter#reset()} ——
-     * 清空模型树 + 机位、相机回基线，然后留空或加载初始场景。保证**每题起点一致**。
-     *
-     * <p>开启：**完全不复位**，各题接着上一题继续，于是下一题能直接引用上一题建出来的模型
-     * （可以做"累积式"任务）。代价是各题起点不再一致，"这题失败"可能源于上一题残留。
-     * 没有复位也就没有复位自检 —— 那本来就是为"每题复位"设计的。
-     */
     private final javafx.beans.property.BooleanProperty keepSceneProp =
             new javafx.beans.property.SimpleBooleanProperty(false);
 
-    /**
-     * 「复位到初始场景」开关的唯一真值。
-     *
-     * <p>默认值 = **是否已经存过初始场景**（存过就默认用它，没存过就只能复位成空场景）。
-     *
-     * <p>与 {@link #keepSceneProp} 的分工：
-     * <ul>
-     *   <li>{@code keepScene} 开 → **完全不复位**，接着上一题继续；</li>
-     *   <li>{@code keepScene} 关 + 本开关开 → 每题复位到**初始场景**；</li>
-     *   <li>两个都关 → 每题复位成**空场景**。</li>
-     * </ul>
-     */
     private final javafx.beans.property.BooleanProperty baselineResetProp =
             new javafx.beans.property.SimpleBooleanProperty(SceneBaseline.exists());
 
@@ -519,15 +440,6 @@ public class DatasetApp extends Application {
 
     /* ==================== 初始场景 ==================== */
 
-    /**
-     * 「存为初始场景」：把**当前场景**存下来，之后每题复位就回到它。
-     *
-     * <p>放到后台线程做（要落盘，且走一次 FX 线程切换），避免卡界面。
-     * 保存完自动把「复位到初始场景」勾上。
-     *
-     * <p>典型用法：先跑一个「把场景搭好」的任务（记得关掉写入数据集），
-     * 看着场景里东西搭齐了，再点这个按钮把它定成起点。
-     */
     private void saveBaseline() {
         Thread t = new Thread(() -> {
             try {
@@ -671,21 +583,6 @@ public class DatasetApp extends Application {
     /** {@code --generate} 模式下显式指定的输出文件（{@code --tasks=}）。 */
     private static Path explicitTaskFile;
 
-    /**
-     * 新题目的起始 id。
-     *
-     * <p>基准是**输出文件**，不是"当前选中的题库"：
-     *
-     * <ul>
-     *   <li>写进一个**全新的**题库文件 → 从 **1** 开始（它是独立的题集，
-     *       凭什么叫 15 号？）；</li>
-     *   <li>写进一个**已存在**的文件（`--generate --tasks=已有.jsonl`）→ 接着它自己的
-     *       最大 id 往下排，避免覆盖既有编号。</li>
-     * </ul>
-     *
-     * <p>早期版本按"当前选中的题库"算，于是拿内置题（1~14）当基准，
-     * 新出的题一律从 15 起 —— 新题库里凭空多出一段编号，看起来像丢了十几道题。
-     */
     private int startIdFor(Path out) {
         if (out == null || !Files.exists(out)) {
             return 1;
@@ -720,12 +617,6 @@ public class DatasetApp extends Application {
 
     /* ==================== 主循环（后台线程） ==================== */
 
-    /**
-     * 跑题主循环。
-     *
-     * <p>每道题开始前都会**重新读一次题库与模型** —— 这就是"页面内换题库/换模型在下一题生效"
-     * 的实现方式：换题库不中断正在跑的题，也不产生半新半旧的混合批次。
-     */
     private void runLoop() {
         List<TaskGoal> tasks;
         try {
@@ -792,12 +683,6 @@ public class DatasetApp extends Application {
             record.setApiModel(taskApiModel);
 
             try {
-                // 1. 复位场景（或按开关跳过）
-                //
-                //    - 「保留上一题场景」开 → **完全不复位**，接着上一题继续；
-                //    - 否则 → reset()：清空 + 相机回基线，然后按「复位到初始场景」开关
-                //      决定是留空还是把初始场景加载回来。reset() 内部会自检，
-                //      复位结果与期望不符就抛异常，不会静默污染后续结论。
                 if (!keepScene()) {
                     snapshotter.reset();
                 }
@@ -925,13 +810,6 @@ public class DatasetApp extends Application {
         return keepSceneProp.get();
     }
 
-    /**
-     * 自动判据求值（无判据返回 null）。
-     *
-     * <p>带上 {@link CheckEvaluator.Context}：除了末态快照，还提供 AI 的**回复文本**
-     * 与**操作回执**，让纯查询题（{@code reply contains ...}）与
-     * 陷阱题（{@code reject with ...}）也能自动判定。
-     */
     private CheckEvaluator.Report evaluateAuto(TaskGoal task, TaskRunRecord record) {
         if (!task.hasCheck()) return null;
         var snap = record.getSnapshotAfter();
@@ -1006,15 +884,6 @@ public class DatasetApp extends Application {
         a.show();
     }
 
-    /**
-     * 当前被测试模型的**分组标识**（落盘文件名与汇总表分组都用它）。
-     *
-     * <p>它一定是 {@link #MODEL_DEEPSEEK} / {@link #MODEL_QWEN} 之一 —— 是**受控词表**，
-     * 不是 API 模型名。历史教训：早期版本这里返回 {@code deepseek.properties} 里的
-     * {@code model=}（值是 {@code deepseek-flash}），后来改成 {@code modelKey}（{@code deepseek}），
-     * 于是汇总表里同一个模型裂成了 {@code deepseek} / {@code deepseek-flash} 两行。
-     * 具体 API 名走 {@link #currentApiModelName()}，两者**永远不要混用**。
-     */
     private String currentModelName() {
         return modelKey;
     }
@@ -1039,27 +908,6 @@ public class DatasetApp extends Application {
         }
     }
 
-    /**
-     * 入口。**建议从 {@link DatasetLauncher} 启动**（见那里的说明：主类继承 Application
-     * 会在 classpath 模式下触发"缺少 JavaFX 运行时组件"报错）。
-     *
-     * <pre>
-     * 参数（可选，任意顺序）：
-     *   --bank=&lt;name&gt;          题库名（data/tasks/ 下的文件名，或"(内置 14 题)"）；缺省内置
-     *   --tasks=&lt;path&gt;         直接指定题库文件（等价于 --bank，优先级更高）
-     *   --data=&lt;dir&gt;            数据集根目录；缺省 data/dataset
-     *   --auto                   全自动模式（不做人工打分，直接按判据落盘）
-     *   --model=deepseek|qwen    起始被测试模型（缺省 deepseek）
-     *   --no-start-page          跳过开始页，直接开跑
-     *   --keep-scene             题目之间**不清场景**（下一题接着上一题，完全不复位）
-     *   --baseline               复位到**初始场景**（{@code data/scene/baseline}，需先在界面里存过）
-     *
-     *   --generate               只出题不跑循环；生成 JSONL 后退出
-     *   --count=&lt;n&gt;              --generate 的题目数量（缺省 20）
-     *   --difficulty=&lt;d&gt;         simple|medium|complex|trap|mixed（缺省 mixed）
-     *   --category=&lt;c&gt;           camera|camera_bookmark|model_tree|transform|shape|carve|composite|mixed
-     * </pre>
-     */
     public static void main(String[] args) {
         for (String a : args) {
             if (a.startsWith("--tasks=")) {

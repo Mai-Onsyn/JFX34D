@@ -8,26 +8,9 @@ import org.joml.times
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * 三维模型变换，语义与 `cpu4dkt` 的 `Transform4D` 完全对齐：
- * 每个变换都按 `matrix ← T⁻¹ · new · T · matrix` 计算，即
- * **"在当前变换坐标系下解释，然后左乘到已有矩阵上"**。
- *
- * `T` / `T⁻¹` 由 [setTransformCoordinate] 设置，默认是世界坐标系（单位阵）。
- *
- * 约定（与文档 §0.2 / §4.2 / §5.3.3 一致）：
- * - 顶点是**列向量**，`p_out = matrix · p_in`；平移量写在矩阵的**第 4 列**；
- * - 旋转在二维平面内进行，平面 `(a, b)` 上 **a 轴转向 b 轴为正**：
- *   `a' = a·cos θ − b·sin θ`，`b' = a·sin θ + b·cos θ`；
- * - 角度一律是**角度制**，内部 `toRadians`。
- *
- * 注意 JOML 的 `Matrix4f` 是**列主序**（字段名 `m<列><行>`），和 `Matrix5f` 的行主序不同，
- * 下面构造旋转矩阵时 16 个参数依次是 col0、col1、col2、col3。
- */
 class Transform(
     var matrix: Matrix4f = Matrix4f()
 ) {
-
     // T       世界 -> 当前坐标系
     private var tT = Matrix4f()
     // T^(-1)  当前坐标系 -> 世界
@@ -59,12 +42,6 @@ class Transform(
         matrix = tTn1 * new * tT * matrix
     }
 
-    /**
-     * 在二维平面内旋转，[angle] 为角度制。
-     *
-     * 三维只支持三个平面：[Direction.Plane.XY] / [Direction.Plane.XZ] / [Direction.Plane.YZ]，
-     * 传 `XW` / `YW` / `ZW` 会抛 `IllegalArgumentException`。
-     */
     fun rotate(plane: Direction.Plane, angle: Float) {
         val r = Math.toRadians(angle.toDouble())
         val c = cos(r).toFloat()

@@ -10,16 +10,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/**
- * 3D 基本几何体生成器的共享工具（对应文档 §5.3 的 `base` 几何体）。
- *
- * 所有生成器统一约定：
- * - 返回 `MutableList<Triangle>`（与 [createCube] 一致），可再 `.toMesh()` 包成 Mesh；
- * - **轴线沿 +Y**（球除外，球心在原点），位置以 [center] 为参照；
- * - 结果**封闭**、每个平面片法向**朝外**（`createPrism4` / `createCone4` 建议封闭底面）；
- * - 颜色缺省 `#FFB0B0B0`（文档 §5.3.1）。
- */
-
 /** 文档 §5.3.1 的默认顶点色 `#FFB0B0B0` */
 internal val DEFAULT_MESH_COLOR: ColorARGB = ColorARGB(1f, 176 / 255f, 176 / 255f, 1f)
 

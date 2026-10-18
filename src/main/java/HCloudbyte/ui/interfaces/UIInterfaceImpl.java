@@ -6,15 +6,7 @@ import HCloudbyte.ui.viewport.CameraRecord;
 
 import java.util.List;
 
-/**
- * {@link UIInterface} 的真实实现：把接口调用接到 UI 状态上。
- * <ul>
- *   <li>选中模型路径 → 场景集合树（{@link SceneTree}）当前选中节点；</li>
- *   <li>摄像机机位 → 视口机位悬浮窗（{@link CameraBookmarksView}）的机位列表。</li>
- * </ul>
- */
 public class UIInterfaceImpl implements UIInterface {
-
     private final SceneTree sceneTree;
     private final CameraBookmarksView overlay;
 

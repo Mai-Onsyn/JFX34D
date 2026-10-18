@@ -5,24 +5,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import mai_onsyn.renderer.ogl3d.data.Mesh;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * CREATE_PRISM4：以 3D 网格为底面，沿 w 轴从 {@code ws} 拉伸到 {@code we}（文档 §5.2.5）。
- *
- * <p>参数：{@code target}、{@code name}、{@code base}（3D 网格 DSL，见 {@link MeshBaseSpec}）、
- * {@code ws}、{@code we}。
- *
- * <pre>
- * # CREATE_PRISM4(id=18)
- * Successfully create "Tower/Body" (PRISM4)
- * Base: PRISM sides=6 radius=1 height=2 (20 triangles), transforms=[ROTATE]
- * w range=(-1.5, 1.5)
- * Tetrahedrons: 60
- * </pre>
- *
- * <p>要求 {@code ws != we}；{@code ws > we} 时实现会自动交换，返回文案里给出归一化后的区间。
- */
 public class CreatePrism4Operation extends GuardedOperation {
-
     private ShapeTarget target;
     private MeshBaseSpec base;
     private float ws;

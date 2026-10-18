@@ -25,16 +25,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-/**
- * 聚合测试：把所有对外接口（除 IOInterface，按约定不实现）跑一遍。
- *
- * 只能靠窗口看出来的部分（背景色 / 线框 / 光照 / 光源 / 视口尺寸 / 帧率上限）
- * 依赖 GL 上下文和 JavaFX，单元测试里造不出 GL4DRegion，放到
- * `VisualAllInterfacesApp` 那个可视化测试里做（那边同样会断言并打印结果）。
- * 其余接口全部在这里用数学方法验证。
- */
 class AllInterfacesTest {
-
     // ------------------------------------------------------------ 测试脚手架
 
     private class Api {
@@ -707,9 +698,4 @@ private fun planeOf(points: List<Vector4f>): Tetrahedron =
 
 private fun cubeBase(size: Float = 2f): Mesh = Mesh(createCube(size = size))
 
-/**
- * 四维零向量。
- * JOML 的 `Vector4f()` 是 `(0,0,0,1)`（齐次坐标），当"原点"用会悄悄把 w 抬到 1，
- * 所以测试里一律用这个工厂，而且每次返回新实例（避免共享可变对象被改）。
- */
 private fun zero4(): Vector4f = Vector4f(0f, 0f, 0f, 0f)

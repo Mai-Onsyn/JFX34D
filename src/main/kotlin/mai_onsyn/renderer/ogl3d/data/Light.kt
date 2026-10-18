@@ -3,18 +3,6 @@ package mai_onsyn.renderer.ogl3d.data
 import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Vector3f
 
-/**
- * 光源, 纯数据, 不碰 GL。
- *
- * 位置/方向都是**世界空间**, 和相机 viewPos 一个坐标系。
- * 颜色用 [ColorARGB] (提交给 shader 时 /255 转成 0..1 的浮点色)。
- * 环境光不在光源上, 在场景上 ([Scene3D.getAmbient])。
- *
- * 两种类型, 靠 [direction] 区分 (和 C++ 侧 LightType::Point / Face 对应):
- *   - 点光源: [direction] == null, 各向均匀
- *   - 面光源: [direction] != null, 只照它朝向的反方向那一侧,
- *             方向衰减 = max(0, -dot(dir, L)), L 是片元指向光源的单位向量
- */
 class Light @JvmOverloads constructor(
     /** 光源名称, 用来区分是哪个光源 */
     var name: String = "Light",

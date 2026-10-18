@@ -1,19 +1,6 @@
 package mai_onsyn.jfx_tools.layout
 
-/**
- * 对齐方式常量（[Box] / [Column] / [Row] 共用）。
- *
- * * [Horizontal]：左 / 中 / 右。作为 [Column] 的交叉轴对齐，也可以给 [Row] 的子节点通过
- *   `Modifier.alignSelf(Alignment.Horizontal)` 单独指定。
- * * [Vertical]：上 / 中 / 下。作为 [Row] 的交叉轴对齐，也可以给 [Column] 的子节点单独指定。
- * * [Box]：[Box] 支持的 9 种对齐（3 x 3 组合）。
- *
- * Kotlin：`Alignment.Horizontal.CENTER`、`Alignment.Box.BOTTOM_END`
- *
- * Java：`Alignment.Horizontal.CENTER`、`Alignment.Box.BOTTOM_END`、`Alignment.box(...)`
- */
 class Alignment private constructor() {
-
     /** 水平方向对齐。 */
     enum class Horizontal {
         START, CENTER, END
@@ -32,7 +19,6 @@ class Alignment private constructor() {
     }
 
     companion object {
-
         /** 由水平 + 垂直对齐组合出一个九宫格对齐。 */
         @JvmStatic
         fun box(horizontal: Horizontal, vertical: Vertical): Box = when (horizontal) {

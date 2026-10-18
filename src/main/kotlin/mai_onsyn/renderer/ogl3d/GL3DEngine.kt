@@ -101,11 +101,6 @@ class GL3DEngine(
         GLMaterial.uMapBump = glGetUniformLocation(program, "material.mapBump")
 
         glEnable(GL_DEPTH_TEST)
-        // 混合全局开着, 别再按材质临时切: 切来切去容易和别处的状态打架。
-        //   rgb:   src*a + dst*(1-a)   普通的按 alpha 覆盖
-        //   alpha: dst*(1-a) + src     这一项很关键 —— 这块纹理是要交给 JavaFX 合成的,
-        //          用它 alpha 只会朝 1 靠, 不会因为透明面重叠而累加/饱和。
-        //          (之前用 GL_ONE, GL_ONE 累加, 重叠面一多 alpha 就飘, 画面会闪)
         glEnable(GL_BLEND)
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
     }
@@ -182,13 +177,6 @@ class GL3DEngine(
         fpsCounter.tick()
     }
 
-    /**
-     * 把场景里的光源打包成 uniform 数组。
-     *
-     * 环境光来自场景 (scene.getAmbient()), 不是光源的属性;
-     * 点光源的方向写成 0 向量 (shader 里 0 向量 → 方向衰减恒为 1);
-     * 面光源的方向直接写它的朝向; 颜色是 ColorARGB, 这里转成 0..1 的浮点。
-     */
     private fun uploadLights(lights: List<Light>) {
         val count = minOf(lights.size, MAX_LIGHTS)
 

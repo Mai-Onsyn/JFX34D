@@ -11,27 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-/**
- * 把原始数据集记录聚合成**量化评估指标**。
- *
- * <h3>指标定义（漏斗式分母，这是关键）</h3>
- *
- * <p>三个「率」是层层收窄的漏斗，分母不同，不能统一用总轮数：
- *
- * <pre>
- *   所有轮
- *     └─ 解析成功 ── parse_success_rate = 解析成功轮 / 所有轮
- *          └─ 类型匹配 ── type_match_rate = 类型匹配轮 / 解析成功轮
- *               └─ 数据匹配 ── data_match_rate = 数据匹配轮 / 类型匹配轮
- * </pre>
- *
- * <p>若不这样收窄，解析失败的轮会同时拉低类型率与数据率，造成双重惩罚，
- * 且会出现「类型率 > 解析率」的荒谬结果。
- *
- * <p>另外按**任务**（而非轮）统计两个指标：平均轮数、平均耗时。
- */
 public final class MetricsAggregator {
-
     /** 一个模型（可再按类别细分）的指标。 */
     public static final class Metrics {
         public int tasks;
@@ -67,13 +47,6 @@ public final class MetricsAggregator {
             return tasks == 0 ? 0 : (double) totalElapsedMs / tasks;
         }
 
-        /**
-         * 任务正确率 —— 分母**只算有判据可判的任务**。
-         *
-         * <p>无判据的任务（纯主观题）不该进入分母：把它们算成"不通过"会凭空拉低正确率，
-         * 算成"通过"又会虚高。它们的数量单独由 {@code checkableTasks} 与
-         * {@link #uncheckedTasks()} 暴露出来。
-         */
         public double taskCorrectRate() {
             return checkableTasks == 0 ? 0 : (double) correctTasks / checkableTasks;
         }

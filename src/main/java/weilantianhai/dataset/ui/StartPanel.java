@@ -20,26 +20,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Consumer;
 
-/**
- * 开始页：程序起来后**先停在这里**，让用户选好实验配置，点「开始」才真正跑题。
- *
- * <h3>为什么要先停一下</h3>
- *
- * <p>原版一进窗口就开始跑循环，用户根本来不及做题前准备（换模型、换题库、改数据集目录），
- * 模型选错了还会白跑一轮。选模型 / 选题库 / 决定要不要落盘，本来就是**实验配置**，
- * 应该发生在实验开始之前，而不是跑起来之后手忙脚乱地补。
- *
- * <h3>它只盖住 4D 视口，不盖顶栏</h3>
- *
- * <p>早先这一版是把开始页铺满整个窗口的，结果**顶栏的「出题…」按钮被挡住点不到** ——
- * 用户想"先出题再开始"就做不到。现在它只作为 {@code viewportStack} 的一层，
- * 只遮住中间的 4D 视口：顶栏（模型/题库/出题）与底部日志都保持可见可用，
- * 于是出题过程中的日志也能实时看到。
- *
- * <p>点开始后本面板 {@code setVisible(false)}，控制权交回 {@link DatasetApp} 启动主循环。
- */
 public final class StartPanel extends StackPane {
-
     private static final String PANEL =
             "-fx-background-color: rgba(20,22,26,0.97);"
                     + "-fx-background-radius: 14;"
@@ -263,12 +244,6 @@ public final class StartPanel extends StackPane {
         return modelBox.getValue();
     }
 
-    /**
-     * 禁用「开始」按钮（例如 Agent 初始化失败时）。
-     *
-     * <p>这里直接引用字段而不是 {@code lookup()} —— 本方法可能在面板还没挂进 Scene
-     * 之前就被调用，那时 {@code lookup} 会返回 null。
-     */
     public void setStartDisabled(boolean disabled, String reason) {
         startBtn.setDisable(disabled);
         if (disabled && reason != null) {

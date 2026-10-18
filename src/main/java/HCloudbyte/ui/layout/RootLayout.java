@@ -13,14 +13,7 @@ import javafx.scene.layout.BorderPane;
 import mai_onsyn.renderer.core.GL4DRegion;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 
-/**
- * 主布局装配：把顶栏 / 中央视口 / 右侧面板 / 底部状态栏拼成一个 {@link BorderPane}。
- *
- * <p>本类只做「创建各面板 → 摆位 → 接线」，不含任何业务逻辑。
- * 其中右侧面板用 {@link RightPanelHost} 承载手写/语音两种模式；顶栏的模式切换回调直接切它。
- */
 public class RootLayout extends BorderPane {
-
     private final ChatPanel chatPanel;
 
     public RootLayout(GL4DRegion region, RendererInterface renderer, ViewportBox viewportBox) {

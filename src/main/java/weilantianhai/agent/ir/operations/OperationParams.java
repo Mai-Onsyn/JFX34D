@@ -10,22 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/**
- * 操作实现共用的参数解析、校验与格式化工具。
- *
- * <p>只服务于 {@code weilantianhai.agent.ir.operations} 包内的操作类，
- * 把 v2 接口文档里反复出现的几种参数写法和校验规则收敛到一处：
- *
- * <ul>
- *   <li>四维向量：数组 {@code [1,2,3,4]} 或字符串 {@code "(1 2 3 4)"}</li>
- *   <li>5×5 行主序矩阵：{@code row0}~{@code row4} 五个行向量</li>
- *   <li>模型路径：{@code "Tower/Base"} 形式，见文档 §0.3</li>
- *   <li>颜色：{@code "#AARRGGBB"} / {@code "#RRGGBB"} / 整数 {@code 0xAARRGGBB}</li>
- *   <li>枚举：单轴 {@code x/y/z/w}、四维平面 {@code xy/xz/xw/yz/yw/zw}</li>
- * </ul>
- */
 final class OperationParams {
-
     /** 四维坐标轴（单轴） */
     static final Set<String> AXES = Set.of("x", "y", "z", "w");
 
@@ -74,12 +59,6 @@ final class OperationParams {
         return value;
     }
 
-    /**
-     * 读取必填的模型路径，并做文档 §0.3 的路径校验。
-     *
-     * <p>规则：区分大小写；长度 1–64；不能有空路径段（{@code //}）；
-     * 不能以 {@code /} 开头或结尾；不能含 {@code '#'}（{@code #} 留给"某个胞"的写法）。
-     */
     static String getRequiredPath(JSONObject data, String key, String codePrefix) throws IRException {
         return validatePath(getRequiredString(data, key, codePrefix), key, codePrefix);
     }
@@ -119,12 +98,6 @@ final class OperationParams {
         return p;
     }
 
-    /**
-     * 形状操作的路径拼接：结果路径 = {@code target + "/" + name}。
-     *
-     * <p>{@code target} 允许为空字符串（表示建在根路径）；{@code name} 可带子路径，
-     * 但不能为空、不能含 {@code #}、不能有空段。
-     */
     static String joinPartPath(String target, String name, String codePrefix) throws IRException {
         String t = target == null ? "" : target.trim();
         t = t.replaceAll("^/+", "").replaceAll("/+$", "");
@@ -338,14 +311,6 @@ final class OperationParams {
 
     // ------------------------------------------------------------ 四维向量
 
-    /**
-     * 读取四维向量，兼容三种写法：
-     * <ul>
-     *   <li>数组：{@code [1, 2, 3, 4]}</li>
-     *   <li>字符串（括号）：{@code "(1 2 3 4)"} 或 {@code "(1, 2, 3, 4)"}</li>
-     *   <li>字符串（空格）：{@code "1 2 3 4"}</li>
-     * </ul>
-     */
     static Vector4f getRequiredVector4(JSONObject data, String key, String codePrefix)
             throws IRException {
         return toVector4(requireField(data, key, codePrefix), key, codePrefix);
@@ -502,12 +467,6 @@ final class OperationParams {
 
     // ------------------------------------------------------------ 颜色
 
-    /**
-     * 解析颜色为 ARGB 整数。
-     *
-     * <p>接受 {@code "#AARRGGBB"}、{@code "#RRGGBB"}（alpha 补 FF）
-     * 以及整数 {@code 0xAARRGGBB}；缺失时返回 {@code defaultVal}。
-     */
     static int parseArgb(Object raw, int defaultVal, String key, String codePrefix)
             throws IRException {
         if (raw == null) {
@@ -539,12 +498,6 @@ final class OperationParams {
 
     // ------------------------------------------------------------ 错误正文
 
-    /**
-     * 把异常转成该条操作的错误正文（不含 {@code # TYPE(id=n)} 头）。
-     *
-     * <p>文档 §2.3：单条操作失败时，错误文本**直接采用渲染实现抛出的消息**，
-     * 形如 {@code Error: Model "Cube A" already exists}。
-     */
     static String errorBody(Throwable t) {
         String message = t.getMessage();
         if (message == null || message.isBlank()) {

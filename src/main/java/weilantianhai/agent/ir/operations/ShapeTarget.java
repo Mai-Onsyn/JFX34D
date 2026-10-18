@@ -3,18 +3,7 @@ package weilantianhai.agent.ir.operations;
 import com.alibaba.fastjson2.JSONObject;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * 形状操作的 {@code target} / {@code name} 两个路径参数的解析结果。
- *
- * <p>文档 §5.1：每个形状操作都要给两个路径参数——
- * {@code target}（目标模型路径，可带多级路径、**不必已存在**，空字符串表示根路径）
- * 与 {@code name}（新部件名，也可带子路径）；结果路径 = {@code target + "/" + name}。
- *
- * <p>因为每个形状操作都要做同一套校验（结果路径不能为空、不能含 {@code #}、
- * 不能有空路径段），这里收敛成一个小的解析器。
- */
 final class ShapeTarget {
-
     /** 传给渲染接口的 target（可能为空字符串） */
     final String target;
 

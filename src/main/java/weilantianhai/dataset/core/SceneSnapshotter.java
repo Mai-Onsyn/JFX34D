@@ -11,31 +11,7 @@ import org.joml.Vector4f;
 import java.util.List;
 import weilantianhai.agent.ir.operations.FxThreads;
 
-/**
- * 场景快照采集 + 任务间复位。所有操作都在 FX 线程上做。
- *
- * <h3>复位到哪，由调用方决定</h3>
- *
- * <p>每个任务的起始状态必须一致，否则数据集里的差异来自"上一题的残留"而非"模型能力"。
- * 但"一致"不等于"非得是空场景"：
- *
- * <ul>
- *   <li><b>空场景</b> —— 真的清空，**什么都不塞**；</li>
- *   <li><b>初始场景</b> —— 回到 {@link SceneBaseline} 里存的那份场景，
- *       于是可以先搭好一个复杂场景（带子模型的 Tower 之类），再在上面连着测很多操作。</li>
- * </ul>
- *
- * <p>走哪种由构造时传入的 {@code useBaseline} 决定 —— 界面上的开关随时改、下一题就生效。
- *
- * <h3>为什么不塞 seed 模型了</h3>
- *
- * <p>早先复位会放回一个 {@code Tesseract}。那个凭空多出来的模型一路带偏：
- * {@code LIST_MODEL} 多一个用户没建的东西、{@code model.count} 得按"1 + 新建数"算、
- * 出题器要专门声明它的存在、提示词又得补一条"模型不存在怎么办"。
- * 现在复位**只做减法**（清空）或**回到你存的场景**，不再无中生有。
- */
 public final class SceneSnapshotter {
-
     private final GL4DRegion region;
     private final RendererInterface renderer;
     /** 复位时是否回到"初始场景"（false = 清成空场景）。运行时实时读取，开关立即生效。 */
@@ -109,23 +85,6 @@ public final class SceneSnapshotter {
 
     /* ==================== 复位 ==================== */
 
-    /**
-     * 复位：清空 4D 模型树与机位，相机回到基线，然后
-     * **按模式**要么留空、要么加载「初始场景」。
-     *
-     * <p>为什么清的是 {@code scene4D.meshList} 而不是调 {@code DELETE_MODEL}：
-     * 前者是一次性 list 操作，不受"路径是否存在于中间层"的影响；后者可能因为残留的
-     * 中间层路径而删不干净。
-     *
-     * <h3>复位后自检</h3>
-     *
-     * <p>{@code reset()} 之后立刻采一次快照，与**期望状态**比对。期望状态 =
-     * 空表（空场景模式）或初始场景里那些模型的路径（初始场景模式）。
-     * 不一致就抛异常 —— 因为"复位没复位干净"会让后续所有题的结论都不可信，
-     * 而且这种错误**静默**（界面上看不出来），是最危险的一类。
-     *
-     * @throws IllegalStateException 复位后状态与期望不符
-     */
     public void reset() throws Exception {
         FxThreads.run(this::resetOnFx);
         verifyBaseline();

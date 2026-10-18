@@ -18,14 +18,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import java.util.List;
 import java.util.function.Supplier;
 
-/**
- * 右侧属性视图（手写模式）：场景集合 + 变换/旋转/缩放/裁剪/摄像机/四面体 六个折叠区块 + 数据区。
- *
- * <p>本类只做「装配与接线」，各区块（{@code section} 包）与场景树（{@code scenetree} 包）各自独立实现。
- * 选中模型由本类持有（{@code selectedModel}），以 {@link Supplier} 形式传给需要它的区块。
- */
 public class PropertyPanel extends VBox {
-
     private final RendererInterface renderer;
     private final SceneTree sceneTree;
     private final ModelDataSection dataSection;

@@ -5,14 +5,7 @@ import HCloudbyte.ui.property.PropertyPanel;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.StackPane;
 
-/**
- * 右侧面板容器：同一位置叠放手写模式（属性面板）与语音模式（聊天面板），二选一显示。
- *
- * <p>属性面板内容可能超高，外面套一层 {@link ScrollPane} 滚动；并压平 minHeight/minWidth，
- * 避免把顶栏 / 状态栏挤出窗口（此前布局溢出 bug 的修复）。
- */
 public class RightPanelHost extends StackPane {
-
     private final PropertyPanel propertyPanel;
     private final ChatPanel chatPanel;
 

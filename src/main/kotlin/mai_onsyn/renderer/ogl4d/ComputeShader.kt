@@ -18,16 +18,8 @@ import org.lwjgl.opengl.GL20.glShaderSource
 import org.lwjgl.opengl.GL43.GL_COMPUTE_SHADER
 import java.io.IOException
 
-/**
- * compute program 的最小封装。
- *
- * 比 [mai_onsyn.renderer.ogl3d.data.Shader] 多了一件事: **编译/链接失败会把 info log 打出来**。
- * compute shader 写错了如果只是静默失败, 画面上什么都看不到, 根本没法查。
- */
 class ComputeShader private constructor(val program: Int) {
-
     companion object {
-
         /** 4D 顶点变换用的 compute program; 第一次访问时创建 (必须在有 GL 上下文的渲染线程里) */
         val direct4D: ComputeShader by lazy { fromResource("/shaders/direct4d-transform.comp") }
 

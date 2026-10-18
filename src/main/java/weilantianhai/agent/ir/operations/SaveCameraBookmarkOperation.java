@@ -4,16 +4,7 @@ import com.alibaba.fastjson2.JSONObject;
 import mai_onsyn.renderer.interfaces.RendererInterface;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * SAVE_CAMERA_BOOKMARK：把**当前相机状态**存成一个机位。
- *
- * <p>参数：{@code name}（可选，缺省自动命名 "机位N"）。
- *
- * <p>等价于 UI 上的「记录」按钮，但可以自定义名称。
- * 返回值里带上了新机位的下标，方便后续直接 {@code GO_CAMERA_BOOKMARK}。
- */
 public class SaveCameraBookmarkOperation extends GuardedOperation {
-
     private String name;
 
     @Override

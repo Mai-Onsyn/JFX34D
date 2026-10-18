@@ -7,23 +7,10 @@ import mai_onsyn.renderer.ogl3d.generator.createCube
 import mai_onsyn.renderer.utils.ColorARGB
 import org.joml.Matrix4f
 
-/**
- * 视口区域指示方块。
- *
- * <p>一个半透明正方体（六个面各自染色，alpha = [ALPHA]），边长 = 4D 视口的显示边长，
- * 挂在 [GL4DRegion.scene3D] 里，用来在 3D 视图里直观标出「4D 视口」的空间范围。
- *
- * <p>说明：
- * - 顶点只在构造时按 [DEFAULT_SIZE] 生成一次；实际边长靠 mesh 的模型矩阵缩放实现，
- *   所以改 [size] 不需要重建顶点、也没有跨线程改三角形列表的风险；
- * - 显示 / 隐藏只是往 scene3D 的 mesh 列表里加 / 删**同一个** [Mesh] 实例
- *   （复用实例 = 不重复申请 GPU 资源；meshList 是 CopyOnWriteArrayList，跨线程安全）。
- */
 class ViewportBox @JvmOverloads constructor(
     private val region: GL4DRegion,
     size: Float = DEFAULT_SIZE,
 ) {
-
     /** 边长（= 4D 视口显示边长，对应 SceneInterface.setDisplaySize）。 */
     var size: Float = size
         set(value) {
@@ -56,9 +43,6 @@ class ViewportBox @JvmOverloads constructor(
         val list = region.scene3D.meshList
         if (visible) {
             if (!list.contains(mesh)) {
-                // 重新显示时必须重传：mesh 一离开场景，GL3DEngine 就会 dispose 掉它的 VAO/VBO，
-                // 而 dispose 不会把 dirty 置回 true —— 不置 dirty 的话，下一帧 upload() 会被
-                // dirty=false 提前跳过、draw() 又因为 groups 为空直接返回，方块就再也画不出来。
                 mesh.dirty = true
                 list.add(mesh)
             }

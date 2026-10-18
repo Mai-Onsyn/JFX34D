@@ -15,37 +15,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
-/**
- * 数据集查询：读取**经人工审核打分**的运行记录，供 Agent 自查历史。
- *
- * <h3>数据从哪来</h3>
- *
- * <p>由数据集脚本（{@code DatasetLauncher}）产出：每跑完一道题就落一条记录到
- * {@code data/dataset/raw/<日期>/<模型>__<类别>.jsonl}，并带有人工给出的
- * {@code verdict}（正确 / 不正确）与评语。
- *
- * <h3>为什么是"两级"接口</h3>
- *
- * <p>一次性把整个数据集塞进上下文既浪费又噪声大。所以先让 Agent 取**分类目录**
- * （{@link ListDatasetCategoriesOperation}），看清有哪些类别、各多少条、判对多少，
- * 再挑一个类别取具体记录（{@link GetDatasetRecordsOperation}）。
- *
- * <h3>有意不返回 {@code check}</h3>
- *
- * <p>记录里的 {@code check} 是**机器判定的标准答案**，{@code note} 往往直接写着
- * "陷阱题：应当拒绝"。如果把这些回给模型，正在进行的评测就可能被"看到答案"污染 ——
- * 于是这里只回**题目 + 人工结论 + 人工评语**，不回判据本身。
- * 需要时再加开关即可。
- *
- * <h3>路径</h3>
- *
- * <p>默认 {@code data/dataset}，与 {@code weilantianhai.dataset.DatasetPaths.DATASET_ROOT}
- * 保持一致；但那边是相对**工作目录**，这里额外向上找 {@code pom.xml} 锚定到**项目根**，
- * 因为 IDE 的 Run 配置常常把工作目录设成模块目录。
- * 也可用系统属性 {@code -Djfx34d.dataset.root=<绝对路径>} 覆盖。
- */
 final class DatasetQuery {
-
     /** 覆盖数据集根目录的系统属性。 */
     static final String ROOT_PROPERTY = "jfx34d.dataset.root";
 

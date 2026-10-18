@@ -16,21 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/**
- * 场景集合树：把「场景 = Map&lt;String, Mesh4D&gt;」按路径分隔符渲染成一棵 IDE 风格的树。
- *
- * <p>三条铁律：
- * <ol>
- *   <li><b>节点只存完整路径</b>，绝不缓存 {@code Mesh4D}；要操作模型就按路径经接口取。</li>
- *   <li><b>永不部分更新</b>：只在模型 keySet 变化时按 {@link ModelInterface#listAllModels()} 全量重建。</li>
- *   <li>重建时保留展开状态与选中（选中失效则回退第一个节点）。</li>
- * </ol>
- *
- * <p>重建来源有两处：UI 自身操作后立即重建；以及一个每秒轮询的虚拟线程（因为 AI 也会改场景）。
- * 本类是<b>可复用组件</b>，各面板各自 new 一个，彼此独立、无静态共享状态。
- */
 public class SceneTree extends VBox {
-
     private static final long POLL_INTERVAL_MILLIS = 1000;
 
     private final RendererInterface renderer;

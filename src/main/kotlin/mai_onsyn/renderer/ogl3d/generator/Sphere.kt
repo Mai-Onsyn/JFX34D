@@ -12,21 +12,6 @@ import kotlin.math.PI
 import kotlin.math.asin
 import kotlin.math.atan2
 
-/**
- * 球（cubed sphere），对应文档 §5.3 的 `SPHERE`。
- *
- * 做法与四维超球 `constructBall4` 完全同构：把**立方体的 6 个面**各细分成 `k×k` 个小四边形，
- * 每个角点沿径向投影到半径 [radius] 的球面上。相邻面共享棱上的角点方向相同、投影后位置也相同，
- * 所以结果**封闭无缝**。
- *
- * - 球心在 [center]，半径 [radius]；
- * - [density] 是**唯一**控制细分精细度的参数：`k = clamp(ceil(density), 1, maxSubdivisions)`，
- *   `density = 1` 时 `k = 1`，此时结果就是立方体；
- * - 三角形数 = `6 · k² · 2 = 12k²`；
- * - 法向取径向（平滑着色）、绕向朝外，且**没有极点退化**（不像经纬球）。
- *
- * 需要在 [center] 之外做位置 / 朝向调整时，用 CPU 侧的 `Mesh.applyTransform(...)` 烘焙矩阵。
- */
 fun createSphere(
     radius: Float = 1f,
     density: Float = 8f,

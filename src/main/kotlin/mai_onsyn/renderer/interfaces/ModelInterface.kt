@@ -3,7 +3,6 @@ package mai_onsyn.renderer.interfaces
 import mai_onsyn.renderer.cpu4dkt.Mesh4D
 
 interface ModelInterface {
-
     /** 列出模型的根路径（去重后的第一段），按添加顺序 */
     fun listModel(): List<String>
 
@@ -16,11 +15,6 @@ interface ModelInterface {
     /** 删除模型及其整棵子树（路径前缀匹配），必须存在 */
     fun removeModel(name: String)
 
-    /**
-     * 重命名模型，连整棵子树一起改名（子模型路径前缀同步跟随）。
-     * [path] 可以是真实模型，也可以是**中间/分组路径**（此时按前缀改名整段）。
-     * [newName] 是**叶名**，不是路径。
-     */
     fun renameModel(path: String, newName: String)
 
     /**

@@ -113,7 +113,6 @@ public class AgentInterfaceImpl implements AgentInterface {
         return this.client;
     }
 
-
     private void loop() {
         while (running) {
             Request req;
@@ -227,12 +226,6 @@ public class AgentInterfaceImpl implements AgentInterface {
         }
     }
 
-    /**
-     * 把模型的总结（{@code content}）或累积的执行结果拼成给用户看的一句话。
-     *
-     * <p>优先用模型自己写的 {@code content}——它是"给用户看的一句话总结"；
-     * 没有时才退回累积的 Markdown。
-     */
     private String buildReply(String content, String md) {
         if (content != null && !content.isBlank()) return content.trim();
         if (md == null || md.isBlank()) return "完成。";

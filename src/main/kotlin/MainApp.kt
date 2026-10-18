@@ -246,7 +246,6 @@ fun Camera4D.startTestTrajectory(
     var next = System.nanoTime() + tickNs
 
     while (!Thread.currentThread().isInterrupted) {
-
         // 1) 从单位阵重建 —— 不做任何"累加"，无漂移
         vx.set(1f, 0f, 0f, 0f)
         vy.set(0f, 1f, 0f, 0f)
@@ -261,9 +260,6 @@ fun Camera4D.startTestTrajectory(
         rotateYW(0.35f * sin(u + 4.1f))
         rotateZW(0.30f * sin(u + 5.6f))
 
-        // 3) 定位 —— 相机永远在 -vw 方向 radius 处
-        //    pos = -radius * vw  ⇒  从 pos 指向原点的方向 = vw
-        //    而 vw 是相机看向方向 ⇒ 视线永远穿过 (0,0,0,0)
         pos.set(-vw.x * radius, -vw.y * radius, -vw.z * radius, -vw.w * radius)
 
         u += speed * omega * dt

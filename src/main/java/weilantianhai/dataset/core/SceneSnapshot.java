@@ -7,16 +7,7 @@ import org.joml.Vector4f;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 某一时刻的**世界状态快照**：模型树、相机、机位。
- *
- * <p>它是自动打分与事后归因的唯一客观依据 —— 「AI 说它做了」不算数，「世界变成什么样」才算数。
- *
- * <p>快照的采集在 FX 线程上做（见 {@code SceneSnapshotter}），采集完是一个纯数据 JSON，
- * 可以安全地跨线程传递、落盘。
- */
 public final class SceneSnapshot {
-
     /** 容差：位置/向量比较的默认阈值。 */
     public static final float EPS = 1e-3f;
 

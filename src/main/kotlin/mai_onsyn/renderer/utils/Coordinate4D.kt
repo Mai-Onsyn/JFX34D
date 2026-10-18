@@ -26,10 +26,6 @@ data class Coordinate4D @JvmOverloads constructor(
             val b = slerpNoFlip(b0, b1, frac)
 
             val bConj = b.conjugate()
-            // 新基：1 -> a * 1 * b_conj = a * b_conj
-            //       i -> a * i * b_conj
-            //       j -> a * j * b_conj
-            //       k -> a * k * b_conj
             val newVw = a * bConj
             val newVx = a * Quaternion(0f, 1f, 0f, 0f) * bConj
             val newVy = a * Quaternion(0f, 0f, 1f, 0f) * bConj

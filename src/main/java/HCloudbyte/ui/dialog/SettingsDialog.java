@@ -21,14 +21,7 @@ import mai_onsyn.renderer.ogl3d.data.Light;
 import java.lang.reflect.Method;
 import java.util.List;
 
-/**
- * 场景设置弹窗：光照 / 背景色 / 视口大小 / 视口区域方块 / 光源列表与增删 / FPS 上限 / FOV / 线框 /
- * 相机速度 / 环境光，以及只读的 4D 相机姿态角与 1% Low FPS。
- *
- * <p>所有可写控件的初始值都取自 {@link SettingsCache}（上次应用/拖动的值），不再每次重置成默认。
- */
 public final class SettingsDialog {
-
     private SettingsDialog() {
     }
 
@@ -241,11 +234,6 @@ public final class SettingsDialog {
         return row + 4;
     }
 
-    /**
-     * 环境光：整个场景一份，参数是 ColorARGB。
-     * ColorARGB 是 {@code @JvmInline value class}，Kotlin 编译后方法名被 mangle 成
-     * {@code setAmbientLight-SywUG-4(int)}，Java 源码写不出来，只能反射调用。
-     */
     private static int addAmbientColor(GridPane grid, int row, RendererInterface renderer, SettingsCache cache) {
         ColorPicker ambient = new ColorPicker(cache.ambient);
         ambient.setPrefWidth(140);

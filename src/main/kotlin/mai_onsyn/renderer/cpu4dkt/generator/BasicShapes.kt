@@ -14,17 +14,6 @@ import org.joml.Vector4f
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-/**
- * 四维基础形状生成器。
- *
- * 约定：每个形状生成的都是**四维体的三维边界**，也就是一堆四面体（3-胞），
- * 和 [constructHypercubeWithCellColors] 一致。每个胞的顶点单独实例化（顶点不跨胞复用），
- * 这样每个胞可以有自己的 4D 法向量。
- *
- * 注意：JOML 的 `Vector4f()` 是 `(0,0,0,1)`（齐次坐标约定），
- * 需要零向量时必须显式写 `Vector4f(0f, 0f, 0f, 0f)`。
- */
-
 /** 立方体沿主对角线 0-7 的 6 个 Kuhn 四面体（局部角点索引，位 0/1/2 对应三个自由轴） */
 private val KUHN_6 = listOf(
     intArrayOf(0, 7, 1, 3),
@@ -165,23 +154,6 @@ private fun samePosition(a: Vertex, b: Vertex): Boolean =
 private fun positionKey(v: Vertex): String =
     "%08.4f|%08.4f|%08.4f".format(v.pos.x + 0f, v.pos.y + 0f, v.pos.z + 0f)
 
-/**
- * 超棱柱：以 3D 网格为底面，沿 w 轴从 ws 拉伸到 we。
- *
- * 每个底面三角形拉出一个三棱柱胞，拆成 3 个四面体。
- * 两端的"盖"不用额外生成：侧胞自己就带着位于 w = ws / w = we 上的端面，
- * 把 base 的每张三角面原样铺在两端（渲染器每个四面体四个面都画）。
- *
- * 拆法有讲究：三棱柱的 3 个侧面四边形各需要一条对角线，
- * 如果按底面三角形自己的绕向来选，相邻两个底三角形绕向相反，
- * 同一条公共棱两侧会选到**不同的对角线**，侧面就变成交叉重复的两层三角形
- * （不透明渲染看不出来，线框下能看到 X 形，透明时会重复混合）。
- * 所以这里固定用"按位置排序后的 (A,B,C)"这种拆法：
- * T1=(A,B,C,F) T2=(A,B,F,E) T3=(A,E,F,D)，它给每个侧面四边形选的对角线
- * 都是"位置较小者的 ws 端 -> 位置较大者的 we 端"，两侧算出来必然一致。
- *
- * 建议 base 是封闭曲面，否则结果不封闭。
- */
 fun constructPrism4(base: Mesh, ws: Float, we: Float): MutableList<Tetrahedron> {
     val result = mutableListOf<Tetrahedron>()
 
@@ -247,28 +219,9 @@ fun constructCone4(
     return result
 }
 
-/**
- * density -> 超球每个胞每条边的细分段数 `k`。
- *
- * 已经改走公共的 [densityToSubdivisions]：`k = clamp(ceil(density), 1, max)`，
- * 不再是原来的 `clamp(round(density), 1, 12)`。保留这个名字是为了兼容既有调用方。
- */
 fun ballSubdivisions(density: Float, max: Int = DEFAULT_MAX_SUBDIVISIONS): Int =
     densityToSubdivisions(density, max)
 
-/**
- * 超球（四维球的边界，即 3-球面）。
- *
- * 做法是把超立方体的 8 个胞各细分 k×k×k 个小立方体（每个拆成 6 个四面体），
- * 再把所有顶点沿径向投影到半径 radius 的球面上 —— 相当于把 4-立方体的边界
- * "吹"到 3-球面上（cubed sphere），结果是一个封闭的 3-流形。
- * 相邻胞共享边界，投影后仍然共享，所以没有缝。
- *
- * @param density         密度，唯一控制细分精细度的参数：`k = clamp(ceil(density), 1, maxSubdivisions)`。
- *                        `density = 1` 时 `k = 1`，胞数与超立方体一致（48）；胞数（四面体数）= `8 · k³ · 6`
- * @param maxSubdivisions 细分段数上限，默认 [DEFAULT_MAX_SUBDIVISIONS]；代价是 O(k³)，
- *                        想更细就往大传，但要注意内存（`k = 64` 时已经约 1260 万四面体）
- */
 fun constructBall4(
     center: Vector4f = Vector4f(0f, 0f, 0f, 0f),
     radius: Float = 1f,

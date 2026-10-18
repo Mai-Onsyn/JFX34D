@@ -65,11 +65,6 @@ fun lookAt4D(
     }
     z = normalize4(z)
 
-    // 4. 右方向 x：补齐正交基。
-    //    这里**不能**再乘 -1：摄像机自身的基（默认单位阵，以及所有 rotate* 的结果）行列式恒为 +1，
-    //    而 Coordinate4D.interpolate 把姿态拆成四元数对 (a, b)（SO(4) 的 p ↦ a·p·b⁻¹）时，
-    //    要求端点必须是正常正交基（det = +1）。乘 -1 会得到 det = -1 的镜像基，
-    //    拆解会静默失效（重建出的 vx/vy/vz 与端点不符），表现就是视线动画首尾跳变。
     val x = normalize4(cross4(y, z, w))
 
     return Coordinate4D(vx = x, vy = y, vz = z, vw = w)

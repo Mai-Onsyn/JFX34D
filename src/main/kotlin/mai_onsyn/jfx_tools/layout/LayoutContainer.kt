@@ -11,37 +11,7 @@ import javafx.scene.layout.VBox
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * [Column] / [Row] / [Box] 的公共基类。
- *
- * 它本身就是一个普通的 [Pane]：
- *
- * * 子节点就是真正的 JavaFX 子节点，`getChildren()`、`lookup("#id")`、CSS 样式类都正常工作，
- *   也可以随意和 JavaFX 原生布局（HBox / VBox / BorderPane / StackPane…）互相嵌套。
- * * 容器自身的 [modifier] 作用于自己（padding → `Region.padding`，固定尺寸 / fill → `min/pref/max`），
- *   所以放进原生布局里也遵守同样的规则。
- * * 每个子节点的布局参数由添加时传入的 [Modifier] 描述；不传就是「按内容自适应（wrap content）」。
- * * 布局分「测量 + 摆放」两步：先算每个子节点在外框尺寸语义下需要多大，再按 [Arrangement] / 对齐 /
- *   权重摆进去。所有尺寸都会被可用空间裁剪（固定尺寸也一样），空间不足时按子节点顺序依次压缩，
- *   所以容器被压扁 / 挤窄时不会有子节点溢出到容器外面。
- *
- * ### 尺寸约定（border-box）
- * `width` / `height` / `fillMaxWidth` / `fillMaxHeight` 都是「包含自己 padding 的外框尺寸」：
- * `Modifier.NONE.width(100.0).padding(8.0)` 占 100 宽，内容区 84 宽。
- * 子节点的 padding 是它和外层之间的空隙，等价于其它框架里的 margin。
- *
- * ### Java 用法
- * ```java
- * Column column = new Column();
- * column.setModifier(Modifier.NONE.fillMaxSize().padding(16));
- * column.setSpacing(8);
- * column.setHorizontalAlignment(Alignment.Horizontal.CENTER);
- * column.add(new Label("标题"), Modifier.NONE.fillMaxWidth());
- * column.add(new Button("确定"), Modifier.NONE.weight(1));
- * ```
- */
 abstract class LayoutContainer<C : LayoutContainer<C>>(vararg children: Node) : Pane(*children) {
-
     /** 子节点 → 布局参数。 */
     private val childModifiers: MutableMap<Node, Modifier> = HashMap()
 

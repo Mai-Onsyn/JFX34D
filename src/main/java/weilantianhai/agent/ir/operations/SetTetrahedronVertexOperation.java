@@ -6,25 +6,7 @@ import mai_onsyn.renderer.interfaces.RendererInterface;
 import org.joml.Vector4f;
 import weilantianhai.agent.ir.IRException;
 
-/**
- * SET_TETRAHEDRON_VERTEX：修改一个四面体的一个顶点（文档 §6.3）。
- *
- * <p>参数：{@code name}、{@code tet}（下标）、{@code vertex}（{@code 0}~{@code 3}）、
- * {@code pos}；可选 {@code color}、{@code normal}（缺省保持原值）。
- *
- * <pre>
- * # SET_TETRAHEDRON_VERTEX(id=24)
- * Success
- * "Tower/Base" #0 v2 = pos(0.00, 0.00, 0.00, 3.00) color=#FFFFFF00
- * Now kind is CARVED (params no longer describe it)
- * </pre>
- *
- * <p><b>跨语言说明</b>：渲染侧的 {@code GeometryInterface.setVertex} 因为签名里有
- * {@code ColorARGB?}（value class）被名称修饰成 {@code setVertex-dnx2Rjw}，Java 无法书写，
- * 所以经由 {@link AgentBridge#setVertex} 转发。
- */
 public class SetTetrahedronVertexOperation extends GuardedOperation {
-
     private String name;
     private int tet;
     private int vertex;

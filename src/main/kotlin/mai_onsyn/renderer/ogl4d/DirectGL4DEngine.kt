@@ -50,44 +50,18 @@ import org.lwjgl.opengl.GL43.GL_SHADER_STORAGE_BUFFER
 import org.lwjgl.opengl.GL43.glDispatchCompute
 import java.util.IdentityHashMap
 
-/**
- * 直接用 compute shader 变换 4D 顶点、并把结果写进 GPU 的 VBO 的渲染引擎。
- *
- * 和老路径 ([mai_onsyn.renderer.cpu4dkt.Renderer4D] + JNI) 的关系:
- *   - 输入完全一样: 同一个 [Mesh4D] 列表, 同一份 `packMesh4D` 打包格式, 同一个 mvp。
- *   - 变换从「CPU 串行 + JNI 回调 + 重建 Mesh」变成「GPU 并行, 一个四面体一个 invocation」。
- *   - 结果不再回 CPU: compute shader 直接把 12 个顶点写进 VBO, 画的时候直接当顶点缓冲用。
- *   - 画面语义与老路径严格对齐: 屏幕空间面法线 (与 toMesh() 的 calcNormal 同式)、uv=0、
- *     顶点色原样、兜底材质、沿用同一个 basic shader 的光照/材质/透明规则。
- *
- * 线程与顺序: 所有方法都必须在 GL 渲染线程里调 (由 [mai_onsyn.renderer.core.GL4DRegion] 挂在 openglfx 的
- * init / reshape / render 事件上)。本引擎不清屏、也不碰 3D 场景的绘制, 它假定 3D 引擎
- * ([mai_onsyn.renderer.ogl3d.GL3DEngine]) 已经在同一帧里画完, 所以本引擎必须在它之后运行。
- */
 class DirectGL4DEngine(
     private val scene4D: SimpleScene4D,
     private val scene3D: Scene3D
 ) {
-
     /** 4D 侧 (compute + 上传) 的频率; 不是画布帧率 */
     val fpsCounter = FrequencyCounter()
 
-    /**
-     * compute 的帧率上限, <= 0 表示不限制。
-     * 和 [mai_onsyn.renderer.cpu4dkt.Renderer4D.maxFPS] 同一个含义: 到点了才重算一次变换,
-     * 中间那些画布帧直接用上次算好的 VBO 画。
-     */
     var maxFPS: Int = 100
 
     /** 与 Renderer4D.viewPortLength 同一个含义: viewPort = scale(viewPortLength * 0.5) */
     var viewPortLength: Float = 8f
 
-    /**
-     * 4D 网格是否画线框。
-     *
-     * 注意: GL3DRegion.setOutlineRendering 是 final 的, 而且只改得到 3D 引擎,
-     * 所以 4D 这条线框开关是本引擎自己的, 由 DirectGL4DRegion.set4DOutlineRendering 转发过来。
-     */
     var useOutlineRendering: Boolean = false
 
     /** 当前上下文能不能跑 compute (需要 OpenGL 4.3+); false 时整个引擎空转 */
